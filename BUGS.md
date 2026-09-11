@@ -14,7 +14,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | ID | # | Severity | Title |
 |---|---|---|---|
 | NFR-001 | 1 | 🔴 | `npm start` crashes — ESM/CJS module mismatch |
-| NFR-002 | 2 | 🔴 | Server never starts — `start()` never invoked |
+| NFR-002 | 2 | 🔴 | ✅ Server never starts — `start()` never invoked — **RESOLVED** (fix/NFR-002) |
 | NFR-003 | 3 | 🔴 | Auth chicken-and-egg — register/login unreachable |
 | NFR-004 | 4 | 🔴 | ✅ `store.json` missing `hires` array — hire-flow crashes — **RESOLVED** (fix/NFR-004) |
 | NFR-005 | 5 | 🔴 | CSV job import completely broken |
@@ -56,11 +56,18 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Evidence:** Confirmed live. `tsc` emits ES module syntax into `dist/`, but `"type": "commonjs"` makes Node treat `.js` files as CommonJS.
 - **Note:** `moduleResolution: "bundler"` is also wrong for a Node-executed app (should be `nodenext`/`node16` if ESM is intended).
 
-### 2. [NFR-002] Server never starts — `start()` is never invoked
+### 2. [NFR-002] ✅ Server never starts — `start()` is never invoked
 - **Where:** `src/index.ts:41-59` — `start()` is defined and exported but never called anywhere; no `if (require.main === module)` / `import.meta` entry guard.
 - **Symptom:** Even when module loading succeeds (via `tsx`), the process exits silently without listening. No port is bound.
 - **Evidence:** Confirmed live — `npx tsx src/index.ts` produced no "server running" log and `curl :3000/health` connection-refused. The smoke tests in this review required manually invoking `start()` via `tsx -e "import('./src/index.ts').then(m => m.start())"`.
 - **Impact:** `npm run dev` and `npm start` both cannot serve traffic. **Bugs 1 + 2 together mean the application cannot be started at all by its own scripts.**
+
+> **✅ RESOLUTION — 2026-09-11, branch `fix/NFR-002`, merged to `main`**
+> - **Fix:** added an entrypoint guard in `src/index.ts` — `start()` is now invoked when the module is executed directly (`realpath(argv[1]) === realpath(fileURLToPath(import.meta.url))`), and NOT when imported as a library (tests/tooling). `start()` failures log and exit(1).
+> - **Files changed:** `src/index.ts`, `tests/regression/NFR-002-server-starts.test.ts` (new, 3 tests)
+> - **Tests:** each spawns the real entrypoint (`node --import tsx src/index.ts`) against an isolated temp `DATA_DIR`: (1) `/health` returns 200; (2) startup observability entry written (proves `start()` executed); (3) process stays alive + startup banner printed. All 3 observed failing pre-fix (child exited code 0, no listener, no banner), all 3 passing post-fix — iteration 1 of 3. Full suite 6/6 (NFR-004 regressions still green). Manual checks: library import binds no listener; `npm run dev` boots and serves /health.
+> - **Gates:** `tsc --noEmit` ✅ · `tsc` build ✅ · tests 6/6 ✅ · CI smoke gate pending `NFR-030` bootstrap
+> - **Note:** `npm start` still fails until NFR-001 (ESM/CJS mismatch) is fixed; if NFR-001 chooses CommonJS output, this guard must switch to the `require.main === module` form (import.meta will not compile under CommonJS).
 
 ### 3. [NFR-003] Authentication chicken-and-egg — register/login are unreachable
 - **Where:** `src/index.ts:27` — `app.use('/', authenticate)` is mounted before all routers, including `/api/auth`.
