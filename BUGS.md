@@ -16,7 +16,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-001 | 1 | 🔴 | `npm start` crashes — ESM/CJS module mismatch |
 | NFR-002 | 2 | 🔴 | Server never starts — `start()` never invoked |
 | NFR-003 | 3 | 🔴 | Auth chicken-and-egg — register/login unreachable |
-| NFR-004 | 4 | 🔴 | `store.json` missing `hires` array — hire-flow crashes |
+| NFR-004 | 4 | 🔴 | ✅ `store.json` missing `hires` array — hire-flow crashes — **RESOLVED** (fix/NFR-004) |
 | NFR-005 | 5 | 🔴 | CSV job import completely broken |
 | NFR-006 | 6 | 🔴 | Job import silently drops all `requirements` |
 | NFR-007 | 7 | 🔴 | Hires routes unreachable — route ordering |
@@ -68,7 +68,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Evidence:** Confirmed live.
 - **Impact:** No first user can ever be created through the API; the only way in is hand-editing `data/store.json`. Also blocks `POST /api/applicants` (public applicant self-registration) and `/api/mcp/health`.
 
-### 4. [NFR-004] `data/store.json` is missing the `hires` array — runtime crashes on hire flows
+### 4. [NFR-004] ✅ `data/store.json` is missing the `hires` array — runtime crashes on hire flows
 - **Where:** committed `data/store.json` (has `companies, jobs, applicants, applications, users, observability` — no `hires`), vs `DataStore` interface and `initializeStore()` in `src/models/store.ts` which expect/create `hires`.
 - **Symptom:** Any code path touching `store.hires` throws on the existing data file:
   - `PUT /api/applications/:id/status` with `accepted` → `500 "Cannot read properties of undefined (reading 'push')"` (hire can never be recorded)
@@ -76,6 +76,12 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
   - All `/hires` endpoints crash the same way.
 - **Evidence:** Confirmed live against the committed store.json.
 - **Root cause:** `initializeStore()` only seeds `hires: []` when creating a *new* file; there is no migration/defaulting when reading an existing file missing keys. `.gitignore` force-includes `data/store.json`, so the malformed empty file is committed.
+
+> **✅ RESOLUTION — 2026-09-11, branch `fix/NFR-004`, merged to `main`**
+> - **Fix:** `readStore()` now normalizes on read — the parsed file is shallow-merged over a fresh `emptyStore()` so any collection missing from the on-disk file (e.g. `hires`) defaults to `[]`. The normalized shape self-heals on disk at the next `writeStore()`. `initializeStore()` reuses `emptyStore()` (deduplication). Added `DATA_DIR` env override for test isolation.
+> - **Files changed:** `src/models/store.ts`, `tests/regression/NFR-004-hires-array.test.ts` (new, 3 tests)
+> - **Tests:** unit (`readStore` defaults all collections) + 2 integration (GET applicant 200; accept application creates hire + links to applicant). All 3 observed failing pre-fix with the exact bug evidence (`reading 'filter'` / `reading 'push'` 500s), all 3 passing post-fix — iteration 1 of 3.
+> - **Gates:** `tsc --noEmit` ✅ · `tsc` build ✅ · tests 3/3 ✅ · CI smoke gate pending `NFR-030` bootstrap
 
 ### 5. [NFR-005] CSV job import is completely broken
 - **Where:** `src/routes/jobs.ts:80-81` — `const Papa = await import('papaparse'); Papa.parse(...)`
