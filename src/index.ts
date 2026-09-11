@@ -1,6 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { realpathSync } from 'fs';
+import { resolve } from 'path';
 import { initializeStore, readStore, addObservabilityEntry, generateId, now } from './models/store.js';
 import { authenticate } from './middleware/auth.js';
 import { errorHandler } from './middleware/auth.js';
@@ -59,3 +62,24 @@ async function start() {
 
 export { app, start };
 export default app;
+
+// Entrypoint guard (NFR-002): invoke start() only when this module is executed
+// directly (`tsx src/index.ts` / `node dist/index.js`), not when it is imported
+// as a library (tests, tooling). realpath on both sides neutralizes symlink
+// differences (e.g. npx shims, /var vs /private/var).
+function isEntrypoint(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  try {
+    return realpathSync(resolve(entry)) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (isEntrypoint()) {
+  start().catch((err) => {
+    console.error('Failed to start server', err);
+    process.exit(1);
+  });
+}
