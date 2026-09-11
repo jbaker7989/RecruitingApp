@@ -1,11 +1,12 @@
-import { dirname, join } from 'path';
+import { dirname, join, resolve } from 'path';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const DATA_DIR = join(process.cwd(), 'data');
+// DATA_DIR env override allows tests to run against isolated temp directories
+const DATA_DIR = process.env.DATA_DIR ? resolve(process.env.DATA_DIR) : join(process.cwd(), 'data');
 const STORE_FILE = join(DATA_DIR, 'store.json');
 const OBSERVABILITY_FILE = join(DATA_DIR, 'observability.json');
 
