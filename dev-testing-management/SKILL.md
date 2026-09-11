@@ -37,7 +37,18 @@ This skill governs how all engineering work is executed in the New Fronteir Recr
 
 **Step 4 — Document the fix**
 - Record, for every resolved item: root cause, what changed (files/functions), why the fix is correct, and the test evidence (red run → green run)
-- Documentation lives in: (a) the resolution annotation on the item's `BUGS.md` entry, and (b) the commit/PR body
+- Documentation lives in: (a) the resolution annotation on the item's `BUGS.md` entry, (b) the commit/PR body, and (c) a **Word resolution document** (see below)
+- **Resolution Word document (mandatory per fix):** create `resolutions/RESOLUTON-OF-ISSUE-{issue ID}.docx` (e.g. `resolutions/RESOLUTON-OF-ISSUE-NFR-004.docx`). Required sections:
+  1. Issue (ID, severity, title, where reported)
+  2. Symptoms (the observed failures / evidence)
+  3. Root cause
+  4. Resolution summary (status, branch, merge commit, date)
+  5. Fix implemented (changes + files touched)
+  6. Test evidence, red → green (each test's pre-fix failure and post-fix pass; loop iterations used of the 3 permitted)
+  7. Pipeline gates (pass/fail per gate, any documented deviations)
+  8. Post-merge regression review (areas audited, new bugs found/filed or none)
+  9. Related (BUGS.md entry, related IDs, work unblocked)
+- The document is generated programmatically (e.g. `python-docx`) so formatting stays consistent across fixes; commit it alongside the `docs(NFR-ID)` commit on the fix branch
 
 **Step 5 — Test the fix and merge**
 - Full suite green plus all CI pipeline gates passing on the branch
@@ -86,7 +97,7 @@ Every push and PR to `main` runs the pipeline (GitHub Actions, `.github/workflow
 A work item is done only when **all** are true:
 1. **At least two** tests exist for the item, include the work item ID, and were observed failing before the fix
 2. Fix completed within the 3-iteration loop cap (or formally escalated)
-3. Fix documented: root cause + changes + test evidence in `BUGS.md` annotation and commit/PR body
+3. Fix documented: root cause + changes + test evidence in `BUGS.md` annotation, commit/PR body, **and** `resolutions/RESOLUTON-OF-ISSUE-{issue ID}.docx`
 4. Full pipeline green on the branch (all 5 gates)
 5. Merge commit notes the bug/feature ID; `git status` clean; no stray files (`agent-home/`, temp data, `.env`) in the diff
 6. Post-merge regression review performed; any new bugs filed in `BUGS.md` with ID, severity, and priority
@@ -99,6 +110,7 @@ The pipeline itself cannot work until the app builds, starts, and has a test run
 
 ## Files
 - `BUGS.md` — Bug registry, source of `NFR-0XX` IDs, resolution annotations, and priority order
+- `resolutions/` — Per-fix Word resolution documents (`RESOLUTON-OF-ISSUE-{issue ID}.docx`)
 - `tests/` — All test suites (unit, integration, regression)
 - `.github/workflows/ci.yml` — Pipeline definition
 - `package.json` — `test`, `typecheck`, `build` scripts are pipeline entry points
