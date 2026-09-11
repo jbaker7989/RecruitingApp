@@ -149,10 +149,29 @@ async function ensureDataDir() {
   }
 }
 
+// Fresh-empty store: defaults for every collection. Returned arrays are new
+// instances on each call so callers can never mutate shared module state.
+export function emptyStore(): DataStore {
+  return {
+    companies: [],
+    jobs: [],
+    applicants: [],
+    applications: [],
+    users: [],
+    hires: [],
+    observability: [],
+  };
+}
+
 export async function readStore(): Promise<DataStore> {
   await ensureDataDir();
   const data = await readFile(STORE_FILE, 'utf-8');
-  return JSON.parse(data);
+  const parsed = JSON.parse(data);
+  // Normalize on read (NFR-004): files written before a collection existed
+  // (e.g. no `hires` key) are migrated in memory so store.hires.push/filter
+  // et al. can never crash on undefined. The normalized shape is persisted
+  // on the next writeStore call.
+  return { ...emptyStore(), ...parsed };
 }
 
 export async function writeStore(data: DataStore): Promise<void> {
@@ -192,15 +211,7 @@ export function now(): string {
 export async function initializeStore(): Promise<DataStore> {
   await ensureDataDir();
   if (!existsSync(STORE_FILE)) {
-    const initialStore: DataStore = {
-      companies: [],
-      jobs: [],
-      applicants: [],
-      applications: [],
-      users: [],
-      hires: [],
-      observability: [],
-    };
+    const initialStore: DataStore = emptyStore();
     await writeStore(initialStore);
     return initialStore;
   }
