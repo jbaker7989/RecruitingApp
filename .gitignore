@@ -48,5 +48,7 @@ Thumbs.db
 *.swo
 *~
 
-# Vercel local project metadata
+# Vercel local project metadata and downloaded environment files
 .vercel/
+.env*
+!.env.example
