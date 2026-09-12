@@ -134,6 +134,22 @@ test('NFR-FEAT-001 AC-001: duplicate profile, staff creation, and cross-applican
     method: 'PUT', body: JSON.stringify({ firstName: 'Hijacked' }),
   });
   assert.equal(crossUpdate.status, 403, 'another applicant must not mutate the profile via legacy endpoint');
+
+  const crossRead = await api(`/api/applicants/${profile.id}`, APPLICANT_2.id);
+  assert.equal(crossRead.status, 403, 'another applicant must not read the profile via legacy endpoint');
+
+  const recruiterRead = await api(`/api/applicants/${profile.id}`, RECRUITER.id);
+  assert.equal(recruiterRead.status, 200);
+  const recruiterView = await recruiterRead.json() as any;
+  assert.equal(recruiterView.firstName, 'Jane');
+  assert.equal(recruiterView.email, APPLICANT.email);
+  assert.equal(recruiterView.avatar.kind, 'default-person-icon');
+  assert.equal(recruiterView.phone, undefined, 'phone stays hidden during initial review');
+
+  const legacyCreate = await api('/api/applicants', APPLICANT.id, {
+    method: 'POST', body: JSON.stringify({}),
+  });
+  assert.equal(legacyCreate.status, 403, 'applicants must use the owned /profile endpoint, not legacy creation');
 });
 
 test('NFR-FEAT-001 AC-003: GET /me returns only the authenticated applicant profile and fixed visibility policy', async () => {
@@ -169,9 +185,8 @@ test('NFR-FEAT-001 AC-004: valid employment entry requires and preserves a posit
 });
 
 test('NFR-FEAT-001 AC-004: employment rejects missing/short description and invalid dates', async (t) => {
-  assert.equal((await createProfile()).status, 201);
-
   await t.test('missing description', async () => {
+    assert.equal((await createProfile()).status, 201);
     const bad = employmentBody();
     delete (bad as any).positionDescription;
     const res = await api('/api/applicants/me/employment', APPLICANT.id, {
@@ -181,6 +196,7 @@ test('NFR-FEAT-001 AC-004: employment rejects missing/short description and inva
   });
 
   await t.test('description shorter than 50 characters', async () => {
+    assert.equal((await createProfile()).status, 201);
     const res = await api('/api/applicants/me/employment', APPLICANT.id, {
       method: 'POST', body: JSON.stringify(employmentBody({ positionDescription: 'Too short' })),
     });
@@ -188,6 +204,7 @@ test('NFR-FEAT-001 AC-004: employment rejects missing/short description and inva
   });
 
   await t.test('end date before start date', async () => {
+    assert.equal((await createProfile()).status, 201);
     const res = await api('/api/applicants/me/employment', APPLICANT.id, {
       method: 'POST', body: JSON.stringify(employmentBody({ startDate: '2024-01', endDate: '2023-01' })),
     });
@@ -195,11 +212,20 @@ test('NFR-FEAT-001 AC-004: employment rejects missing/short description and inva
   });
 
   await t.test('current position cannot include end date', async () => {
+    assert.equal((await createProfile()).status, 201);
     const res = await api('/api/applicants/me/employment', APPLICANT.id, {
       method: 'POST', body: JSON.stringify(employmentBody({ currentPosition: true, endDate: '2024-02' })),
     });
     assert.equal(res.status, 400);
   });
+});
+
+test('NFR-FEAT-001 AC-004 security: applicant cannot choose a client-supplied employment entry ID', async () => {
+  assert.equal((await createProfile()).status, 201);
+  const res = await api('/api/applicants/me/employment', APPLICANT.id, {
+    method: 'POST', body: JSON.stringify(employmentBody({ id: 'attacker-controlled-id' })),
+  });
+  assert.equal(res.status, 400, 'server must generate stable IDs and reject caller-controlled IDs');
 });
 
 test('NFR-FEAT-001 AC-005: applicant can update, reorder, and delete owned employment entries with stable IDs', async () => {
