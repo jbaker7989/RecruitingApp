@@ -56,29 +56,75 @@ export interface EducationEntry {
   gpa?: string;
 }
 
+export type EmploymentType = 'full-time' | 'part-time' | 'contract' | 'temporary' | 'internship' | 'volunteer' | 'self-employed';
+export type WorkMode = 'onsite' | 'hybrid' | 'remote';
+
 export interface EmploymentEntry {
+  id?: string; // optional only for backwards compatibility; new entries always receive an ID
   company: string;
   position: string;
+  positionDescription?: string;
   startDate: string;
-  endDate: string;
+  endDate?: string;
+  currentPosition?: boolean;
   responsibilities?: string[];
+  accomplishments?: string[];
+  skills?: string[];
+  employmentType?: EmploymentType;
+  location?: string;
+  workMode?: WorkMode;
+}
+
+export interface SkillEntry {
+  name: string;
+  proficiency: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+  yearsUsed?: number;
+  lastUsed?: string;
+}
+
+export interface ApplicantAvatar {
+  kind: 'default-person-icon' | 'upload';
+  icon: 'person';
+  altText: string;
+  provider?: 'vercel-blob';
+  url?: string;
+  pathname?: string;
+  contentType?: string;
+  size?: number;
+}
+
+export interface ProfileCompleteness {
+  percent: number;
+  missingSections: string[];
 }
 
 export interface Applicant {
   id: string;
+  userId?: string | null;
+  personId?: string;
+  profileVersion?: number;
+  profileStatus?: 'draft' | 'complete' | 'archived';
   firstName: string;
   lastName: string;
+  preferredName?: string;
+  pronouns?: string;
+  headline?: string;
+  professionalSummary?: string;
   email: string;
   phone: string;
   preferredContactMethod: 'email' | 'sms';
-  address: { state: string; zip: string };
+  contactVisibility?: { email: 'authorized-staff'; phone: 'post-initial-review' };
+  avatar?: ApplicantAvatar;
+  address: { city?: string; state: string; zip: string; country?: 'US' };
   educationHistory: EducationEntry[];
   employmentHistory: EmploymentEntry[];
+  skills?: SkillEntry[];
   rightToWork: boolean;
   requiresSponsorship: boolean;
   expectedPay: number;
   notificationToManager: boolean;
   hireRecords: string[];
+  completeness?: ProfileCompleteness;
   createdAt: string;
   updatedAt: string;
 }
@@ -114,6 +160,8 @@ export interface Application {
 
 export interface User {
   id: string;
+  personId?: string;
+  applicantId?: string | null;
   username: string;
   passwordHash: string;
   role: 'member-services' | 'recruiter' | 'hiring-manager' | 'applicant';
