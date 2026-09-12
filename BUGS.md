@@ -7,7 +7,7 @@
 
 Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 
-**Tracking IDs:** Every bug carries a unique alphanumeric ID in the format `NFR-0XX` (**N**ew **F**ronteir **R**ecruiting), assigned sequentially 001–032 in report order. Use these IDs in commits, branches, and status discussions.
+**Tracking IDs:** Every bug carries a unique alphanumeric ID in the format `NFR-0XX` (**N**ew **F**ronteir **R**ecruiting), assigned sequentially 001–033 in report order. Use these IDs in commits, branches, and status discussions.
 
 ## Tracking Index
 
@@ -20,6 +20,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-005 | 5 | 🔴 | CSV job import completely broken |
 | NFR-006 | 6 | 🔴 | Job import silently drops all `requirements` |
 | NFR-007 | 7 | 🔴 | Hires routes unreachable — route ordering |
+| NFR-033 | 33 | 🔴 | Vercel deployment fails — Node type definitions unavailable during build |
 | NFR-008 | 8 | 🟠 | Trivially forgeable auth tokens |
 | NFR-009 | 9 | 🟠 | Passwords stored as reversible plaintext stub |
 | NFR-010 | 10 | 🟠 | Privilege escalation via self-selected role |
@@ -107,6 +108,15 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Symptom:** `GET /api/applications/hires` → `404 {"error":"Application not found"}` (`'hires'` is captured as `:id`). Same for the company-hires route.
 - **Evidence:** Confirmed live.
 - **Impact:** Recruiters/hiring-managers can never list hires via the API (and with bug 4, the handlers would crash anyway).
+
+### 33. [NFR-033] Vercel deployment fails — Node type definitions unavailable during build
+- **Priority:** P0 release blocker (newly discovered during NFR-FEAT-001 preview deployment)
+- **Where:** Vercel project `jbaker7989-1641s-projects/rec-app-build`; TypeScript build using `tsconfig.json` (`types: ["node"]`) while `@types/node` is declared under `devDependencies`.
+- **Symptom:** `vercel --yes` uploads successfully but the remote build terminates with `TS2688: Cannot find type definition file for 'node'`. No deployable preview is produced.
+- **Evidence:** Confirmed 2026-09-12 in deployment `3cVp1ExYrTEq35mxp7AQHbHbkgig`; Vercel dependency installation completed, then `vercel build` failed at TypeScript compilation.
+- **Likely cause:** The Vercel install/build environment is not making the project's development type packages available to the compiler. Exact configuration cause must be reproduced in a failing deployment/build test before changing dependencies or Vercel commands.
+- **Impact:** Blocks all Vercel preview/production deployments, including NFR-FEAT-001 media integration.
+- **Status:** OPEN — no fix initiated.
 
 ---
 
@@ -215,9 +225,11 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 
 ## Suggested fix order (for direction, not yet applied)
 
-1. NFR-002 (call `start()`) + NFR-001 (pick ESM *or* CJS and align `package.json`/`tsconfig`) — makes the app runnable at all.
-2. NFR-004 (store migration/defaulting for `hires`) — unblocks applicant profiles and hire flow.
-3. NFR-003 (mount `/api/auth` before `authenticate`) — unblocks onboarding.
-4. NFR-007, NFR-005, NFR-006 (route order, papaparse `.default`, ternary) — restores hires listing and import feature.
-5. Security cluster (NFR-008 – NFR-013) before any real data/users.
-6. Logic cluster (NFR-014 – NFR-019) and spec gaps.
+1. **P0:** NFR-001 (ESM/CJS production start) + NFR-033 (Vercel build dependency/types failure) — production/deployment blockers.
+2. **P0 process:** NFR-030 — establish the real automated test/CI pipeline before merging additional feature work.
+3. **P1:** NFR-003 — unblock registration/login/onboarding.
+4. **P1:** NFR-007, NFR-005, NFR-006 — restore hires listing and import features.
+5. **P1 security:** NFR-008 – NFR-013 before real applicant data (NFR-011 has partial safeguards only on the unmerged NFR-FEAT-001 branch).
+6. **P2:** NFR-014 – NFR-019 and remaining specification gaps.
+
+Resolved and removed from the active queue: NFR-002, NFR-004.
