@@ -1,17 +1,28 @@
-import { Router, Response } from 'express';
+import { Router, Response, raw } from 'express';
 import { readStore, writeStore, generateId, now, addObservabilityEntry } from '../models/store.js';
 import { validateApplicationBody } from '../middleware/validation.js';
 import { requireRole } from '../middleware/auth.js';
 import {
   applyProfilePatch,
   createApplicantProfile,
+  DEFAULT_AVATAR,
   normalizeApplicantProfile,
   resolveOwnedProfile,
   validateEmploymentEntry,
   validateProfileCreation,
 } from '../services/applicantProfile.js';
+import {
+  applicantPhotoStorage,
+  type ApplicantPhotoStorage,
+  validateApplicantPhoto,
+} from '../services/applicantPhoto.js';
 
 const router = Router();
+const parseApplicantPhoto = raw({ type: '*/*', limit: '4.25mb' });
+
+function photoStorage(req: any): ApplicantPhotoStorage {
+  return req.app.locals.applicantPhotoStorage || applicantPhotoStorage;
+}
 
 function sendOwnershipError(res: Response, status: 'found' | 'missing' | 'ambiguous' | 'forbidden') {
   if (status === 'forbidden') return res.status(403).json({ error: 'Applicant role required' });
@@ -90,6 +101,95 @@ router.patch('/me', requireRole(['applicant']), async (req: any, res) => {
     res.json(patched.value);
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to update applicant profile' });
+  }
+});
+
+// POST /api/applicants/me/avatar - Store applicant photo bytes only in private Vercel Blob
+router.post('/me/avatar', requireRole(['applicant']), parseApplicantPhoto, async (req: any, res) => {
+  try {
+    const validation = validateApplicantPhoto(req.body, req.headers['content-type']);
+    if (!validation.valid || !validation.contentType || !validation.extension) {
+      return res.status(validation.status).json({ error: validation.error });
+    }
+    const altHeader = req.headers['x-alt-text'];
+    const altText = typeof altHeader === 'string' && altHeader.trim()
+      ? altHeader.trim()
+      : 'Applicant profile photo';
+    if (altText.length > 200) return res.status(400).json({ error: 'X-Alt-Text must be <= 200 characters' });
+
+    const store = await readStore();
+    const owned = resolveOwnedProfile(store, req.user.id);
+    if (owned.status !== 'found' || owned.profileIndex === undefined || !owned.profile) {
+      return sendOwnershipError(res, owned.status);
+    }
+
+    const storage = photoStorage(req);
+    const previous = owned.profile.avatar;
+    const uploaded = await storage.upload({
+      applicantId: owned.profile.id,
+      body: req.body,
+      contentType: validation.contentType,
+      extension: validation.extension,
+      altText,
+    });
+
+    owned.profile.avatar = uploaded;
+    owned.profile.profileVersion = (owned.profile.profileVersion || 1) + 1;
+    owned.profile.updatedAt = now();
+    store.applicants[owned.profileIndex] = normalizeApplicantProfile(owned.profile);
+    try {
+      await writeStore(store);
+    } catch (writeError) {
+      if (uploaded.pathname) await storage.delete(uploaded.pathname).catch(() => undefined);
+      throw writeError;
+    }
+
+    if (previous?.kind === 'upload' && previous.pathname && previous.pathname !== uploaded.pathname) {
+      try {
+        await storage.delete(previous.pathname);
+      } catch (cleanupError) {
+        await addObservabilityEntry({
+          id: generateId(), timestamp: now(), action: 'avatar_cleanup', entityType: 'Applicant',
+          entityId: owned.profile.id, userId: req.user.id,
+          details: { reason: cleanupError instanceof Error ? cleanupError.name : 'Blob cleanup failed' },
+          outcome: 'failure',
+        });
+      }
+    }
+    await logProfileAction(req, 'avatar_upload', owned.profile.id, {
+      provider: 'vercel-blob', contentType: uploaded.contentType, size: uploaded.size,
+    });
+    res.status(201).json(uploaded);
+  } catch (error) {
+    res.status(502).json({ error: error instanceof Error ? error.message : 'Failed to store applicant photo' });
+  }
+});
+
+// DELETE /api/applicants/me/avatar - Delete Blob object and restore neutral icon
+router.delete('/me/avatar', requireRole(['applicant']), async (req: any, res) => {
+  try {
+    const store = await readStore();
+    const owned = resolveOwnedProfile(store, req.user.id);
+    if (owned.status !== 'found' || owned.profileIndex === undefined || !owned.profile) {
+      return sendOwnershipError(res, owned.status);
+    }
+    const current = owned.profile.avatar;
+    if (current?.kind === 'upload' && current.pathname) {
+      try {
+        await photoStorage(req).delete(current.pathname);
+      } catch (error) {
+        return res.status(502).json({ error: 'Failed to delete applicant photo from Blob storage' });
+      }
+    }
+    owned.profile.avatar = { ...DEFAULT_AVATAR };
+    owned.profile.profileVersion = (owned.profile.profileVersion || 1) + 1;
+    owned.profile.updatedAt = now();
+    store.applicants[owned.profileIndex] = normalizeApplicantProfile(owned.profile);
+    await writeStore(store);
+    await logProfileAction(req, 'avatar_delete', owned.profile.id, { provider: 'vercel-blob' });
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to delete applicant photo' });
   }
 });
 
