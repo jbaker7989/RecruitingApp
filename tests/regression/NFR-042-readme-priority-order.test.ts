@@ -21,8 +21,9 @@ test('NFR-042: README includes every remaining active BUGS.md priority group bef
   assert.match(section, /\*\*NFR-007, NFR-005, NFR-006/);
   assert.match(section, /\*\*NFR-009–013/);
   assert.match(section, /\*\*NFR-014–019/);
+  assert.match(section, /remaining specification gaps/);
   const queueEnd = section.indexOf('Continue NFR-FEAT-001');
-  for (const group of ['**NFR-007, NFR-005, NFR-006', '**NFR-009–013', '**NFR-014–019']) {
+  for (const group of ['**NFR-007, NFR-005, NFR-006', '**NFR-009–013', '**NFR-014–019', 'remaining specification gaps']) {
     assert.ok(section.indexOf(group) < queueEnd, `${group} must precede feature continuation`);
   }
 });

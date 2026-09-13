@@ -298,9 +298,9 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 
 42. [NFR-042] ✅ **README priority order diverged from BUGS.md — RESOLVED.**
 
-> **✅ RESOLUTION — 2026-09-13, branch `fix/NFR-042-readme-priority-order`**
-> - **Root cause:** the README grouped identity/security risks thematically, which moved NFR-003 and NFR-009–013 ahead of the dependency sequence declared in the authoritative `BUGS.md` queue.
-> - **Red → Green:** two tests first failed on incorrect NFR-008/media/NFR-003 ordering and omitted active groups; the README now mirrors every active group in dependency order.
+> **✅ RESOLUTION — 2026-09-13, branches `fix/NFR-042-readme-priority-order` and `fix/NFR-042-readme-priority-tail`**
+> - **Root cause:** the README grouped identity/security risks thematically, which changed the authoritative dependency sequence, and its first correction omitted the queue's “remaining specification gaps” tail.
+> - **Red → Green:** two initial tests failed on incorrect ordering and omitted active groups. Post-merge review added a failing assertion for the missing tail before the second bounded correction. The README now mirrors every active group and the complete final group in dependency order.
 > - **Artifact:** `resolutions/RESOLUTON-OF-ISSUE-NFR-042.docx`
 
 ---
