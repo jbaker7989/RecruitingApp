@@ -7,7 +7,7 @@
 
 Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 
-**Tracking IDs:** Every bug carries a unique alphanumeric ID in the format `NFR-0XX` (**N**ew **F**ronteir **R**ecruiting), assigned sequentially 001–037 in report/discovery order. Use these IDs in commits, branches, and status discussions.
+**Tracking IDs:** Every bug carries a unique alphanumeric ID in the format `NFR-0XX` (**N**ew **F**ronteir **R**ecruiting), assigned sequentially 001–041 in report/discovery order. Use these IDs in commits, branches, and status discussions.
 
 ## Tracking Index
 
@@ -29,6 +29,9 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-011 | 11 | 🟠 | No authorization/ownership checks on applicants |
 | NFR-012 | 12 | 🟠 | Credential file and binaries tracked in git |
 | NFR-013 | 13 | 🟠 | CORS wide open |
+| NFR-038 | 38 | 🟠 | Private applicant photos have no authorized retrieval/display path |
+| NFR-039 | 39 | 🟠 | Blob/store failure ordering can orphan or break photo metadata |
+| NFR-040 | 40 | 🟠 | Signature-only image validation accepts corrupt files |
 | NFR-014 | 14 | 🟡 | Job auto-close triggers on applications, not hires |
 | NFR-015 | 15 | 🟡 | `POST /api/applications` validates wrong payload |
 | NFR-016 | 16 | 🟡 | Email-confirmation mismatch never blocks |
@@ -39,6 +42,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-021 | 21 | 🟡 | `importService.ts` dead and broken |
 | NFR-022 | 22 | 🟡 | DELETE endpoints lie and orphan data |
 | NFR-023 | 23 | 🟡 | MCP route inconsistencies |
+| NFR-041 | 41 | 🟡 | Uploads above the raw-parser limit return 500 instead of 413 |
 | NFR-024 | 24 | 🔵 | Spec mismatch — data files |
 | NFR-025 | 25 | 🔵 | Dead `observability` array in store |
 | NFR-026 | 26 | 🔵 | Empty/duplicate directories |
@@ -144,11 +148,11 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 ### 35. [NFR-035] Git/Vercel release pipeline is disconnected and deployments are not reproducible
 - **Priority:** P0 release-governance blocker.
 - **Where:** Vercel project `rec-app-build`, GitHub repository `jbaker7989/RecruitingApp`, and local GitHub CLI credentials.
-- **Symptom:** Existing production was deployed from a local feature working tree rather than an automatically built commit. Even after the owner completed login connections, `vercel git connect https://github.com/jbaker7989/RecruitingApp.git` still fails because the Vercel Git integration cannot access the private repository.
-- **Evidence:** The GitHub CLI OAuth blocker is resolved (`workflow` scope granted); branch push, PR #1, GitHub Actions `verify`, and Greptile Review all succeeded. Vercel connection still returns `Failed to connect ... make sure ... you have access to the repository if it's private`, indicating the Vercel GitHub App needs repository authorization.
-- **Impact:** GitHub changes now pass traceable PR/CI gates, but production deployments can still be launched manually from arbitrary local state and Vercel cannot automatically deploy reviewed `main`.
-- **Required fix:** Owner grants the Vercel GitHub App access to `jbaker7989/RecruitingApp`, reruns `vercel git connect`, verifies automatic preview deployment from a test commit, and restricts production promotion to connected `main`.
-- **Status:** OPEN — GitHub CI portion repaired; Vercel repository authorization still required.
+- **Symptom:** Existing production was initially deployed from a local feature working tree rather than an automatically built commit. Even after the owner completed login connections, `vercel git connect https://github.com/jbaker7989/RecruitingApp.git` still fails with Vercel's generic repository-access error.
+- **Evidence:** GitHub reports the repository is **public** and the active user has `ADMIN`; the GitHub CLI OAuth blocker is resolved (`workflow` scope granted), and PR-hosted CI/review succeeds. Vercel connect still fails, narrowing the cause to Vercel Git-provider installation/identity/project access rather than repository visibility. Production deployment `dpl_13qej7gaT51KRqqP4rsaCwcKRm2T` was manually created from clean reviewed `main` commit `8ac888a` and `/health` returned 200, but Vercel still recommends `vercel git connect`.
+- **Impact:** GitHub changes now pass traceable PR/CI gates and the latest manual production deploy is commit-traceable, but Vercel cannot automatically deploy reviewed `main`.
+- **Required fix:** Verify the GitHub identity attached to Vercel user `jbaker7989-1641`, authorize/install Vercel's Git provider for `jbaker7989/RecruitingApp`, rerun `vercel git connect`, and verify automatic preview deployment from a test commit.
+- **Status:** OPEN — GitHub CI and current production traceability repaired; automatic Vercel Git deployment remains unavailable.
 
 ---
 
@@ -179,6 +183,27 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 
 ### 13. [NFR-013] CORS wide open
 - **Where:** `src/index.ts:21` — `app.use(cors())` allows any origin for an API serving PII and (weak) credential auth.
+
+### 38. [NFR-038] Private applicant photos have no authorized retrieval/display path
+- **Priority:** P1 — blocks NFR-FEAT-001 AC-002 completeness.
+- **Where:** feature branch `src/services/applicantPhoto.ts` exposes upload/delete only; `src/routes/applicants.ts` has POST/DELETE `/me/avatar` but no protected read endpoint.
+- **Issue:** profile JSON returns a private Blob URL, but private Vercel Blob objects cannot be displayed directly by a browser. No server-side `get(..., { access: "private" })` stream or short-lived signed read URL exists.
+- **Required fix/tests:** add owner and authorized-staff read paths; deny unauthenticated/cross-applicant access; cover missing Blob and real private retrieval.
+- **Status:** OPEN — feature merge blocker.
+
+### 39. [NFR-039] Blob/store failure ordering can orphan or break photo metadata
+- **Priority:** P1 — applicant-media integrity and retention risk.
+- **Where:** feature avatar replacement/delete handlers.
+- **Issue:** deletion removes Blob bytes before persisting default metadata, so a later store failure leaves a broken reference. Replacement cleanup failures are non-retriable and omit the old pathname from actionable durable cleanup state.
+- **Required fix/tests:** persist logical state before destructive cleanup; durably queue pending Blob deletion by pathname; add store-write, Blob-delete, and observability-failure tests.
+- **Status:** OPEN — feature merge blocker.
+
+### 40. [NFR-040] Signature-only image validation accepts corrupt files
+- **Priority:** P1 — invalid applicant media can be stored and cannot render.
+- **Where:** feature `validateApplicantPhoto()` checks only PNG/JPEG/WebP marker bytes; existing nominal fixtures are intentionally truncated.
+- **Issue:** a file with only the expected prefix is accepted without complete decode or dimension/pixel bounds.
+- **Required fix/tests:** decode with a maintained image parser, enforce dimensions/pixel count, use valid fixtures, and reject truncated/signature-only payloads.
+- **Status:** OPEN — feature merge blocker.
 
 ---
 
@@ -227,6 +252,13 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
   - `/api/mcp/applications` contains a dead branch filtering for role `applicant` while `requireRole` excludes applicants (line 23-25).
   - `/api/mcp/apply` duplicates apply logic with no match score, no validation, no observability — a third divergent apply path.
 
+### 41. [NFR-041] Uploads above the raw-parser limit return 500 instead of 413
+- **Priority:** P2 — API error-contract defect.
+- **Where:** feature avatar raw parser limits at 4.25 MB; global error handler converts parser `entity.too.large` into 500.
+- **Issue:** the 4 MB application check returns 413 only below the parser limit; larger requests take the untested global 500 path.
+- **Required fix/tests:** map body-parser status/type 413 to HTTP 413 and add a request exceeding the parser limit.
+- **Status:** OPEN — feature merge blocker.
+
 ---
 
 ## 🔵 Low — Hygiene / spec gaps
@@ -273,8 +305,10 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | `npm run typecheck` / `npm run build` | ✅ pass on combined release branch |
 | Built-artifact smoke (`npm run smoke`) | ✅ `smoke-health=ok` on combined release branch |
 | Clean Vercel preview build + authenticated `/health` | ✅ deployment `dpl_DLHyEXhtLgrQLQb111xNFcGyL2TV`, HTTP 200 |
+| Clean `main` production deployment + public `/health` | ✅ `8ac888a` → `dpl_13qej7gaT51KRqqP4rsaCwcKRm2T`, HTTP 200 |
+| Applicant-photo feature preview + protected `/health` | ✅ `a42b128` → `dpl_5RGcXaoRMeP9F2G47wDnTSGAsLef`, HTTP 200 |
 | Git push + PR-hosted CI/review | ✅ PR #1 pushed; `verify` and Greptile Review passed |
-| Connected Vercel Git deployment | 🔴 private-repository access remains blocked by NFR-035 |
+| Connected Vercel Git deployment | 🔴 provider installation/identity access remains blocked by NFR-035 |
 | Production mutation persistence | 🔴 unsafe until NFR-034 is resolved |
 | Original live smoke (company → job → applicant → apply → accept → hires) | 🔴 bugs 3–7, 10, 11, 14, 16, 17 confirmed at runtime |
 
@@ -282,11 +316,13 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 
 ## Suggested fix order (for direction, not yet applied)
 
-1. **P0 owner setup:** NFR-035 — grant the Vercel GitHub App access to the private repository, connect the project, and verify automatic deployments from reviewed commits.
+1. **P0 owner setup:** NFR-035 — repair Vercel Git-provider installation/identity access and verify automatic deployment from reviewed commits.
 2. **P0 data integrity:** NFR-034 + NFR-020 — replace JSON persistence with a durable transactional store before production applicant data entry.
-3. **P1:** NFR-003 — unblock registration/login/onboarding.
-4. **P1:** NFR-007, NFR-005, NFR-006 — restore hires listing and import features.
-5. **P1 security:** NFR-008 – NFR-013 before real applicant data (NFR-011 has partial safeguards only on the unmerged NFR-FEAT-001 branch).
-6. **P2:** NFR-014 – NFR-019 and remaining specification gaps.
+3. **P0 security:** NFR-008 — replace forgeable bearer identities before enabling applicant-photo read or mutation traffic.
+4. **P1 applicant media:** NFR-038, NFR-039, NFR-040, then NFR-041 — protected retrieval, reliable cleanup, full decode validation, and correct size errors.
+5. **P1:** NFR-003 — unblock registration/login/onboarding.
+6. **P1:** NFR-007, NFR-005, NFR-006 — restore hires listing and import features.
+7. **P1 security:** NFR-009 – NFR-013 before real applicant data (NFR-011 has partial safeguards only on the unmerged NFR-FEAT-001 branch).
+8. **P2:** NFR-014 – NFR-019 and remaining specification gaps.
 
 Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, NFR-033, NFR-036, NFR-037.
