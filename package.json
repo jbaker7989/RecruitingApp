@@ -13,7 +13,7 @@
     "dev": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
     "pi": "pi",
-    "test": "tsx --test tests/**/*.test.ts",
+    "test": "tsx --test \"tests/**/*.test.ts\"",
     "smoke": "node scripts/ci-smoke.mjs"
   },
   "keywords": [],

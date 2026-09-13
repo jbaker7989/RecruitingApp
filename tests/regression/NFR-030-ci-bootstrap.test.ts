@@ -17,7 +17,7 @@ function workflow(): string {
 
 test('NFR-030: npm test runs the complete TypeScript test file pattern', () => {
   const script = packageJson().scripts?.test;
-  assert.equal(script, 'tsx --test tests/**/*.test.ts');
+  assert.equal(script, 'tsx --test "tests/**/*.test.ts"');
 });
 
 test('NFR-030: GitHub Actions uses the mandated install → typecheck → build → test → smoke order', () => {
