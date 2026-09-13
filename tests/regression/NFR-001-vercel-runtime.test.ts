@@ -55,7 +55,7 @@ test('NFR-001: compiled dist/index.js starts and serves /health under Node', asy
   try {
     const response = await waitForHealth(child, port);
     assert.equal(response.status, 200);
-    assert.equal((await response.json() as any).status, 'healthy');
+    assert.equal((await response.json() as any).status, 'ok');
   } finally {
     child.kill('SIGTERM');
     rmSync(dataDir, { recursive: true, force: true });

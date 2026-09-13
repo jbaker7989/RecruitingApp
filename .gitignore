@@ -36,6 +36,9 @@ coverage/
 # Pi agent
 .pi/tasks/
 
+# Vercel local project metadata
+.vercel/
+
 # Environment
 .env.local
 .env.*.local
