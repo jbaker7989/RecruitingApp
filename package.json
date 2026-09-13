@@ -18,7 +18,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
     "@earendil-works/pi-coding-agent": "^0.85.1",
     "cors": "^2.8.6",
