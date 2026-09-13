@@ -475,9 +475,13 @@ I prioritize the next work in dependency order:
 
 1. **NFR-035 — Release automation:** repair Vercel Git-provider installation/identity access and prove automatic deployment from a reviewed commit.
 2. **NFR-034 + NFR-020 — Data integrity:** replace JSON persistence with a durable transactional store before any real applicant data is accepted.
-3. **NFR-003 and NFR-008–013 — Identity, authorization, credential handling, and CORS:** resolve all before applicant traffic; replace forgeable bearer identity, remove query-string tokens, and establish enforceable ownership.
-4. **NFR-038–041 — Applicant media:** add protected retrieval, durable cleanup retries, complete image decoding/dimension limits, and consistent 413 handling.
-5. Continue NFR-FEAT-001 with immutable snapshots, staged recruiter views, CCPA workflows, and accommodation access.
+3. **NFR-008 — Authentication:** replace forgeable bearer identity before enabling applicant-photo read or mutation traffic.
+4. **NFR-038, NFR-039, NFR-040, then NFR-041 — Applicant media:** add protected retrieval, durable cleanup retries, complete image decoding/dimension limits, and consistent 413 handling.
+5. **NFR-003 — Onboarding:** make registration and login reachable under the corrected authentication boundary.
+6. **NFR-007, NFR-005, NFR-006 — Hire listing and job import:** restore route reachability, CSV parsing, and imported requirements.
+7. **NFR-009–013 — Remaining security controls:** resolve password handling, role escalation, ownership gaps, credential-file hygiene, and CORS before real applicant traffic.
+8. **NFR-014–019 — Application and hiring logic:** correct job closure, submission validation, email confirmation, convenience apply, duplicate prevention, and hire filtering.
+9. Continue NFR-FEAT-001 with immutable snapshots, staged recruiter views, CCPA workflows, and accommodation access.
 
 The complete active queue, evidence, and resolution history live in [`BUGS.md`](BUGS.md).
 

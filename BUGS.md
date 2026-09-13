@@ -7,7 +7,7 @@
 
 Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 
-**Tracking IDs:** Every bug carries a unique alphanumeric ID in the format `NFR-0XX` (**N**ew **F**ronteir **R**ecruiting), assigned sequentially 001–041 in report/discovery order. Use these IDs in commits, branches, and status discussions.
+**Tracking IDs:** Every bug carries a unique alphanumeric ID in the format `NFR-0XX` (**N**ew **F**ronteir **R**ecruiting), assigned sequentially 001–042 in report/discovery order. Use these IDs in commits, branches, and status discussions.
 
 ## Tracking Index
 
@@ -54,6 +54,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-032 | 32 | 🔵 | Matching nits |
 | NFR-036 | 36 | 🔵 | ✅ NFR-030 missing formal dated resolution block — **RESOLVED** (fix/NFR-036-NFR-037-post-merge-docs) |
 | NFR-037 | 37 | 🔵 | ✅ Suggested fix order still listed merged PR #1 — **RESOLVED** (fix/NFR-036-NFR-037-post-merge-docs) |
+| NFR-042 | 42 | 🔵 | ✅ README priority order diverged from BUGS.md — **RESOLVED** (fix/NFR-042-readme-priority-order) |
 
 ---
 
@@ -295,6 +296,13 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 > - **Red → Green:** two tests first failed because the queue still instructed maintainers to merge PR #1 and named resolved IDs; completed work is now absent and remaining priorities are renumbered.
 > - **Artifact:** `resolutions/RESOLUTON-OF-ISSUE-NFR-037.docx`
 
+42. [NFR-042] ✅ **README priority order diverged from BUGS.md — RESOLVED.**
+
+> **✅ RESOLUTION — 2026-09-13, branch `fix/NFR-042-readme-priority-order`**
+> - **Root cause:** the README grouped identity/security risks thematically, which moved NFR-003 and NFR-009–013 ahead of the dependency sequence declared in the authoritative `BUGS.md` queue.
+> - **Red → Green:** two tests first failed on incorrect NFR-008/media/NFR-003 ordering and omitted active groups; the README now mirrors every active group in dependency order.
+> - **Artifact:** `resolutions/RESOLUTON-OF-ISSUE-NFR-042.docx`
+
 ---
 
 ## Verification summary
@@ -325,4 +333,4 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 7. **P1 security:** NFR-009 – NFR-013 before real applicant data (NFR-011 has partial safeguards only on the unmerged NFR-FEAT-001 branch).
 8. **P2:** NFR-014 – NFR-019 and remaining specification gaps.
 
-Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, NFR-033, NFR-036, NFR-037.
+Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, NFR-033, NFR-036, NFR-037, NFR-042.
