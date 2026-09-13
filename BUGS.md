@@ -7,7 +7,7 @@
 
 Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 
-**Tracking IDs:** Every bug carries a unique alphanumeric ID in the format `NFR-0XX` (**N**ew **F**ronteir **R**ecruiting), assigned sequentially 001–035 in report/discovery order. Use these IDs in commits, branches, and status discussions.
+**Tracking IDs:** Every bug carries a unique alphanumeric ID in the format `NFR-0XX` (**N**ew **F**ronteir **R**ecruiting), assigned sequentially 001–037 in report/discovery order. Use these IDs in commits, branches, and status discussions.
 
 ## Tracking Index
 
@@ -48,6 +48,8 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-030 | 30 | 🔵 | ✅ `npm test` is a placeholder — **RESOLVED** (PR #1) |
 | NFR-031 | 31 | 🔵 | Error handling leaks internals |
 | NFR-032 | 32 | 🔵 | Matching nits |
+| NFR-036 | 36 | 🔵 | ✅ NFR-030 missing formal dated resolution block — **RESOLVED** (fix/NFR-036-NFR-037-post-merge-docs) |
+| NFR-037 | 37 | 🔵 | ✅ Suggested fix order still listed merged PR #1 — **RESOLVED** (fix/NFR-036-NFR-037-post-merge-docs) |
 
 ---
 
@@ -235,9 +237,31 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 27. [NFR-027] **Unused imports/code:** `jobs.ts` imports `validateApplicationBody`, `createApplication`, `calculateMatchScore` (unused); `applicants.ts` imports `requireRole` (unused); `auth.ts` `logAction` (unused); `validation.ts` `parseUploadedFile` (unused, and reads `file.name` off a `Buffer`); `fileUpload.ts` is a no-op middleware; `express-fileupload` dependency installed but never wired; `matching.ts` `createApplication`, `createHireRecord`, `checkJobAutoClose` all unused (logic duplicated inline in routes). Duplicate `validateEmail` in both `validation.ts` and `matching.ts`.
 28. [NFR-028] **No applicant DELETE endpoint** despite `applicant-management/SKILL.md` specifying "Create, read, update, and delete applicant profiles". No `GET /api/applicants` list endpoint either.
 29. [NFR-029] **Employer notification never implemented:** `HireRecord.notifiedEmployer` is hardcoded `false` forever; skill requires "Notify employer of new hire". `Applicant.notificationToManager` is collected but never used.
-30. [NFR-030] ✅ **`npm test` placeholder and missing CI — RESOLVED (PR #1).** `npm test` uses quoted recursive TypeScript discovery. SHA-pinned GitHub Actions run the mandated install → typecheck → build → test → built-artifact smoke order with read-only permissions and non-persisted checkout credentials. Four NFR-030 tests, the combined 14-test suite, hosted `verify`, and Greptile Review pass. Resolution artifact: `resolutions/RESOLUTON-OF-ISSUE-NFR-030.docx`.
+30. [NFR-030] ✅ **`npm test` placeholder and missing CI — RESOLVED (PR #1).**
+
+> **✅ RESOLUTION — 2026-09-12, branch `fix/NFR-030-ci-bootstrap`, PR #1**
+> - **Root cause:** the package test script deliberately exited with an error, no CI workflow existed, and no built-artifact health smoke enforced release behavior.
+> - **Red → Green:** two initial tests failed on the placeholder/missing workflow; review-driven tests then failed on missing smoke, wrong order, mutable action tags, and shell-dependent discovery before the three bounded corrections. Four NFR-030 tests and the complete 14-test suite pass.
+> - **Fix:** quoted recursive TypeScript discovery plus SHA-pinned GitHub Actions in install → typecheck → build → test → smoke order, with read-only permissions and non-persisted checkout credentials.
+> - **Gates:** local exact CI sequence ✅ · hosted `verify` ✅ · Greptile Review ✅
+> - **Artifact:** `resolutions/RESOLUTON-OF-ISSUE-NFR-030.docx`
+
 31. [NFR-031] **Error handling leaks internals:** `errorHandler` returns raw `err.message` to clients; several catch blocks do the same. `errorHandler`'s `next` param unused (Express 5 tolerant, but sloppy).
 32. [NFR-032] **Matching nits:** experience uses naive `endYear - startYear` (Dec→Jan counts as a year); final score is clamped to a 1–10 floor of 1, so a 0 match is impossible.
+
+36. [NFR-036] ✅ **NFR-030 missing formal dated resolution block — RESOLVED.**
+
+> **✅ RESOLUTION — 2026-09-12, branch `fix/NFR-036-NFR-037-post-merge-docs`**
+> - **Root cause:** PR #1 documented NFR-030 in a one-line summary, violating this log's dated resolution-block contract.
+> - **Red → Green:** two tests first failed on the absent block/root-cause/evidence fields; NFR-030 now uses the same formal structure as NFR-001/NFR-033.
+> - **Artifact:** `resolutions/RESOLUTON-OF-ISSUE-NFR-036.docx`
+
+37. [NFR-037] ✅ **Suggested fix order still listed merged PR #1 — RESOLVED.**
+
+> **✅ RESOLUTION — 2026-09-12, branch `fix/NFR-036-NFR-037-post-merge-docs`**
+> - **Root cause:** the active queue was not refreshed after merge commit `89bc58a` landed.
+> - **Red → Green:** two tests first failed because the queue still instructed maintainers to merge PR #1 and named resolved IDs; completed work is now absent and remaining priorities are renumbered.
+> - **Artifact:** `resolutions/RESOLUTON-OF-ISSUE-NFR-037.docx`
 
 ---
 
@@ -259,11 +283,10 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 ## Suggested fix order (for direction, not yet applied)
 
 1. **P0 owner setup:** NFR-035 — grant the Vercel GitHub App access to the private repository, connect the project, and verify automatic deployments from reviewed commits.
-2. **P0 release:** merge PR #1's verified NFR-001 + NFR-030 + NFR-033 fixes, then repeat production health checks from connected `main`.
-3. **P0 data integrity:** NFR-034 + NFR-020 — replace JSON persistence with a durable transactional store before production applicant data entry.
-4. **P1:** NFR-003 — unblock registration/login/onboarding.
-5. **P1:** NFR-007, NFR-005, NFR-006 — restore hires listing and import features.
-6. **P1 security:** NFR-008 – NFR-013 before real applicant data (NFR-011 has partial safeguards only on the unmerged NFR-FEAT-001 branch).
-7. **P2:** NFR-014 – NFR-019 and remaining specification gaps.
+2. **P0 data integrity:** NFR-034 + NFR-020 — replace JSON persistence with a durable transactional store before production applicant data entry.
+3. **P1:** NFR-003 — unblock registration/login/onboarding.
+4. **P1:** NFR-007, NFR-005, NFR-006 — restore hires listing and import features.
+5. **P1 security:** NFR-008 – NFR-013 before real applicant data (NFR-011 has partial safeguards only on the unmerged NFR-FEAT-001 branch).
+6. **P2:** NFR-014 – NFR-019 and remaining specification gaps.
 
-Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, NFR-033.
+Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, NFR-033, NFR-036, NFR-037.
