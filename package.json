@@ -13,12 +13,13 @@
     "dev": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
     "pi": "pi",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "tsx --test \"tests/**/*.test.ts\"",
+    "smoke": "node scripts/ci-smoke.mjs"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
     "@earendil-works/pi-coding-agent": "^0.85.1",
     "cors": "^2.8.6",
