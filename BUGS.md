@@ -3,24 +3,26 @@
 **Date:** 2026-09-11
 **Scope:** Full review of application setup, all source files (`src/`), config, data layer, and skill specs (`brain/brain.md`, `*/SKILL.md`).
 **Method:** Static code review + live smoke tests against a running instance (data files were backed up and restored; working tree left clean).
-**Status:** No fixes applied — report only, per instruction.
+**Status:** Living issue log. Resolved entries retain their original evidence and include a dated resolution block; verified but unmerged fixes remain open until their branch is pushed, reviewed, and merged.
 
 Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 
-**Tracking IDs:** Every bug carries a unique alphanumeric ID in the format `NFR-0XX` (**N**ew **F**ronteir **R**ecruiting), assigned sequentially 001–033 in report order. Use these IDs in commits, branches, and status discussions.
+**Tracking IDs:** Every bug carries a unique alphanumeric ID in the format `NFR-0XX` (**N**ew **F**ronteir **R**ecruiting), assigned sequentially 001–037 in report/discovery order. Use these IDs in commits, branches, and status discussions.
 
 ## Tracking Index
 
 | ID | # | Severity | Title |
 |---|---|---|---|
-| NFR-001 | 1 | 🔴 | `npm start` crashes — ESM/CJS module mismatch |
+| NFR-001 | 1 | 🔴 | ✅ `npm start` crashes — ESM/CJS module mismatch — **RESOLVED** (PR #1) |
 | NFR-002 | 2 | 🔴 | ✅ Server never starts — `start()` never invoked — **RESOLVED** (fix/NFR-002) |
 | NFR-003 | 3 | 🔴 | Auth chicken-and-egg — register/login unreachable |
 | NFR-004 | 4 | 🔴 | ✅ `store.json` missing `hires` array — hire-flow crashes — **RESOLVED** (fix/NFR-004) |
 | NFR-005 | 5 | 🔴 | CSV job import completely broken |
 | NFR-006 | 6 | 🔴 | Job import silently drops all `requirements` |
 | NFR-007 | 7 | 🔴 | Hires routes unreachable — route ordering |
-| NFR-033 | 33 | 🔴 | Vercel deployment fails — Node type definitions unavailable during build |
+| NFR-033 | 33 | 🔴 | ✅ Vercel deployment fails — Node type definitions unavailable during build — **RESOLVED** (PR #1) |
+| NFR-034 | 34 | 🔴 | Vercel serverless runtime cannot safely persist the JSON data store |
+| NFR-035 | 35 | 🔴 | Git/Vercel release pipeline is disconnected and deployments are not reproducible |
 | NFR-008 | 8 | 🟠 | Trivially forgeable auth tokens |
 | NFR-009 | 9 | 🟠 | Passwords stored as reversible plaintext stub |
 | NFR-010 | 10 | 🟠 | Privilege escalation via self-selected role |
@@ -43,9 +45,11 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-027 | 27 | 🔵 | Unused imports/code |
 | NFR-028 | 28 | 🔵 | No applicant DELETE endpoint |
 | NFR-029 | 29 | 🔵 | Employer notification never implemented |
-| NFR-030 | 30 | 🔵 | `npm test` is a placeholder |
+| NFR-030 | 30 | 🔵 | ✅ `npm test` is a placeholder — **RESOLVED** (PR #1) |
 | NFR-031 | 31 | 🔵 | Error handling leaks internals |
 | NFR-032 | 32 | 🔵 | Matching nits |
+| NFR-036 | 36 | 🔵 | ✅ NFR-030 missing formal dated resolution block — **RESOLVED** (fix/NFR-036-NFR-037-post-merge-docs) |
+| NFR-037 | 37 | 🔵 | ✅ Suggested fix order still listed merged PR #1 — **RESOLVED** (fix/NFR-036-NFR-037-post-merge-docs) |
 
 ---
 
@@ -55,7 +59,13 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Where:** `package.json` (`"type": "commonjs"`) vs `tsconfig.json` (`"module": "ESNext"`, `"moduleResolution": "bundler"`)
 - **Symptom:** `node dist/index.js` → `SyntaxError: Cannot use import statement outside a module`
 - **Evidence:** Confirmed live. `tsc` emits ES module syntax into `dist/`, but `"type": "commonjs"` makes Node treat `.js` files as CommonJS.
-- **Note:** `moduleResolution: "bundler"` is also wrong for a Node-executed app (should be `nodenext`/`node16` if ESM is intended).
+- **Note:** `moduleResolution: "bundler"` should be revisited for a Node-executed app (`nodenext`/`node16` is the stricter Node model), although declaring the emitted `.js` as ESM resolves the observed runtime failure.
+> **✅ RESOLUTION — 2026-09-12, branch `fix/NFR-030-ci-bootstrap`, PR #1**
+> - **Fix:** changed `package.json` from CommonJS to ESM so emitted `dist/*.js` matches TypeScript output; retained the ESM-safe entrypoint guard.
+> - **Tests:** two regressions observed the exact pre-fix syntax error, then verified compiled startup plus Vercel-style ESM import. Existing NFR-002 tests remain green.
+> - **Gates:** clean install ✅ · typecheck/build ✅ · 14/14 tests ✅ · built smoke ✅ · Vercel preview `/health` 200 ✅ · GitHub Actions `verify` ✅ · Greptile Review ✅
+> - **Artifact:** `resolutions/RESOLUTON-OF-ISSUE-NFR-001.docx`
+> - **Residual:** NFR-034 blocks production mutation traffic; NFR-035 still blocks automatic Git-to-Vercel deployment.
 
 ### 2. [NFR-002] ✅ Server never starts — `start()` is never invoked
 - **Where:** `src/index.ts:41-59` — `start()` is defined and exported but never called anywhere; no `if (require.main === module)` / `import.meta` entry guard.
@@ -116,7 +126,29 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Evidence:** Confirmed 2026-09-12 in deployment `3cVp1ExYrTEq35mxp7AQHbHbkgig`; Vercel dependency installation completed, then `vercel build` failed at TypeScript compilation.
 - **Likely cause:** The Vercel install/build environment is not making the project's development type packages available to the compiler. Exact configuration cause must be reproduced in a failing deployment/build test before changing dependencies or Vercel commands.
 - **Impact:** Blocks all Vercel preview/production deployments, including NFR-FEAT-001 media integration.
-- **Status:** OPEN — no fix initiated.
+> **✅ RESOLUTION — 2026-09-12, branch `fix/NFR-030-ci-bootstrap`, PR #1**
+> - **Fix:** explicitly set `typeRoots: ["./node_modules/@types"]` while retaining `types: ["node"]`.
+> - **Tests:** checked-in and effective (`tsc --showConfig`) compiler configuration tests both pass after failing before the fix.
+> - **Gates:** local typecheck/build ✅ · Vercel TypeScript 7.0.2 build ✅ · preview `/health` 200 ✅ · hosted CI/review ✅
+> - **Artifact:** `resolutions/RESOLUTON-OF-ISSUE-NFR-033.docx`
+
+### 34. [NFR-034] Vercel serverless runtime cannot safely persist the JSON data store
+- **Priority:** P0 production data-integrity blocker.
+- **Where:** `src/models/store.ts` writes application state beneath `DATA_DIR` or `process.cwd()/data`; Vercel deploys the function under a read-only packaged filesystem and only temporary storage is writable/ephemeral.
+- **Symptom:** Health/read-only handlers can run, but profile, user, application, job, hire, and observability mutations attempt to rewrite local JSON files. On Vercel these writes can fail with a read-only-filesystem error or disappear when an instance is recycled; concurrent instances also cannot share state.
+- **Evidence:** Static runtime-path review after the first healthy Vercel preview; this is additionally compounded by NFR-020's read-modify-write race. The preview cannot create an authenticated test user because NFR-003 blocks unauthenticated registration and the committed store contains no users, so no destructive production mutation was attempted.
+- **Impact:** The deployed API is not production-safe for applicant/profile metadata even though photo bytes themselves can be stored durably in private Vercel Blob.
+- **Required fix:** Replace JSON persistence with a durable transactional database supported by the deployment environment, migrate existing data, and add deployment-level mutation/persistence/concurrency tests. Do not use Blob object replacement as a pseudo-database.
+- **Status:** OPEN — blocks production data entry and full NFR-FEAT-001 release.
+
+### 35. [NFR-035] Git/Vercel release pipeline is disconnected and deployments are not reproducible
+- **Priority:** P0 release-governance blocker.
+- **Where:** Vercel project `rec-app-build`, GitHub repository `jbaker7989/RecruitingApp`, and local GitHub CLI credentials.
+- **Symptom:** Existing production was deployed from a local feature working tree rather than an automatically built commit. Even after the owner completed login connections, `vercel git connect https://github.com/jbaker7989/RecruitingApp.git` still fails because the Vercel Git integration cannot access the private repository.
+- **Evidence:** The GitHub CLI OAuth blocker is resolved (`workflow` scope granted); branch push, PR #1, GitHub Actions `verify`, and Greptile Review all succeeded. Vercel connection still returns `Failed to connect ... make sure ... you have access to the repository if it's private`, indicating the Vercel GitHub App needs repository authorization.
+- **Impact:** GitHub changes now pass traceable PR/CI gates, but production deployments can still be launched manually from arbitrary local state and Vercel cannot automatically deploy reviewed `main`.
+- **Required fix:** Owner grants the Vercel GitHub App access to `jbaker7989/RecruitingApp`, reruns `vercel git connect`, verifies automatic preview deployment from a test commit, and restricts production promotion to connected `main`.
+- **Status:** OPEN — GitHub CI portion repaired; Vercel repository authorization still required.
 
 ---
 
@@ -205,9 +237,31 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 27. [NFR-027] **Unused imports/code:** `jobs.ts` imports `validateApplicationBody`, `createApplication`, `calculateMatchScore` (unused); `applicants.ts` imports `requireRole` (unused); `auth.ts` `logAction` (unused); `validation.ts` `parseUploadedFile` (unused, and reads `file.name` off a `Buffer`); `fileUpload.ts` is a no-op middleware; `express-fileupload` dependency installed but never wired; `matching.ts` `createApplication`, `createHireRecord`, `checkJobAutoClose` all unused (logic duplicated inline in routes). Duplicate `validateEmail` in both `validation.ts` and `matching.ts`.
 28. [NFR-028] **No applicant DELETE endpoint** despite `applicant-management/SKILL.md` specifying "Create, read, update, and delete applicant profiles". No `GET /api/applicants` list endpoint either.
 29. [NFR-029] **Employer notification never implemented:** `HireRecord.notifiedEmployer` is hardcoded `false` forever; skill requires "Notify employer of new hire". `Applicant.notificationToManager` is collected but never used.
-30. [NFR-030] **`npm test` is a placeholder** (`echo "Error: no test specified" && exit 1`); zero tests exist for matching, validation, or routes.
+30. [NFR-030] ✅ **`npm test` placeholder and missing CI — RESOLVED (PR #1).**
+
+> **✅ RESOLUTION — 2026-09-12, branch `fix/NFR-030-ci-bootstrap`, PR #1**
+> - **Root cause:** the package test script deliberately exited with an error, no CI workflow existed, and no built-artifact health smoke enforced release behavior.
+> - **Red → Green:** two initial tests failed on the placeholder/missing workflow; review-driven tests then failed on missing smoke, wrong order, mutable action tags, and shell-dependent discovery before the three bounded corrections. Four NFR-030 tests and the complete 14-test suite pass.
+> - **Fix:** quoted recursive TypeScript discovery plus SHA-pinned GitHub Actions in install → typecheck → build → test → smoke order, with read-only permissions and non-persisted checkout credentials.
+> - **Gates:** local exact CI sequence ✅ · hosted `verify` ✅ · Greptile Review ✅
+> - **Artifact:** `resolutions/RESOLUTON-OF-ISSUE-NFR-030.docx`
+
 31. [NFR-031] **Error handling leaks internals:** `errorHandler` returns raw `err.message` to clients; several catch blocks do the same. `errorHandler`'s `next` param unused (Express 5 tolerant, but sloppy).
 32. [NFR-032] **Matching nits:** experience uses naive `endYear - startYear` (Dec→Jan counts as a year); final score is clamped to a 1–10 floor of 1, so a 0 match is impossible.
+
+36. [NFR-036] ✅ **NFR-030 missing formal dated resolution block — RESOLVED.**
+
+> **✅ RESOLUTION — 2026-09-12, branch `fix/NFR-036-NFR-037-post-merge-docs`**
+> - **Root cause:** PR #1 documented NFR-030 in a one-line summary, violating this log's dated resolution-block contract.
+> - **Red → Green:** two tests first failed on the absent block/root-cause/evidence fields; NFR-030 now uses the same formal structure as NFR-001/NFR-033.
+> - **Artifact:** `resolutions/RESOLUTON-OF-ISSUE-NFR-036.docx`
+
+37. [NFR-037] ✅ **Suggested fix order still listed merged PR #1 — RESOLVED.**
+
+> **✅ RESOLUTION — 2026-09-12, branch `fix/NFR-036-NFR-037-post-merge-docs`**
+> - **Root cause:** the active queue was not refreshed after merge commit `89bc58a` landed.
+> - **Red → Green:** two tests first failed because the queue still instructed maintainers to merge PR #1 and named resolved IDs; completed work is now absent and remaining priorities are renumbered.
+> - **Artifact:** `resolutions/RESOLUTON-OF-ISSUE-NFR-037.docx`
 
 ---
 
@@ -215,21 +269,24 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 
 | Check | Result |
 |---|---|
-| `npm run typecheck` (`tsc --noEmit`) | ✅ passes |
-| `npm run build` | ✅ emits (but output unrunnable — bug 1) |
-| `npm start` | 🔴 crashes (bug 1) |
-| `npm run dev` | 🔴 exits without listening (bug 2) |
-| Live smoke test (company → job → applicant → apply → accept → hires) | 🔴 bugs 3–7, 10, 11, 14, 16, 17 confirmed at runtime |
+| `npm test` on combined release branch | ✅ 14/14 pass |
+| `npm run typecheck` / `npm run build` | ✅ pass on combined release branch |
+| Built-artifact smoke (`npm run smoke`) | ✅ `smoke-health=ok` on combined release branch |
+| Clean Vercel preview build + authenticated `/health` | ✅ deployment `dpl_DLHyEXhtLgrQLQb111xNFcGyL2TV`, HTTP 200 |
+| Git push + PR-hosted CI/review | ✅ PR #1 pushed; `verify` and Greptile Review passed |
+| Connected Vercel Git deployment | 🔴 private-repository access remains blocked by NFR-035 |
+| Production mutation persistence | 🔴 unsafe until NFR-034 is resolved |
+| Original live smoke (company → job → applicant → apply → accept → hires) | 🔴 bugs 3–7, 10, 11, 14, 16, 17 confirmed at runtime |
 
-*Test data was seeded only to exercise endpoints; `data/store.json` and `data/observability.json` were restored to their committed state afterward. `git status` is clean. No source files were modified.*
+*Test/runtime data used during verification was isolated or restored. Resolution status is based on checked-in branch state plus the deployment evidence named above; unmerged work is not labeled resolved.*
 
 ## Suggested fix order (for direction, not yet applied)
 
-1. **P0:** NFR-001 (ESM/CJS production start) + NFR-033 (Vercel build dependency/types failure) — production/deployment blockers.
-2. **P0 process:** NFR-030 — establish the real automated test/CI pipeline before merging additional feature work.
+1. **P0 owner setup:** NFR-035 — grant the Vercel GitHub App access to the private repository, connect the project, and verify automatic deployments from reviewed commits.
+2. **P0 data integrity:** NFR-034 + NFR-020 — replace JSON persistence with a durable transactional store before production applicant data entry.
 3. **P1:** NFR-003 — unblock registration/login/onboarding.
 4. **P1:** NFR-007, NFR-005, NFR-006 — restore hires listing and import features.
 5. **P1 security:** NFR-008 – NFR-013 before real applicant data (NFR-011 has partial safeguards only on the unmerged NFR-FEAT-001 branch).
 6. **P2:** NFR-014 – NFR-019 and remaining specification gaps.
 
-Resolved and removed from the active queue: NFR-002, NFR-004.
+Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, NFR-033, NFR-036, NFR-037.
