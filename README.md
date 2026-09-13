@@ -480,7 +480,7 @@ I prioritize the next work in dependency order:
 5. **NFR-003 — Onboarding:** make registration and login reachable under the corrected authentication boundary.
 6. **NFR-007, NFR-005, NFR-006 — Hire listing and job import:** restore route reachability, CSV parsing, and imported requirements.
 7. **NFR-009–013 — Remaining security controls:** resolve password handling, role escalation, ownership gaps, credential-file hygiene, and CORS before real applicant traffic.
-8. **NFR-014–019 — Application and hiring logic:** correct job closure, submission validation, email confirmation, convenience apply, duplicate prevention, and hire filtering.
+8. **NFR-014–019 and remaining specification gaps — Application and hiring logic:** correct job closure, submission validation, email confirmation, convenience apply, duplicate prevention, hire filtering, and the remaining specification gaps recorded in `BUGS.md`.
 9. Continue NFR-FEAT-001 with immutable snapshots, staged recruiter views, CCPA workflows, and accommodation access.
 
 The complete active queue, evidence, and resolution history live in [`BUGS.md`](BUGS.md).
