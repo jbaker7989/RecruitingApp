@@ -22,11 +22,18 @@
   "type": "module",
   "dependencies": {
     "@earendil-works/pi-coding-agent": "^0.85.1",
+    "@langchain/anthropic": "^1.5.10",
+    "@langchain/core": "^1.2.11",
+    "@langchain/langgraph": "^1.4.15",
+    "@langchain/openai": "^1.5.13",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-fileupload": "^1.5.2",
-    "papaparse": "^5.7.0"
+    "mammoth": "^1.12.3",
+    "papaparse": "^5.7.0",
+    "pdf-parse": "^2.4.5",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

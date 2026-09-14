@@ -6,8 +6,11 @@
 
 > A Principal Product Manager portfolio case study in translating an ambiguous recruiting concept into an API-first product, explicit policy decisions, testable acceptance criteria, governed agentic delivery, and a risk-based release plan.
 
-**Live health endpoint:** [https://rec-app-build.vercel.app/health](https://rec-app-build.vercel.app/health)  
-**Source-of-truth risk register:** [`BUGS.md`](BUGS.md)  
+**Live health endpoint:** [https://rec-app-build.vercel.app/health](https://rec-app-build.vercel.app/health)
+**Linear workspace:** [recruiting-app](https://linear.app/recruiting-app)
+**Source-of-truth risk register:** [`BUGS.md`](BUGS.md)
+**Agentic workflows epic:** [REC-5](https://linear.app/recruiting-app/issue/REC-5)
+**Bug fix initiative:** [REC-55](https://linear.app/recruiting-app/issue/REC-55)
 **Applicant-profile feature branch:** [`feat/NFR-FEAT-001-applicant-profile`](https://github.com/jbaker7989/RecruitingApp/tree/feat/NFR-FEAT-001-applicant-profile)
 
 ---
@@ -89,6 +92,7 @@ The status column is deliberately specific. “Implemented” does not mean “a
 | MCP-shaped route scaffolding | **Implemented prototype on `main`; workflows blocked** | Jobs/applications/apply/hires/health JSON handlers exist; NFR-023 tracks authorization and duplicated-logic inconsistencies. |
 | Deterministic candidate/job matching | **Implemented prototype on `main`** | `calculateMatchScore()` combines keyword 40%, education 30%, and experience 30%, then clamps the result to 1–10; NFR-032 tracks scoring limitations. |
 | Automated CI | **Implemented on `main`** | GitHub Actions runs install → typecheck → build → test → built-artifact smoke with SHA-pinned actions and read-only permissions. |
+| **Agentic AI Workflows (Phase 1)** | **Implemented on `main`** | LLM-powered resume parsing, semantic matching with vector embeddings, and interview scheduling state machine. See [Linear REC-5](https://linear.app/recruiting-app/issue/REC-5). |
 | Expanded applicant-owned profile | **In development — implemented on an unmerged feature branch** | Owner-only profile routes, isolated `personId`/`applicantId`, progressive completeness, detailed employment CRUD, and PII-safe observability. |
 | Private applicant photo storage | **In development — private upload implemented; release blocked pending retrieval and media hardening** | Private Blob store `rec-app-build-applicant-media` in `iad1`; adapter and route tests pass on feature commit [`a42b128`](https://github.com/jbaker7989/RecruitingApp/commit/a42b128). |
 | Authorized private-photo display | **Blocked** | Private upload works, but protected retrieval/streaming is not implemented ([NFR-038](BUGS.md#38-nfr-038-private-applicant-photos-have-no-authorized-retrievaldisplay-path)). |
@@ -98,7 +102,7 @@ The status column is deliberately specific. “Implemented” does not mean “a
 | Durable production persistence | **Blocked** | JSON-file mutation is not safe on Vercel serverless (`NFR-034`, related concurrency defect `NFR-020`). |
 | Production-grade authentication | **Blocked** | Current bearer identity is forgeable and must be replaced before real user or photo traffic (`NFR-008`). |
 | Automatic Git-to-Vercel deployment | **Blocked** | GitHub CI works; Vercel Git-provider project connection remains unresolved (`NFR-035`). |
-| Brand-copy migration | **In development** | This README uses “New Frontier Recruiting”; deployed API responses and legacy internal documents still contain “New Fronteir Recruiting.” |
+| Brand-copy migration | **In development** | This README uses "New Frontier Recruiting"; deployed API responses and legacy internal documents still contain "New Fronteir Recruiting." |
 | Browser frontend | **Not implemented** | This repository currently demonstrates an API-first backend and product-delivery system. |
 
 ---
@@ -246,7 +250,49 @@ Routes under `/api/mcp` expose JSON contracts for:
 
 This is an integration-facing HTTP layer shaped for model/agent consumers. It is not yet a standalone MCP stdio, SSE, or Streamable HTTP server, and `NFR-023` tracks authorization and duplicated-logic inconsistencies.
 
-### 11. Delivery and review services
+### 11. Agentic AI Workflows
+
+Phase 1 agentic workflows use LangChain and LangGraph for AI-powered recruiting automation. Full documentation in [`docs/features/agentic-workflows/`](docs/features/agentic-workflows/).
+
+#### 11.1 Intelligent Resume Parsing (`src/chains/resumeParsing.ts`)
+
+LLM-powered resume/CV parsing with structured output validation.
+
+- **Technology:** LangChain with OpenAI/Anthropic, Zod schema validation
+- **Input:** PDF or DOCX resume files
+- **Output:** Structured candidate profile (name, email, phone, skills, experience, education)
+- **Routes:** `POST /api/agents/resume/parse`
+- **Status:** Implemented ([REC-6](https://linear.app/recruiting-app/issue/REC-6))
+
+#### 11.2 Semantic Matching (`src/chains/matching.ts`, `src/services/vectorStore/`)
+
+Vector embedding-based matching with keyword fallback.
+
+- **Technology:** OpenAI embeddings, in-memory vector store
+- **Scoring:** 30% keyword + 30% semantic + 30% education + 10% experience
+- **Routes:** `POST /api/agents/match`
+- **Status:** Implemented ([REC-7](https://linear.app/recruiting-app/issue/REC-7))
+
+#### 11.3 Interview Scheduling State Machine (`src/agents/scheduling/`)
+
+9-state workflow for interview scheduling with transitions.
+
+- **States:** `requested → confirmed → rescheduled → cancelled → completed → no_show → offer_extended → offer_accepted → offer_declined`
+- **Features:** Time slot management, interviewer assignment, conflict detection
+- **Routes:** `POST /api/agents/scheduling/sessions`, `POST /api/agents/scheduling/sessions/:id/transition`
+- **Status:** Implemented ([REC-8](https://linear.app/recruiting-app/issue/REC-8))
+
+#### Phase 2 Planned Features
+
+See [Linear REC-5](https://linear.app/recruiting-app/issue/REC-5) for full roadmap:
+- Background Verification Agent
+- Onboarding Orchestration
+- Job Description Generator
+- Candidate Communication Agent
+- Interview Feedback Synthesis
+- Candidate Ranking & Shortlisting
+
+### 12. Delivery and review services
 
 | Service | Exact use |
 |---|---|
@@ -380,7 +426,11 @@ flowchart LR
     API[Express 5 API on Node.js 24]
     Auth[Authentication and RBAC middleware]
     Routes[Company / job / applicant / application / MCP routes]
+    AgentRoutes[Agentic AI routes]
     Match[Deterministic matching service]
+    SemanticMatch[Semantic Matching (LLM + Vectors)]
+    ResumeParser[Resume Parsing Chain]
+    Scheduling[Interview Scheduling State Machine]
     Store[JSON prototype store]
     Audit[Observability JSON]
     Blob["Private Vercel Blob<br/>(feature branch)"]
@@ -391,10 +441,15 @@ flowchart LR
     Client --> API
     Agent -->|MCP-shaped JSON HTTP| API
     API --> Auth --> Routes
+    API --> Auth --> AgentRoutes
     Routes --> Match
     Routes --> Store
     Routes --> Audit
     Routes -->|private media bytes| Blob
+    AgentRoutes --> SemanticMatch
+    AgentRoutes --> ResumeParser
+    AgentRoutes --> Scheduling
+    SemanticMatch --> Store
     CI -->|verified reviewed commit| Human
     Human -->|current manual deployment| Vercel
     CI -. planned automatic deployment: NFR-035 .-> Vercel
@@ -454,14 +509,19 @@ brain/brain.md                 Core domain model and workflows
 BUGS.md                        Prioritized evidence-based risk register
 data/                         Development-only JSON persistence
 dev-testing-management/       Red → Green → review → merge policy
+docs/features/agentic-workflows/  Agentic AI workflows documentation
 job-management/               Job and company domain skill
 resolutions/                  Per-issue Word resolution artifacts
 scripts/ci-smoke.mjs          Built-artifact health gate
+src/agents/                   Interview scheduling state machine
+src/chains/                   LangChain chains (resume parsing, matching)
 src/index.ts                  Express application and ESM entrypoint
 src/middleware/               Authentication and validation middleware
 src/models/store.ts           Typed entities and prototype data access
 src/routes/                   Auth, company, job, applicant, application, MCP routes
-src/services/                 Matching and import services
+src/routes/agents/            Agentic AI API endpoints
+src/services/llm/             LLM factory (OpenAI/Anthropic)
+src/services/vectorStore/    In-memory vector embeddings
 tests/regression/             Bug and pipeline regression tests
 ```
 
@@ -482,8 +542,9 @@ I prioritize the next work in dependency order:
 7. **NFR-009–013 — Remaining security controls:** resolve password handling, role escalation, ownership gaps, credential-file hygiene, and CORS before real applicant traffic.
 8. **NFR-014–019 and remaining specification gaps — Application and hiring logic:** correct job closure, submission validation, email confirmation, convenience apply, duplicate prevention, hire filtering, and the remaining specification gaps recorded in `BUGS.md`.
 9. Continue NFR-FEAT-001 with immutable snapshots, staged recruiter views, CCPA workflows, and accommodation access.
+10. **Agentic Workflows Phase 2:** Background verification, onboarding orchestration, job description generation, candidate communication. See [Linear REC-5](https://linear.app/recruiting-app/issue/REC-5).
 
-The complete active queue, evidence, and resolution history live in [`BUGS.md`](BUGS.md).
+The complete active queue, evidence, and resolution history live in [`BUGS.md`](BUGS.md). All open bug issues are tracked in [Linear REC-55](https://linear.app/recruiting-app/issue/REC-55).
 
 ---
 

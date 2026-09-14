@@ -13,6 +13,8 @@ import companyRoutes from './routes/companies.js';
 import applicantRoutes from './routes/applicants.js';
 import authRoutes from './routes/auth.js';
 import mcpRoutes from './routes/mcp.js';
+import agentRoutes from './routes/agents/index.js';
+import { handleFileUpload } from './middleware/fileUpload.js';
 
 dotenv.config();
 
@@ -34,6 +36,7 @@ app.use('/api/companies', companyRoutes);
 app.use('/api/applicants', applicantRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/mcp', mcpRoutes);
+app.use('/api/agents', handleFileUpload, agentRoutes);
 
 app.get('/', (_req, res) => {
   res.json({ message: 'New Fronteir Recruiting API', version: '1.0.0' });
