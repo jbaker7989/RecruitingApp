@@ -309,7 +309,8 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Evidence:** Confirmed 2026-09-15 by inspecting `package.json` and `.github/workflows/ci.yml`. The mandated Red phase for INFRA-003 is represented by `tests/regression/INFRA-003-NFR-047-lint-governance.test.ts`. Running `npx tsx --test tests/regression/INFRA-003-NFR-047-lint-governance.test.ts` produced 0/2 passing tests: (1) `package.json must define scripts.lint`; (2) `CI must run npm run lint`.
 - **Impact:** Development practice depends on manual review instead of a repeatable gate; quality regressions can reach `main` before build/test/runtime failures reveal them.
 - **Required fix/tests:** Add ESLint tooling/configuration, `npm run lint` and optionally `npm run lint:fix`, document the lint gate in README and `dev-testing-management/SKILL.md`, and wire CI to run lint after typecheck and before build/test. Per TDD policy, keep at least two failing governance tests from INFRA-003 before implementation.
-- **Status:** OPEN — INFRA-003 enhancement story created in Linear as REC-60.
+- **Branch evidence:** `chore/INFRA-003-NFR-047-lint-governance-red` implements the lint gate. Targeted INFRA-003 tests pass 2/2, NFR-030 CI-order assertion passes 1/1, `npm ci --ignore-scripts`, `npm run lint` (0 errors, 72 warnings from existing NFR-027 cleanup debt), `npm run typecheck`, and `npm run build` pass. Full `npm test` remains blocked by pre-existing NFR-043/NFR-044 failures.
+- **Status:** OPEN — INFRA-003 implementation exists on branch but remains unmerged; close only after reviewed merge and post-merge regression review.
 
 ---
 
