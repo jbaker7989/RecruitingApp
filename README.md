@@ -71,7 +71,7 @@ Candidate product metrics—defined now but not reported as achieved—are profi
 | Decision quality | Made photo optional; selected one universal race-agnostic fallback icon; excluded photo, name, contact details, pronouns, accommodations, and compensation from matching inputs. |
 | Platform thinking | Separated companies, jobs, applicants, applications, hires, matching, observability, media, authentication, MCP-shaped integrations, CI, and deployment concerns. |
 | Risk management | Maintained `BUGS.md` with unique IDs, severity, evidence, dependencies, required fixes, and an ordered release queue. |
-| Delivery governance | Required a work-item branch, at least two failing tests first, a maximum three-iteration fix loop, exact CI gates, external review, documented resolution, and post-merge regression review. |
+| Delivery governance | Required a work-item branch, **two or more failing tests BEFORE development starts**, maximum three-iteration fix loop, exact CI gates, external review, documented resolution, and post-merge regression review. See [`dev-testing-management/SKILL.md`](dev-testing-management/SKILL.md). |
 | Technical product judgment | Rejected local JSON writes as production persistence on Vercel; selected private Vercel Blob for media bytes; kept media metadata separate from binary content. |
 | Responsible AI | Kept the match engine deterministic and explainable; prohibited photo and protected attributes from scoring; retained human decision ownership. |
 | Stakeholder control | Required owner approval for profile visibility, phone reveal timing, CCPA workflows, accommodations, infrastructure authentication, and production promotion. |

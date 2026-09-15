@@ -15,6 +15,25 @@ This skill governs how all engineering work is executed in the New Fronteir Recr
 - Tests, branches, commits, and PRs must reference the work item ID so the full lifecycle is traceable: `BUGS.md entry → failing tests → branch → fix → green pipeline → merge → post-merge review`
 - New bugs discovered during post-merge review receive the next sequential ID in `BUGS.md`, a severity (🔴🟠🟡🔵), and a priority position relative to the existing backlog
 
+### Pre-Development Test Requirement (MANDATORY)
+> **Before ANY development begins on a story, bug, or enhancement, two tests MUST be written and confirmed failing.**
+
+This is a hard prerequisite — no exceptions:
+- **Stories/Features:** Write 2 tests covering acceptance criteria before writing any implementation code
+- **Bug Fixes:** Write 2 regression tests encoding the bug evidence before writing any fix code
+- **Enhancements:** Write 2 tests for the new behavior being added
+
+The test-first requirement ensures:
+1. The failure is understood and reproducible
+2. The fix/feature is validated by tests, not manual inspection
+3. Regression protection exists from day one
+
+**Procedure:**
+1. Write 2 tests for the work item
+2. Run tests and confirm they fail (with the correct failure mode)
+3. Only then proceed to implementation
+4. Tests must remain in the codebase with the work item ID in the filename
+
 ### The Development Lifecycle (mandatory, in order)
 
 **Step 1 — Branch**
@@ -25,10 +44,14 @@ This skill governs how all engineering work is executed in the New Fronteir Recr
   - Pipeline/tooling: `chore/<slug>`
 - One work item per branch. Batch only when bugs share a root cause (e.g. `NFR-001` + `NFR-002` may share one branch)
 
-**Step 2 — Write failing tests (Red)**
-- Write **at least two tests per bug** (or per feature acceptance criterion) covering the broken/intended functionality
+**Step 2 — Write failing tests (Red)** ⚠️ **MANDATORY — No implementation until tests are written and confirmed failing**
+- Write **exactly two or more tests per work item** before any implementation code is written
+- For bugs: encode the `BUGS.md` evidence as test assertions (exact error messages, expected vs actual behavior)
+- For features: write tests for acceptance criteria that will validate the implementation
 - Run them and **confirm every new test fails, and fails for the right reason** (e.g. fails with the exact `500 "Cannot read properties of undefined"` from the bug report — not a syntax error in the test itself)
 - A test that passes immediately proves nothing — investigate before proceeding
+- **Development code must NOT be written until these tests exist and are confirmed failing**
+- Test file naming: `tests/{category}/{NFR-ID}-{slug}.test.ts` (e.g. `tests/regression/NFR-003-auth-chicken.test.ts`, `tests/chains/JD-001-jd-generator.test.ts`)
 
 **Step 3 — Implement the fix, bounded loop (Green)**
 - Implement the minimum change that makes the failing tests pass — no drive-by changes, no scope creep into other IDs
@@ -61,15 +84,17 @@ This skill governs how all engineering work is executed in the New Fronteir Recr
 - Any new bug found is added to `BUGS.md` with: the next sequential `NFR-0XX` ID, severity, evidence, the introducing branch/PR, and a priority position so it enters the fix queue in a prioritized way (highest severity first, then dependency order per the suggested fix order)
 
 ### Test Standards
-- **Quantity:** minimum **2 tests per bug** being resolved; features require tests for every acceptance criterion
+- **Quantity:** **minimum 2 tests per work item** — this is a hard prerequisite that must be satisfied BEFORE development begins. Features require tests for every acceptance criterion.
+- **Pre-development requirement:** Tests MUST be written and confirmed failing before any implementation code is written. This is not optional.
 - **Runner:** Node's built-in test runner (`node:test`) executed via `tsx --test` — no new test framework dependency unless a story explicitly justifies it. (Bootstrap work under `NFR-030` replaces the placeholder `npm test` script with `tsx --test tests/**/*.test.ts`.)
-- **Location:** `tests/` directory, mirroring `src/` structure (e.g. `tests/routes/applications.test.ts`); regression tests in `tests/regression/`
-- **Naming/tagging:** file named for the work item (e.g. `NFR-004-hires-array.test.ts`); every `describe`/`it` block includes the ID, e.g. `it('NFR-004: accepting an application creates a hire record', ...)`
+- **Location:** `tests/` directory, mirroring `src/` structure (e.g. `tests/routes/applications.test.ts`); regression tests in `tests/regression/`; feature chains in `tests/chains/`
+- **Naming/tagging:** file named for the work item (e.g. `NFR-004-hires-array.test.ts`, `JD-001-jd-generator.test.ts`); every `describe`/`it` block includes the ID, e.g. `it('NFR-004: accepting an application creates a hire record', ...)`
 - **Isolation:** tests must not touch committed `data/store.json` or `data/observability.json`. Each test run uses a temp data directory (override via env var, e.g. `DATA_DIR=$(mktemp -d)`) and seeds its own fixtures
 - **Types of tests:**
   - *Unit* — pure logic (matching scores, validators, import parsing)
   - *Route/integration* — boot the Express app on an ephemeral port and assert HTTP status + body (assert the **correct** behavior, not the current broken behavior)
   - *Regression* — encode the bug's `BUGS.md` "Evidence" section as assertions
+  - *Feature* — validate implementation against acceptance criteria (written before implementation)
 
 ### Commit Standards
 - Messages: `type(NFR-ID): summary`
@@ -84,6 +109,7 @@ Every push and PR to `main` runs the pipeline (GitHub Actions, `.github/workflow
 
 | Gate | Command | Purpose |
 |------|---------|---------|
+| 0. Test-First | Tests written and confirmed failing BEFORE development | Enforces TDD practice; no implementation without failing tests |
 | 1. Install | `npm ci` | Deterministic dependency install |
 | 2. Typecheck | `npm run typecheck` | `tsc --noEmit` must be clean |
 | 3. Build | `npm run build` | `tsc` emits without error |
@@ -95,7 +121,7 @@ Every push and PR to `main` runs the pipeline (GitHub Actions, `.github/workflow
 
 ### Merge Requirements (Definition of Done)
 A work item is done only when **all** are true:
-1. **At least two** tests exist for the item, include the work item ID, and were observed failing before the fix
+1. **TWO OR MORE tests written BEFORE development started**, include the work item ID in filename, and were observed failing before the fix (Red phase documented)
 2. Fix completed within the 3-iteration loop cap (or formally escalated)
 3. Fix documented: root cause + changes + test evidence in `BUGS.md` annotation, commit/PR body, **and** `resolutions/RESOLUTON-OF-ISSUE-{issue ID}.docx`
 4. Full pipeline green on the branch (all 5 gates)
