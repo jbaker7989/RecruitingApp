@@ -91,8 +91,8 @@ The status column is deliberately specific. “Implemented” does not mean “a
 | Authentication and onboarding | **Blocked** | Global middleware makes register/login unreachable (`NFR-003`); NFR-008–013 block real applicant traffic on identity, credentials, authorization, repository hygiene, and CORS grounds. |
 | MCP-shaped route scaffolding | **Implemented prototype on `main`; workflows blocked** | Jobs/applications/apply/hires/health JSON handlers exist; NFR-023 tracks authorization and duplicated-logic inconsistencies. |
 | Deterministic candidate/job matching | **Implemented prototype on `main`** | `calculateMatchScore()` combines keyword 40%, education 30%, and experience 30%, then clamps the result to 1–10; NFR-032 tracks scoring limitations. |
-| Automated CI | **Implemented on `main`** | GitHub Actions runs install → typecheck → build → test → built-artifact smoke with SHA-pinned actions and read-only permissions. |
-| **Agentic AI Workflows (Phase 1)** | **Implemented on `main`** | LLM-powered resume parsing, semantic matching with vector embeddings, and interview scheduling state machine. See [Linear REC-5](https://linear.app/recruiting-app/issue/REC-5). |
+| Automated CI | **Implemented on `main`** | GitHub Actions runs install → typecheck → lint → build → test (48 tests) → built-artifact smoke with SHA-pinned actions and read-only permissions. |
+| **Agentic AI Workflows (Phase 1 & 2)** | **Implemented on `main`** | LLM-powered resume parsing, semantic matching with vector embeddings, interview scheduling state machine, job description generation, and candidate communication. See [Linear REC-5](https://linear.app/recruiting-app/issue/REC-5). |
 | Expanded applicant-owned profile | **In development — implemented on an unmerged feature branch** | Owner-only profile routes, isolated `personId`/`applicantId`, progressive completeness, detailed employment CRUD, and PII-safe observability. |
 | Private applicant photo storage | **In development — private upload implemented; release blocked pending retrieval and media hardening** | Private Blob store `rec-app-build-applicant-media` in `iad1`; adapter and route tests pass on feature commit [`a42b128`](https://github.com/jbaker7989/RecruitingApp/commit/a42b128). |
 | Authorized private-photo display | **Blocked** | Private upload works, but protected retrieval/streaming is not implemented ([NFR-038](BUGS.md#38-nfr-038-private-applicant-photos-have-no-authorized-retrievaldisplay-path)). |
@@ -252,7 +252,7 @@ This is an integration-facing HTTP layer shaped for model/agent consumers. It is
 
 ### 11. Agentic AI Workflows
 
-Phase 1 agentic workflows use LangChain and LangGraph for AI-powered recruiting automation. Full documentation in [`docs/features/agentic-workflows/`](docs/features/agentic-workflows/).
+Agentic workflows use LangChain and LangGraph for AI-powered recruiting automation. Full documentation in [`docs/features/agentic-workflows/`](docs/features/agentic-workflows/).
 
 #### 11.1 Intelligent Resume Parsing (`src/chains/resumeParsing.ts`)
 
@@ -261,7 +261,7 @@ LLM-powered resume/CV parsing with structured output validation.
 - **Technology:** LangChain with OpenAI/Anthropic, Zod schema validation
 - **Input:** PDF or DOCX resume files
 - **Output:** Structured candidate profile (name, email, phone, skills, experience, education)
-- **Routes:** `POST /api/agents/resume/parse`
+- **Routes:** `POST /api/agents/resume/parse`, `POST /api/agents/resume/parse-text`
 - **Status:** Implemented ([REC-6](https://linear.app/recruiting-app/issue/REC-6))
 
 #### 11.2 Semantic Matching (`src/chains/matching.ts`, `src/services/vectorStore/`)
@@ -270,7 +270,7 @@ Vector embedding-based matching with keyword fallback.
 
 - **Technology:** OpenAI embeddings, in-memory vector store
 - **Scoring:** 30% keyword + 30% semantic + 30% education + 10% experience
-- **Routes:** `POST /api/agents/match`
+- **Routes:** `POST /api/agents/matching/score`, `GET /api/agents/matching/job-suggestions/:applicantId`, `GET /api/agents/matching/similar-candidates/:jobId`
 - **Status:** Implemented ([REC-7](https://linear.app/recruiting-app/issue/REC-7))
 
 #### 11.3 Interview Scheduling State Machine (`src/agents/scheduling/`)
@@ -279,18 +279,38 @@ Vector embedding-based matching with keyword fallback.
 
 - **States:** `requested → confirmed → rescheduled → cancelled → completed → no_show → offer_extended → offer_accepted → offer_declined`
 - **Features:** Time slot management, interviewer assignment, conflict detection
-- **Routes:** `POST /api/agents/scheduling/sessions`, `POST /api/agents/scheduling/sessions/:id/transition`
+- **Routes:** `POST /api/agents/scheduling/interview`, `POST /api/agents/scheduling/reschedule`, `POST /api/agents/scheduling/cancel`, `POST /api/agents/scheduling/complete`
 - **Status:** Implemented ([REC-8](https://linear.app/recruiting-app/issue/REC-8))
+
+#### 11.4 Job Description Generator (`src/chains/jobDescription.ts`)
+
+LLM-powered job description generation with draft workflow and A/B tone variants.
+
+- **Technology:** LangChain with GPT-4o, Zod schema validation
+- **Features:** Draft versioning, A/B variants (professional/casual/inclusive/startup), direct publish to jobs
+- **Routes:** `POST /api/agents/jd/generate`, `POST /api/agents/jd/generate-variants`, `GET /api/agents/jd/drafts`, `PUT /api/agents/jd/drafts/:id`, `POST /api/agents/jd/drafts/:id/publish`, `DELETE /api/agents/jd/drafts/:id`
+- **Status:** Implemented ([REC-11](https://linear.app/recruiting-app/issue/REC-11))
+
+#### 11.5 Candidate Communication Agent (`src/chains/candidateCommunication.ts`)
+
+LLM-powered personalized candidate messaging for recruiting workflows.
+
+- **Technology:** LangChain with GPT-4o, Zod schema validation
+- **Message Types:** `application_received`, `interview_invitation`, `reschedule_request`, `rejection`, `offer_extended`, `next_steps`
+- **Tones:** professional, warm, concise, inclusive
+- **Features:** Structured JSON output, confidence scoring, `requiresHumanReview` flag for sensitive content
+- **Routes:** `POST /api/agents/communication/generate`, `POST /api/agents/communication/generate-variants`, `GET /api/agents/communication/templates`
+- **Status:** Implemented ([REC-12](https://linear.app/recruiting-app/issue/REC-12))
 
 #### Phase 2 Planned Features
 
 See [Linear REC-5](https://linear.app/recruiting-app/issue/REC-5) for full roadmap:
 - Background Verification Agent
 - Onboarding Orchestration
-- Job Description Generator
-- Candidate Communication Agent
 - Interview Feedback Synthesis
 - Candidate Ranking & Shortlisting
+- Skills Taxonomy & Normalization
+- Duplicate Candidate Detection
 
 ### 12. Delivery and review services
 
@@ -350,7 +370,7 @@ Minimum fix; maximum three correction iterations (Green)
         ↓
 BUGS.md + commit/PR evidence + DOCX resolution artifact
         ↓
-npm ci → typecheck → build → recursive test suite → dist health smoke
+npm ci → typecheck → lint → build → recursive test suite (48 tests) → dist health smoke
         ↓
 Independent review + GitHub PR checks
         ↓
@@ -515,11 +535,11 @@ job-management/               Job and company domain skill
 resolutions/                  Per-issue Word resolution artifacts
 scripts/ci-smoke.mjs          Built-artifact health gate
 src/agents/                   Interview scheduling state machine
-src/chains/                   LangChain chains (resume parsing, matching)
+src/chains/                   LangChain chains (resume parsing, matching, job description, candidate communication)
 src/index.ts                  Express application and ESM entrypoint
 src/middleware/               Authentication and validation middleware
 src/models/store.ts           Typed entities and prototype data access
-src/routes/                   Auth, company, job, applicant, application, MCP routes
+src/routes/                   Auth, company, job, applicant, application, MCP, agent routes
 src/routes/agents/            Agentic AI API endpoints
 src/services/llm/             LLM factory (OpenAI/Anthropic)
 src/services/vectorStore/    In-memory vector embeddings
@@ -543,7 +563,7 @@ I prioritize the next work in dependency order:
 7. **NFR-009–013 — Remaining security controls:** resolve password handling, role escalation, ownership gaps, credential-file hygiene, and CORS before real applicant traffic.
 8. **NFR-014–019 and remaining specification gaps — Application and hiring logic:** correct job closure, submission validation, email confirmation, convenience apply, duplicate prevention, hire filtering, and the remaining specification gaps recorded in `BUGS.md`.
 9. Continue NFR-FEAT-001 with immutable snapshots, staged recruiter views, CCPA workflows, and accommodation access.
-10. **Agentic Workflows Phase 2:** Background verification, onboarding orchestration, job description generation, candidate communication. See [Linear REC-5](https://linear.app/recruiting-app/issue/REC-5).
+10. **Agentic Workflows Phase 2:** Background verification, onboarding orchestration, interview feedback synthesis, candidate ranking. See [Linear REC-5](https://linear.app/recruiting-app/issue/REC-5).
 
 The complete active queue, evidence, and resolution history live in [`BUGS.md`](BUGS.md). All open bug issues are tracked in [Linear REC-55](https://linear.app/recruiting-app/issue/REC-55).
 
