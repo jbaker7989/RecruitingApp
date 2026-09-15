@@ -7,7 +7,7 @@
 
 Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 
-**Tracking IDs:** Every bug carries a unique alphanumeric ID in the format `NFR-0XX` (**N**ew **F**ronteir **R**ecruiting), assigned sequentially 001–042 in report/discovery order. Use these IDs in commits, branches, and status discussions.
+**Tracking IDs:** Every bug carries a unique alphanumeric ID in the format `NFR-0XX` (**N**ew **F**ronteir **R**ecruiting), assigned sequentially 001–046 in report/discovery order. Use these IDs in commits, branches, and status discussions.
 
 ## Tracking Index
 
@@ -23,6 +23,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-033 | 33 | 🔴 | ✅ Vercel deployment fails — Node type definitions unavailable during build — **RESOLVED** (PR #1) |
 | NFR-034 | 34 | 🔴 | Vercel serverless runtime cannot safely persist the JSON data store |
 | NFR-035 | 35 | 🔴 | Git/Vercel release pipeline is disconnected and deployments are not reproducible |
+| NFR-043 | 43 | 🔴 | Agent workflow routes emit extensionless ESM imports and crash the built server |
 | NFR-008 | 8 | 🟠 | Trivially forgeable auth tokens |
 | NFR-009 | 9 | 🟠 | Passwords stored as reversible plaintext stub |
 | NFR-010 | 10 | 🟠 | Privilege escalation via self-selected role |
@@ -32,6 +33,8 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-038 | 38 | 🟠 | Private applicant photos have no authorized retrieval/display path |
 | NFR-039 | 39 | 🟠 | Blob/store failure ordering can orphan or break photo metadata |
 | NFR-040 | 40 | 🟠 | Signature-only image validation accepts corrupt files |
+| NFR-044 | 44 | 🟠 | JD-001 tests require Vitest but the project test runner is `node:test` via `tsx` |
+| NFR-046 | 46 | 🟠 | JD draft publishing lacks company authorization checks |
 | NFR-014 | 14 | 🟡 | Job auto-close triggers on applications, not hires |
 | NFR-015 | 15 | 🟡 | `POST /api/applications` validates wrong payload |
 | NFR-016 | 16 | 🟡 | Email-confirmation mismatch never blocks |
@@ -43,6 +46,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-022 | 22 | 🟡 | DELETE endpoints lie and orphan data |
 | NFR-023 | 23 | 🟡 | MCP route inconsistencies |
 | NFR-041 | 41 | 🟡 | Uploads above the raw-parser limit return 500 instead of 413 |
+| NFR-045 | 45 | 🟡 | JD draft update can mark drafts published without creating a job posting |
 | NFR-024 | 24 | 🔵 | Spec mismatch — data files |
 | NFR-025 | 25 | 🔵 | Dead `observability` array in store |
 | NFR-026 | 26 | 🔵 | Empty/duplicate directories |
@@ -155,6 +159,15 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Required fix:** Verify the GitHub identity attached to Vercel user `jbaker7989-1641`, authorize/install Vercel's Git provider for `jbaker7989/RecruitingApp`, rerun `vercel git connect`, and verify automatic preview deployment from a test commit.
 - **Status:** OPEN — GitHub CI and current production traceability repaired; automatic Vercel Git deployment remains unavailable.
 
+### 43. [NFR-043] Agent workflow routes emit extensionless ESM imports and crash the built server
+- **Priority:** P0 runtime and CI blocker introduced by the agentic-workflows route bundle.
+- **Where:** `src/routes/agents/index.ts`, `src/services/vectorStore/index.ts`, `src/agents/scheduling/agent.ts`, and type-only import sites that compile into `dist/` without `.js` specifiers under package ESM.
+- **Symptom:** `npm start`, `npm run smoke`, and the NFR-001 built-runtime regressions fail after `npm run build` with `ERR_MODULE_NOT_FOUND`, e.g. `Cannot find module 'dist/middleware/auth' imported from dist/routes/agents/index.js`. Importing `dist/services/vectorStore/index.js` separately also fails on `dist/services/llm/index`.
+- **Evidence:** Confirmed 2026-09-15. `npm run typecheck` and `npm run build` pass, then `npm test` fails NFR-001 and NFR-030 smoke checks; direct `node --input-type=module -e "import('./dist/services/vectorStore/index.js')"` fails with `ERR_MODULE_NOT_FOUND`.
+- **Impact:** Built production artifact cannot start when `src/index.ts` imports `/api/agents`; all production routes are unavailable despite a clean TypeScript build.
+- **Required fix/tests:** Convert runtime relative imports in agent workflow files to Node-resolvable `.js` specifiers (and use `import type` where appropriate), add at least two failing tests first that import the compiled agent routes/vector store and boot the built server, then verify `npm test` and `npm run smoke` green.
+- **Status:** OPEN — blocks runtime startup and CI smoke until fixed.
+
 ---
 
 ## 🟠 High — Security
@@ -205,6 +218,24 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Issue:** a file with only the expected prefix is accepted without complete decode or dimension/pixel bounds.
 - **Required fix/tests:** decode with a maintained image parser, enforce dimensions/pixel count, use valid fixtures, and reject truncated/signature-only payloads.
 - **Status:** OPEN — feature merge blocker.
+
+### 44. [NFR-044] JD-001 tests require Vitest but the project test runner is `node:test` via `tsx`
+- **Priority:** P1 CI/development-governance blocker.
+- **Where:** `tests/chains/jdGenerator.test.ts` imports `describe`, `it`, `expect`, `vi`, and `beforeEach` from `vitest`, but `package.json` defines `npm test` as `tsx --test "tests/**/*.test.ts"` and `vitest` is not declared in `dependencies` or `devDependencies`.
+- **Symptom:** `npm test` fails immediately with `Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'vitest' imported from tests/chains/jdGenerator.test.ts` before the JD tests can run under the mandated project runner.
+- **Evidence:** Confirmed 2026-09-15 by running the full gate sequence: `npm run typecheck` ✅, `npm run build` ✅, `npm test` 🔴 with the missing-package error.
+- **Impact:** The committed test suite is red on a clean install, CI cannot validate regressions, and the project violates `dev-testing-management/SKILL.md` test-runner standards.
+- **Required fix/tests:** Rewrite JD-001 tests to use `node:test` + `node:assert/strict` and Node-compatible mocking/injection, or formally add and justify Vitest as a project dependency/story. Add two failing tests first that prove the project-level `npm test` command can execute JD coverage under the chosen runner.
+- **Status:** OPEN — blocks CI/test gate until fixed.
+
+### 46. [NFR-046] JD draft publishing lacks company authorization checks
+- **Priority:** P1 security/data-integrity risk for generated job postings.
+- **Where:** `src/routes/agents/jdGenerator.ts` `POST /api/agents/jd/generate` accepts any `companyId`; `POST /api/agents/jd/drafts/:id/publish` only verifies draft ownership (`draft.userId === req.user.id`) and does not verify that the hiring-manager is authorized to publish for `draft.companyId`.
+- **Issue:** Any authenticated `hiring-manager` can create a draft for an arbitrary company UUID and publish a live job posting for that company. The `User`/`Company` models do not currently expose a company ownership/membership relation to enforce.
+- **Evidence:** Static route and model review, 2026-09-15. Generate and publish paths require the `hiring-manager` role but perform no company relationship check before `store.jobs.push(jobPosting)`.
+- **Impact:** Cross-tenant job posting injection and company data integrity risk, especially once real employers use the system.
+- **Required fix/tests:** Define/implement company membership or recruiter-company authorization, reject unauthorized company IDs in generate/publish, and add route tests for authorized publish, unauthorized cross-company publish, and member-services/admin behavior.
+- **Status:** OPEN — new JD-001 authorization gap.
 
 ---
 
@@ -259,6 +290,15 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Issue:** the 4 MB application check returns 413 only below the parser limit; larger requests take the untested global 500 path.
 - **Required fix/tests:** map body-parser status/type 413 to HTTP 413 and add a request exceeding the parser limit.
 - **Status:** OPEN — feature merge blocker.
+
+### 45. [NFR-045] JD draft update can mark drafts published without creating a job posting
+- **Priority:** P2 functional workflow bug in JD-001.
+- **Where:** `src/routes/agents/jdGenerator.ts` `PUT /api/agents/jd/drafts/:id` accepts `status: 'published'` through `updateDraftRequestSchema` and directly assigns `draft.status = updates.status`.
+- **Symptom:** A caller can mark a draft as `published` via the generic update endpoint without invoking `POST /api/agents/jd/drafts/:id/publish`. The publish endpoint then refuses to publish it (`Draft already published`) even though no `JobPosting` was created and `publishedAt` remains unset.
+- **Evidence:** Static route review, 2026-09-15. The only path that creates a job posting is `/publish`, but `/drafts/:id` can set the same terminal status independently.
+- **Impact:** Drafts can become stuck in a false-published state, job descriptions are lost from the live jobs collection, and UI/API consumers receive misleading status.
+- **Required fix/tests:** Remove `published` from generic update status changes or route it through publish semantics. Add tests for update-to-archived/draft behavior, attempted update-to-published rejection, and successful publish creating exactly one job with `publishedAt` set.
+- **Status:** OPEN — JD-001 workflow integrity issue.
 
 ---
 
@@ -319,18 +359,20 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | Connected Vercel Git deployment | 🔴 provider installation/identity access remains blocked by NFR-035 |
 | Production mutation persistence | 🔴 unsafe until NFR-034 is resolved |
 | Original live smoke (company → job → applicant → apply → accept → hires) | 🔴 bugs 3–7, 10, 11, 14, 16, 17 confirmed at runtime |
+| Current main review after JD-001 | 🔴 `npm test` fails: NFR-043 built ESM imports and NFR-044 Vitest runner mismatch confirmed 2026-09-15 |
 
 *Test/runtime data used during verification was isolated or restored. Resolution status is based on checked-in branch state plus the deployment evidence named above; unmerged work is not labeled resolved.*
 
 ## Suggested fix order (for direction, not yet applied)
 
-1. **P0 owner setup:** NFR-035 — repair Vercel Git-provider installation/identity access and verify automatic deployment from reviewed commits.
-2. **P0 data integrity:** NFR-034 + NFR-020 — replace JSON persistence with a durable transactional store before production applicant data entry.
-3. **P0 security:** NFR-008 — replace forgeable bearer identities before enabling applicant-photo read or mutation traffic.
-4. **P1 applicant media:** NFR-038, NFR-039, NFR-040, then NFR-041 — protected retrieval, reliable cleanup, full decode validation, and correct size errors.
-5. **P1:** NFR-003 — unblock registration/login/onboarding.
-6. **P1:** NFR-007, NFR-005, NFR-006 — restore hires listing and import features.
-7. **P1 security:** NFR-009 – NFR-013 before real applicant data (NFR-011 has partial safeguards only on the unmerged NFR-FEAT-001 branch).
-8. **P2:** NFR-014 – NFR-019 and remaining specification gaps.
+1. **P0 runtime/CI:** NFR-043, then NFR-044 — restore built-server startup and the project-level test gate after JD-001.
+2. **P0 owner setup:** NFR-035 — repair Vercel Git-provider installation/identity access and verify automatic deployment from reviewed commits.
+3. **P0 data integrity:** NFR-034 + NFR-020 — replace JSON persistence with a durable transactional store before production applicant data entry.
+4. **P0 security:** NFR-008 — replace forgeable bearer identities before enabling applicant-photo read or mutation traffic.
+5. **P1 applicant media:** NFR-038, NFR-039, NFR-040, then NFR-041 — protected retrieval, reliable cleanup, full decode validation, and correct size errors.
+6. **P1:** NFR-003 — unblock registration/login/onboarding.
+7. **P1:** NFR-007, NFR-005, NFR-006 — restore hires listing and import features.
+8. **P1 security:** NFR-009 – NFR-013 and NFR-046 before real employer/applicant data (NFR-011 has partial safeguards only on the unmerged NFR-FEAT-001 branch).
+9. **P2:** NFR-014 – NFR-019, NFR-045, and remaining specification gaps.
 
 Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, NFR-033, NFR-036, NFR-037, NFR-042.
