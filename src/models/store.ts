@@ -133,6 +133,49 @@ export interface ObservabilityLog {
   outcome: 'success' | 'failure';
 }
 
+export type DraftStatus = 'draft' | 'published' | 'archived';
+
+export interface JDGInput {
+  companyId?: string;
+  jobTitle: string;
+  department?: string;
+  seniority?: string;
+  requirements?: string[];
+  responsibilities?: string[];
+  qualifications?: string[];
+  requiredSkills?: string[];
+  location?: string;
+  remotePolicy?: string;
+  compensation?: { min?: number; max?: number; currency?: string };
+  tone?: string;
+}
+
+export interface JDGOutput {
+  summary: string;
+  positionDescription: string;
+  responsibilities: string[];
+  qualifications: string[];
+  requirements: string[];
+  requiredSkills: string[];
+  requiredExperience: number;
+  keywords: string[];
+  confidence: number;
+}
+
+export interface JobDraft {
+  id: string;
+  companyId: string;
+  userId: string;
+  status: DraftStatus;
+  input: JDGInput;
+  output: JDGOutput;
+  variantOf?: string;
+  variantsGenerated: number;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt?: string;
+}
+
 export interface DataStore {
   companies: Company[];
   jobs: JobPosting[];
@@ -141,6 +184,7 @@ export interface DataStore {
   users: User[];
   hires: HireRecord[];
   observability: ObservabilityLog[];
+  drafts: JobDraft[];
 }
 
 async function ensureDataDir() {
@@ -160,6 +204,7 @@ export function emptyStore(): DataStore {
     users: [],
     hires: [],
     observability: [],
+    drafts: [],
   };
 }
 
