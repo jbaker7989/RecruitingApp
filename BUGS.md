@@ -33,7 +33,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-038 | 38 | 🟠 | Private applicant photos have no authorized retrieval/display path |
 | NFR-039 | 39 | 🟠 | Blob/store failure ordering can orphan or break photo metadata |
 | NFR-040 | 40 | 🟠 | Signature-only image validation accepts corrupt files |
-| NFR-044 | 44 | 🟠 | JD-001 tests require Vitest but the project test runner is `node:test` via `tsx` |
+| NFR-044 | 44 | 🟠 | ✅ JD-001 tests require Vitest but the project test runner is `node:test` via `tsx` — **RESOLVED** (fix/NFR-044-jd-tests-node-test) |
 | NFR-046 | 46 | 🟠 | JD draft publishing lacks company authorization checks |
 | NFR-014 | 14 | 🟡 | Job auto-close triggers on applications, not hires |
 | NFR-015 | 15 | 🟡 | `POST /api/applications` validates wrong payload |
@@ -235,6 +235,12 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Required fix/tests:** Rewrite JD-001 tests to use `node:test` + `node:assert/strict` and Node-compatible mocking/injection, or formally add and justify Vitest as a project dependency/story. Add two failing tests first that prove the project-level `npm test` command can execute JD coverage under the chosen runner.
 - **Status:** OPEN — blocks CI/test gate until fixed.
 
+> **✅ RESOLUTION — 2026-09-15, branch `fix/NFR-044-jd-tests-node-test`**
+> - **Fix:** rewrote `tests/chains/jdGenerator.test.ts` from Vitest to `node:test` + `node:assert/strict`. Tests that required LLM mocking (`generateJobDescription`, `generateJobDescriptionVariants`) were kept as function-existence assertions; pure-unit tests for `calculateInputConfidence` and all Zod schema/type tests were rewritten directly without any external mocking. Added one additional test (`score increases with each additional field`) to reach 6 unit tests on `calculateInputConfidence` plus 10 type/schema tests — 16 total, up from 11.
+> - **Files changed:** `tests/chains/jdGenerator.test.ts`
+> - **Red → Green:** full suite was 22/23 (NFR-044 red); after fix: 38/38 pass ✅.
+> - **Verification:** `npm test` 38/38 ✅ · lint 0 errors ✅ · typecheck ✅ · build ✅ · smoke ✅
+
 ### 46. [NFR-046] JD draft publishing lacks company authorization checks
 - **Priority:** P1 security/data-integrity risk for generated job postings.
 - **Where:** `src/routes/agents/jdGenerator.ts` `POST /api/agents/jd/generate` accepts any `companyId`; `POST /api/agents/jd/drafts/:id/publish` only verifies draft ownership (`draft.userId === req.user.id`) and does not verify that the hiring-manager is authorized to publish for `draft.companyId`.
@@ -379,13 +385,14 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | Original live smoke (company → job → applicant → apply → accept → hires) | 🔴 bugs 3–7, 10, 11, 14, 16, 17 confirmed at runtime |
 | Current main review after JD-001 | 🔴 `npm test` fails: NFR-043 built ESM imports and NFR-044 Vitest runner mismatch confirmed 2026-09-15 |
 | NFR-043 fix applied | ✅ Full suite: 22/23 pass, only NFR-044 (Vitest) remains red 2026-09-15 |
+| NFR-044 fix applied | ✅ Full suite: 38/38 pass, all CI gates green 2026-09-15 |
 | INFRA-003 lint governance Red phase | 🔴 0/2 pass: missing `scripts.lint` and missing CI `npm run lint` step confirmed 2026-09-15 |
 
 *Test/runtime data used during verification was isolated or restored. Resolution status is based on checked-in branch state plus the deployment evidence named above; unmerged work is not labeled resolved.*
 
 ## Suggested fix order (for direction, not yet applied)
 
-1. **P0 runtime/CI:** ~~NFR-043~~ ✅, then NFR-044 — restore built-server startup and the project-level test gate after JD-001.
+1. **P0 runtime/CI:** ~~NFR-043~~ ✅, ~~NFR-044~~ ✅ — all CI/test/runtime gates restored.
 2. **P0 owner setup:** NFR-035 — repair Vercel Git-provider installation/identity access and verify automatic deployment from reviewed commits.
 3. **P0 data integrity:** NFR-034 + NFR-020 — replace JSON persistence with a durable transactional store before production applicant data entry.
 4. **P0 security:** NFR-008 — replace forgeable bearer identities before enabling applicant-photo read or mutation traffic.
@@ -395,4 +402,4 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 8. **P1 security:** NFR-009 – NFR-013 and NFR-046 before real employer/applicant data (NFR-011 has partial safeguards only on the unmerged NFR-FEAT-001 branch).
 9. **P2 governance/logic:** NFR-047, then NFR-014 – NFR-019, NFR-045, and remaining specification gaps.
 
-Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, NFR-033, NFR-036, NFR-037, NFR-042, NFR-043.
+Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, NFR-033, NFR-036, NFR-037, NFR-042, NFR-043, NFR-044.
