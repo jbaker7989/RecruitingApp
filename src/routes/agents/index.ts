@@ -22,11 +22,15 @@ import {
   InterviewSchedulingState,
 } from '../../agents/scheduling/agent.js';
 import jdGeneratorRouter from './jdGenerator.js';
+import candidateCommunicationRouter from './candidateCommunication.js';
 
 const router = Router();
 
 // Mount Job Description Generator routes
 router.use('/jd', jdGeneratorRouter);
+
+// Mount Candidate Communication routes
+router.use('/communication', candidateCommunicationRouter);
 
 // ============================================
 // Resume Parsing Endpoints
