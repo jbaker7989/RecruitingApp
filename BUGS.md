@@ -7,7 +7,7 @@
 
 Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 
-**Tracking IDs:** Every bug carries a unique alphanumeric ID in the format `NFR-0XX` (**N**ew **F**ronteir **R**ecruiting), assigned sequentially 001–046 in report/discovery order. Use these IDs in commits, branches, and status discussions.
+**Tracking IDs:** Every bug carries a unique alphanumeric ID in the format `NFR-0XX` (**N**ew **F**ronteir **R**ecruiting), assigned sequentially 001–047 in report/discovery order. Use these IDs in commits, branches, and status discussions.
 
 ## Tracking Index
 
@@ -23,7 +23,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-033 | 33 | 🔴 | ✅ Vercel deployment fails — Node type definitions unavailable during build — **RESOLVED** (PR #1) |
 | NFR-034 | 34 | 🔴 | Vercel serverless runtime cannot safely persist the JSON data store |
 | NFR-035 | 35 | 🔴 | Git/Vercel release pipeline is disconnected and deployments are not reproducible |
-| NFR-043 | 43 | 🔴 | Agent workflow routes emit extensionless ESM imports and crash the built server |
+| NFR-043 | 43 | 🔴 | ✅ Agent workflow routes emit extensionless ESM imports and crash the built server — **RESOLVED** (chore/NFR-043-esm-imports-fix) |
 | NFR-008 | 8 | 🟠 | Trivially forgeable auth tokens |
 | NFR-009 | 9 | 🟠 | Passwords stored as reversible plaintext stub |
 | NFR-010 | 10 | 🟠 | Privilege escalation via self-selected role |
@@ -47,6 +47,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-023 | 23 | 🟡 | MCP route inconsistencies |
 | NFR-041 | 41 | 🟡 | Uploads above the raw-parser limit return 500 instead of 413 |
 | NFR-045 | 45 | 🟡 | JD draft update can mark drafts published without creating a job posting |
+| NFR-047 | 47 | 🟡 | No linting gate is enforced in package scripts or CI |
 | NFR-024 | 24 | 🔵 | Spec mismatch — data files |
 | NFR-025 | 25 | 🔵 | Dead `observability` array in store |
 | NFR-026 | 26 | 🔵 | Empty/duplicate directories |
@@ -167,6 +168,12 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Impact:** Built production artifact cannot start when `src/index.ts` imports `/api/agents`; all production routes are unavailable despite a clean TypeScript build.
 - **Required fix/tests:** Convert runtime relative imports in agent workflow files to Node-resolvable `.js` specifiers (and use `import type` where appropriate), add at least two failing tests first that import the compiled agent routes/vector store and boot the built server, then verify `npm test` and `npm run smoke` green.
 - **Status:** OPEN — blocks runtime startup and CI smoke until fixed.
+
+> **✅ RESOLUTION — 2026-09-15, branch `chore/NFR-043-esm-imports-fix`, commit `28d91ad`**
+> - **Fix:** added `.js` to all runtime-relative imports in `src/routes/agents/index.ts` (6 imports), `src/services/vectorStore/index.ts` (2 imports), `src/agents/scheduling/agent.ts` (2 imports), and `src/chains/matching.ts` (1 type-only import). No logic changes — pure import-path corrections.
+> - **Files changed:** `src/routes/agents/index.ts`, `src/services/vectorStore/index.ts`, `src/agents/scheduling/agent.ts`, `src/chains/matching.ts`.
+> - **Red → Green:** 4 tests failed (3 NFR-001 regressions + 1 NFR-030 smoke); after fix: all 3 NFR-001 regressions pass ✅, NFR-030 smoke passes ✅, remaining full-suite failures drop from 4 to 1 (NFR-044 Vitest only) ✅.
+> - **Verification:** `npm run build` ✅ · `npm run typecheck` ✅ · `npm test` 22/23 ✅ · `node dist/index.js` boots without `ERR_MODULE_NOT_FOUND` ✅.
 
 ---
 
@@ -300,6 +307,17 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Required fix/tests:** Remove `published` from generic update status changes or route it through publish semantics. Add tests for update-to-archived/draft behavior, attempted update-to-published rejection, and successful publish creating exactly one job with `publishedAt` set.
 - **Status:** OPEN — JD-001 workflow integrity issue.
 
+### 47. [NFR-047] No linting gate is enforced in package scripts or CI
+- **Priority:** P2 development-governance and code-quality gap.
+- **Linked story:** Linear `INFRA-003` / `REC-60`.
+- **Where:** `package.json` has no `lint` or `lint:fix` script, there is no ESLint configuration, and `.github/workflows/ci.yml` runs install → typecheck → build → test → smoke without a lint step.
+- **Symptom:** Coding-style, unused-code, unsafe-type, and import-hygiene issues can be committed without automated enforcement. The current review already found agentic-workflow import hygiene issues (NFR-043) and undeclared test-runner dependency drift (NFR-044), both of which a stronger lint/governance gate can help prevent earlier.
+- **Evidence:** Confirmed 2026-09-15 by inspecting `package.json` and `.github/workflows/ci.yml`. The mandated Red phase for INFRA-003 is represented by `tests/regression/INFRA-003-NFR-047-lint-governance.test.ts`. Running `npx tsx --test tests/regression/INFRA-003-NFR-047-lint-governance.test.ts` produced 0/2 passing tests: (1) `package.json must define scripts.lint`; (2) `CI must run npm run lint`.
+- **Impact:** Development practice depends on manual review instead of a repeatable gate; quality regressions can reach `main` before build/test/runtime failures reveal them.
+- **Required fix/tests:** Add ESLint tooling/configuration, `npm run lint` and optionally `npm run lint:fix`, document the lint gate in README and `dev-testing-management/SKILL.md`, and wire CI to run lint after typecheck and before build/test. Per TDD policy, keep at least two failing governance tests from INFRA-003 before implementation.
+- **Branch evidence:** `chore/INFRA-003-NFR-047-lint-governance-red` implements the lint gate. Targeted INFRA-003 tests pass 2/2, NFR-030 CI-order assertion passes 1/1, `npm ci --ignore-scripts`, `npm run lint` (0 errors, 72 warnings from existing NFR-027 cleanup debt), `npm run typecheck`, and `npm run build` pass. Full `npm test` remains blocked by pre-existing NFR-043/NFR-044 failures.
+- **Status:** OPEN — INFRA-003 implementation exists on branch but remains unmerged; close only after reviewed merge and post-merge regression review.
+
 ---
 
 ## 🔵 Low — Hygiene / spec gaps
@@ -360,12 +378,14 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | Production mutation persistence | 🔴 unsafe until NFR-034 is resolved |
 | Original live smoke (company → job → applicant → apply → accept → hires) | 🔴 bugs 3–7, 10, 11, 14, 16, 17 confirmed at runtime |
 | Current main review after JD-001 | 🔴 `npm test` fails: NFR-043 built ESM imports and NFR-044 Vitest runner mismatch confirmed 2026-09-15 |
+| NFR-043 fix applied | ✅ Full suite: 22/23 pass, only NFR-044 (Vitest) remains red 2026-09-15 |
+| INFRA-003 lint governance Red phase | 🔴 0/2 pass: missing `scripts.lint` and missing CI `npm run lint` step confirmed 2026-09-15 |
 
 *Test/runtime data used during verification was isolated or restored. Resolution status is based on checked-in branch state plus the deployment evidence named above; unmerged work is not labeled resolved.*
 
 ## Suggested fix order (for direction, not yet applied)
 
-1. **P0 runtime/CI:** NFR-043, then NFR-044 — restore built-server startup and the project-level test gate after JD-001.
+1. **P0 runtime/CI:** ~~NFR-043~~ ✅, then NFR-044 — restore built-server startup and the project-level test gate after JD-001.
 2. **P0 owner setup:** NFR-035 — repair Vercel Git-provider installation/identity access and verify automatic deployment from reviewed commits.
 3. **P0 data integrity:** NFR-034 + NFR-020 — replace JSON persistence with a durable transactional store before production applicant data entry.
 4. **P0 security:** NFR-008 — replace forgeable bearer identities before enabling applicant-photo read or mutation traffic.
@@ -373,6 +393,6 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 6. **P1:** NFR-003 — unblock registration/login/onboarding.
 7. **P1:** NFR-007, NFR-005, NFR-006 — restore hires listing and import features.
 8. **P1 security:** NFR-009 – NFR-013 and NFR-046 before real employer/applicant data (NFR-011 has partial safeguards only on the unmerged NFR-FEAT-001 branch).
-9. **P2:** NFR-014 – NFR-019, NFR-045, and remaining specification gaps.
+9. **P2 governance/logic:** NFR-047, then NFR-014 – NFR-019, NFR-045, and remaining specification gaps.
 
-Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, NFR-033, NFR-036, NFR-037, NFR-042.
+Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, NFR-033, NFR-036, NFR-037, NFR-042, NFR-043.

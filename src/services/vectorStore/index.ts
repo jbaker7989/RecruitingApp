@@ -4,8 +4,8 @@
  */
 
 import { Embeddings } from '@langchain/core/embeddings';
-import { getEmbeddingsClient } from '../llm/index';
-import { readStore } from '../../models/store';
+import { getEmbeddingsClient } from '../llm/index.js';
+import { readStore } from '../../models/store.js';
 
 // Simple in-memory vector store for development
 // In production, replace with ChromaDB or Pinecone

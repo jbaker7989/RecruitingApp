@@ -96,6 +96,12 @@ The test-first requirement ensures:
   - *Regression* — encode the bug's `BUGS.md` "Evidence" section as assertions
   - *Feature* — validate implementation against acceptance criteria (written before implementation)
 
+### Lint Standards
+- **Required gate:** every branch must pass `npm run lint` before build/test/smoke and before merge.
+- **Scope:** lint covers `src/**/*.ts` and `tests/**/*.test.ts`.
+- **Initial enforcement:** existing pre-lint cleanup debt is tracked separately (NFR-027), so warnings may be tolerated only when documented; lint errors must be fixed or explicitly converted to warnings with a linked debt issue.
+- **No bypass:** do not use `--no-verify`, CI overrides, or local-only exclusions to bypass lint failures.
+
 ### Commit Standards
 - Messages: `type(NFR-ID): summary`
   - `test(NFR-004): add failing regression for missing hires array`
@@ -112,9 +118,10 @@ Every push and PR to `main` runs the pipeline (GitHub Actions, `.github/workflow
 | 0. Test-First | Tests written and confirmed failing BEFORE development | Enforces TDD practice; no implementation without failing tests |
 | 1. Install | `npm ci` | Deterministic dependency install |
 | 2. Typecheck | `npm run typecheck` | `tsc --noEmit` must be clean |
-| 3. Build | `npm run build` | `tsc` emits without error |
-| 4. Test | `npm test` | Full suite green (unit + integration + regression) |
-| 5. Smoke | boot server, `curl /health` expects 200 | Proves the built artifact actually starts (guards `NFR-001`/`NFR-002` class regressions) |
+| 3. Lint | `npm run lint` | ESLint must check source and test TypeScript before build/test |
+| 4. Build | `npm run build` | `tsc` emits without error |
+| 5. Test | `npm test` | Full suite green (unit + integration + regression) |
+| 6. Smoke | boot server, `curl /health` expects 200 | Proves the built artifact actually starts (guards `NFR-001`/`NFR-002` class regressions) |
 
 - **CD:** merges to `main` produce a verified, runnable `dist/` artifact; deployment stories are out of scope until the pipeline bootstrap is complete
 - Pipeline status is reported on the PR; a red pipeline is never overridden by hand
@@ -124,7 +131,7 @@ A work item is done only when **all** are true:
 1. **TWO OR MORE tests written BEFORE development started**, include the work item ID in filename, and were observed failing before the fix (Red phase documented)
 2. Fix completed within the 3-iteration loop cap (or formally escalated)
 3. Fix documented: root cause + changes + test evidence in `BUGS.md` annotation, commit/PR body, **and** `resolutions/RESOLUTON-OF-ISSUE-{issue ID}.docx`
-4. Full pipeline green on the branch (all 5 gates)
+4. Full pipeline green on the branch (install, typecheck, lint, build, test, smoke)
 5. Merge commit notes the bug/feature ID; `git status` clean; no stray files (`agent-home/`, temp data, `.env`) in the diff
 6. Post-merge regression review performed; any new bugs filed in `BUGS.md` with ID, severity, and priority
 

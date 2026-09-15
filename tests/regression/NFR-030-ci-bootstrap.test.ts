@@ -1,6 +1,6 @@
 /**
  * NFR-030 regression tests: the repository must have an executable test
- * command and a CI gate that runs install, typecheck, build, test, and smoke.
+ * command and a CI gate that runs install, typecheck, lint, build, test, and smoke.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,7 +20,7 @@ test('NFR-030: npm test runs the complete TypeScript test file pattern', () => {
   assert.equal(script, 'tsx --test "tests/**/*.test.ts"');
 });
 
-test('NFR-030: GitHub Actions uses the mandated install → typecheck → build → test → smoke order', () => {
+test('NFR-030: GitHub Actions uses the mandated install → typecheck → lint → build → test → smoke order', () => {
   const yaml = workflow();
   assert.match(yaml, /pull_request:/);
   assert.match(yaml, /push:/);
@@ -29,6 +29,7 @@ test('NFR-030: GitHub Actions uses the mandated install → typecheck → build 
   assert.deepEqual(commands, [
     'npm ci',
     'npm run typecheck',
+    'npm run lint',
     'npm run build',
     'npm test',
     'npm run smoke',

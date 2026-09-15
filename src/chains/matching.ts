@@ -12,7 +12,7 @@ import {
   findSimilarApplicantsForJob,
 } from '../services/vectorStore/index.js';
 import { readStore, writeStore, addObservabilityEntry, generateId, now } from '../models/store.js';
-import type { Applicant, JobPosting, Application } from '../models/store';
+import type { Applicant, JobPosting, Application } from '../models/store.js';
 
 export interface MatchingResult {
   applicationId: string;
