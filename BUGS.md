@@ -23,7 +23,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-033 | 33 | 🔴 | ✅ Vercel deployment fails — Node type definitions unavailable during build — **RESOLVED** (PR #1) |
 | NFR-034 | 34 | 🔴 | Vercel serverless runtime cannot safely persist the JSON data store |
 | NFR-035 | 35 | 🔴 | Git/Vercel release pipeline is disconnected and deployments are not reproducible |
-| NFR-043 | 43 | 🔴 | Agent workflow routes emit extensionless ESM imports and crash the built server |
+| NFR-043 | 43 | 🔴 | ✅ Agent workflow routes emit extensionless ESM imports and crash the built server — **RESOLVED** (chore/NFR-043-esm-imports-fix) |
 | NFR-008 | 8 | 🟠 | Trivially forgeable auth tokens |
 | NFR-009 | 9 | 🟠 | Passwords stored as reversible plaintext stub |
 | NFR-010 | 10 | 🟠 | Privilege escalation via self-selected role |
@@ -168,6 +168,12 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Impact:** Built production artifact cannot start when `src/index.ts` imports `/api/agents`; all production routes are unavailable despite a clean TypeScript build.
 - **Required fix/tests:** Convert runtime relative imports in agent workflow files to Node-resolvable `.js` specifiers (and use `import type` where appropriate), add at least two failing tests first that import the compiled agent routes/vector store and boot the built server, then verify `npm test` and `npm run smoke` green.
 - **Status:** OPEN — blocks runtime startup and CI smoke until fixed.
+
+> **✅ RESOLUTION — 2026-09-15, branch `chore/NFR-043-esm-imports-fix`, commit `28d91ad`**
+> - **Fix:** added `.js` to all runtime-relative imports in `src/routes/agents/index.ts` (6 imports), `src/services/vectorStore/index.ts` (2 imports), `src/agents/scheduling/agent.ts` (2 imports), and `src/chains/matching.ts` (1 type-only import). No logic changes — pure import-path corrections.
+> - **Files changed:** `src/routes/agents/index.ts`, `src/services/vectorStore/index.ts`, `src/agents/scheduling/agent.ts`, `src/chains/matching.ts`.
+> - **Red → Green:** 4 tests failed (3 NFR-001 regressions + 1 NFR-030 smoke); after fix: all 3 NFR-001 regressions pass ✅, NFR-030 smoke passes ✅, remaining full-suite failures drop from 4 to 1 (NFR-044 Vitest only) ✅.
+> - **Verification:** `npm run build` ✅ · `npm run typecheck` ✅ · `npm test` 22/23 ✅ · `node dist/index.js` boots without `ERR_MODULE_NOT_FOUND` ✅.
 
 ---
 
@@ -372,13 +378,14 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | Production mutation persistence | 🔴 unsafe until NFR-034 is resolved |
 | Original live smoke (company → job → applicant → apply → accept → hires) | 🔴 bugs 3–7, 10, 11, 14, 16, 17 confirmed at runtime |
 | Current main review after JD-001 | 🔴 `npm test` fails: NFR-043 built ESM imports and NFR-044 Vitest runner mismatch confirmed 2026-09-15 |
+| NFR-043 fix applied | ✅ Full suite: 22/23 pass, only NFR-044 (Vitest) remains red 2026-09-15 |
 | INFRA-003 lint governance Red phase | 🔴 0/2 pass: missing `scripts.lint` and missing CI `npm run lint` step confirmed 2026-09-15 |
 
 *Test/runtime data used during verification was isolated or restored. Resolution status is based on checked-in branch state plus the deployment evidence named above; unmerged work is not labeled resolved.*
 
 ## Suggested fix order (for direction, not yet applied)
 
-1. **P0 runtime/CI:** NFR-043, then NFR-044 — restore built-server startup and the project-level test gate after JD-001.
+1. **P0 runtime/CI:** ~~NFR-043~~ ✅, then NFR-044 — restore built-server startup and the project-level test gate after JD-001.
 2. **P0 owner setup:** NFR-035 — repair Vercel Git-provider installation/identity access and verify automatic deployment from reviewed commits.
 3. **P0 data integrity:** NFR-034 + NFR-020 — replace JSON persistence with a durable transactional store before production applicant data entry.
 4. **P0 security:** NFR-008 — replace forgeable bearer identities before enabling applicant-photo read or mutation traffic.
@@ -388,4 +395,4 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 8. **P1 security:** NFR-009 – NFR-013 and NFR-046 before real employer/applicant data (NFR-011 has partial safeguards only on the unmerged NFR-FEAT-001 branch).
 9. **P2 governance/logic:** NFR-047, then NFR-014 – NFR-019, NFR-045, and remaining specification gaps.
 
-Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, NFR-033, NFR-036, NFR-037, NFR-042.
+Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, NFR-033, NFR-036, NFR-037, NFR-042, NFR-043.

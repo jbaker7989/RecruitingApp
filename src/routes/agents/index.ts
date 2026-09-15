@@ -4,24 +4,24 @@
  */
 
 import { Router } from 'express';
-import { requireRole } from '../../middleware/auth';
-import { readStore, writeStore, generateId, now, addObservabilityEntry } from '../../models/store';
-import { parseResumeFromBuffer, parseResume } from '../../chains/resumeParsing';
+import { requireRole } from '../../middleware/auth.js';
+import { readStore, generateId, now, addObservabilityEntry } from '../../models/store.js';
+import { parseResumeFromBuffer, parseResume } from '../../chains/resumeParsing.js';
 import {
   calculateMatchScore,
   getJobSuggestionsForApplicant,
   getSimilarCandidatesForJob,
   rescoreApplicationsForJob,
   rebuildSemanticIndex,
-} from '../../chains/matching';
+} from '../../chains/matching.js';
 import {
   startInterviewScheduling,
   requestReschedule,
   cancelInterview,
   completeInterview,
   InterviewSchedulingState,
-} from '../../agents/scheduling/agent';
-import jdGeneratorRouter from './jdGenerator';
+} from '../../agents/scheduling/agent.js';
+import jdGeneratorRouter from './jdGenerator.js';
 
 const router = Router();
 

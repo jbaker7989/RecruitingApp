@@ -3,8 +3,8 @@
  * State machine for managing interview scheduling workflow
  */
 
-import { addObservabilityEntry, generateId, now, readStore, writeStore } from '../../models/store';
-import type { Application } from '../../models/store';
+import { addObservabilityEntry, generateId, now, readStore, writeStore } from '../../models/store.js';
+import type { Application } from '../../models/store.js';
 
 // State definition
 export interface InterviewSchedulingState {
