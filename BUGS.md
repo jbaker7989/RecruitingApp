@@ -7,7 +7,7 @@
 
 Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 
-**Tracking IDs:** Every bug carries a unique alphanumeric ID in the format `NFR-0XX` (**N**ew **F**ronteir **R**ecruiting), assigned sequentially 001–046 in report/discovery order. Use these IDs in commits, branches, and status discussions.
+**Tracking IDs:** Every bug carries a unique alphanumeric ID in the format `NFR-0XX` (**N**ew **F**ronteir **R**ecruiting), assigned sequentially 001–047 in report/discovery order. Use these IDs in commits, branches, and status discussions.
 
 ## Tracking Index
 
@@ -47,6 +47,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-023 | 23 | 🟡 | MCP route inconsistencies |
 | NFR-041 | 41 | 🟡 | Uploads above the raw-parser limit return 500 instead of 413 |
 | NFR-045 | 45 | 🟡 | JD draft update can mark drafts published without creating a job posting |
+| NFR-047 | 47 | 🟡 | No linting gate is enforced in package scripts or CI |
 | NFR-024 | 24 | 🔵 | Spec mismatch — data files |
 | NFR-025 | 25 | 🔵 | Dead `observability` array in store |
 | NFR-026 | 26 | 🔵 | Empty/duplicate directories |
@@ -300,6 +301,16 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Required fix/tests:** Remove `published` from generic update status changes or route it through publish semantics. Add tests for update-to-archived/draft behavior, attempted update-to-published rejection, and successful publish creating exactly one job with `publishedAt` set.
 - **Status:** OPEN — JD-001 workflow integrity issue.
 
+### 47. [NFR-047] No linting gate is enforced in package scripts or CI
+- **Priority:** P2 development-governance and code-quality gap.
+- **Linked story:** Linear `INFRA-003` / `REC-60`.
+- **Where:** `package.json` has no `lint` or `lint:fix` script, there is no ESLint configuration, and `.github/workflows/ci.yml` runs install → typecheck → build → test → smoke without a lint step.
+- **Symptom:** Coding-style, unused-code, unsafe-type, and import-hygiene issues can be committed without automated enforcement. The current review already found agentic-workflow import hygiene issues (NFR-043) and undeclared test-runner dependency drift (NFR-044), both of which a stronger lint/governance gate can help prevent earlier.
+- **Evidence:** Confirmed 2026-09-15 by inspecting `package.json` and `.github/workflows/ci.yml`. The mandated Red phase for INFRA-003 is represented by `tests/regression/INFRA-003-NFR-047-lint-governance.test.ts`. Running `npx tsx --test tests/regression/INFRA-003-NFR-047-lint-governance.test.ts` produced 0/2 passing tests: (1) `package.json must define scripts.lint`; (2) `CI must run npm run lint`.
+- **Impact:** Development practice depends on manual review instead of a repeatable gate; quality regressions can reach `main` before build/test/runtime failures reveal them.
+- **Required fix/tests:** Add ESLint tooling/configuration, `npm run lint` and optionally `npm run lint:fix`, document the lint gate in README and `dev-testing-management/SKILL.md`, and wire CI to run lint after typecheck and before build/test. Per TDD policy, keep at least two failing governance tests from INFRA-003 before implementation.
+- **Status:** OPEN — INFRA-003 enhancement story created in Linear as REC-60.
+
 ---
 
 ## 🔵 Low — Hygiene / spec gaps
@@ -360,6 +371,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | Production mutation persistence | 🔴 unsafe until NFR-034 is resolved |
 | Original live smoke (company → job → applicant → apply → accept → hires) | 🔴 bugs 3–7, 10, 11, 14, 16, 17 confirmed at runtime |
 | Current main review after JD-001 | 🔴 `npm test` fails: NFR-043 built ESM imports and NFR-044 Vitest runner mismatch confirmed 2026-09-15 |
+| INFRA-003 lint governance Red phase | 🔴 0/2 pass: missing `scripts.lint` and missing CI `npm run lint` step confirmed 2026-09-15 |
 
 *Test/runtime data used during verification was isolated or restored. Resolution status is based on checked-in branch state plus the deployment evidence named above; unmerged work is not labeled resolved.*
 
@@ -373,6 +385,6 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 6. **P1:** NFR-003 — unblock registration/login/onboarding.
 7. **P1:** NFR-007, NFR-005, NFR-006 — restore hires listing and import features.
 8. **P1 security:** NFR-009 – NFR-013 and NFR-046 before real employer/applicant data (NFR-011 has partial safeguards only on the unmerged NFR-FEAT-001 branch).
-9. **P2:** NFR-014 – NFR-019, NFR-045, and remaining specification gaps.
+9. **P2 governance/logic:** NFR-047, then NFR-014 – NFR-019, NFR-045, and remaining specification gaps.
 
 Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, NFR-033, NFR-036, NFR-037, NFR-042.
