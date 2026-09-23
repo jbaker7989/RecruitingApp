@@ -68,7 +68,8 @@ export interface Applicant {
   id: string;
   firstName: string;
   lastName: string;
-  email: string;
+  email: string | null;
+  passwordHash: string | null;
   phone: string;
   preferredContactMethod: 'email' | 'sms';
   address: { state: string; zip: string };
@@ -118,6 +119,7 @@ export interface User {
   passwordHash: string;
   role: 'member-services' | 'recruiter' | 'hiring-manager' | 'applicant';
   email: string;
+  companyId?: string;
   createdAt: string;
   oauthProvider: string | null;
 }
@@ -176,6 +178,16 @@ export interface JobDraft {
   publishedAt?: string;
 }
 
+export interface PasswordResetToken {
+  id: string;
+  applicantId: string;
+  email: string;
+  token: string;
+  expiresAt: string; // ISO 8601 — tokens older than this are invalid
+  usedAt: string | null; // ISO 8601 — non-null means consumed (single-use)
+  createdAt: string;
+}
+
 export interface DataStore {
   companies: Company[];
   jobs: JobPosting[];
@@ -185,6 +197,7 @@ export interface DataStore {
   hires: HireRecord[];
   observability: ObservabilityLog[];
   drafts: JobDraft[];
+  passwordResetTokens: PasswordResetToken[];
 }
 
 async function ensureDataDir() {
@@ -205,6 +218,7 @@ export function emptyStore(): DataStore {
     hires: [],
     observability: [],
     drafts: [],
+    passwordResetTokens: [],
   };
 }
 

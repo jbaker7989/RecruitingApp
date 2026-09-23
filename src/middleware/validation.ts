@@ -7,19 +7,41 @@ export function validateEmail(email: string): boolean {
   return regex.test(email);
 }
 
-export function validateApplicationBody(body: any): { valid: boolean; errors: string[] } {
+// Validate applicant profile fields only (used by POST /api/applicants — no applicantId/jobPostingId)
+export function validateApplicantProfile(body: any): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
-
   if (!body.firstName?.trim()) errors.push('firstName is required');
   if (!body.lastName?.trim()) errors.push('lastName is required');
   if (!body.email?.trim()) errors.push('email is required');
-  if (!validateEmail(body.email)) errors.push('Invalid email format');
+  if (body.email && !validateEmail(body.email)) errors.push('Invalid email format');
   if (!body.phone?.trim()) errors.push('phone is required');
   if (!body.address?.state) errors.push('address.state is required');
   if (!body.address?.zip) errors.push('address.zip is required');
   if (!body.educationHistory?.length) errors.push('educationHistory is required');
   if (!body.employmentHistory?.length) errors.push('employmentHistory is required');
   if (body.rightToWork !== true) errors.push('rightToWork must be true');
+  return { valid: errors.length === 0, errors };
+}
+
+// Validate application submission (applicantId + jobPostingId, optionally with inline profile)
+export function validateApplicationBody(body: any, requireProfile = false): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  if (!body.applicantId) errors.push('applicantId is required');
+  if (!body.jobPostingId) errors.push('jobPostingId is required');
+
+  if (requireProfile) {
+    if (!body.firstName?.trim()) errors.push('firstName is required');
+    if (!body.lastName?.trim()) errors.push('lastName is required');
+    if (!body.email?.trim()) errors.push('email is required');
+    if (body.email && !validateEmail(body.email)) errors.push('Invalid email format');
+    if (!body.phone?.trim()) errors.push('phone is required');
+    if (!body.address?.state) errors.push('address.state is required');
+    if (!body.address?.zip) errors.push('address.zip is required');
+    if (!body.educationHistory?.length) errors.push('educationHistory is required');
+    if (!body.employmentHistory?.length) errors.push('employmentHistory is required');
+    if (body.rightToWork !== true) errors.push('rightToWork must be true');
+  }
 
   return { valid: errors.length === 0, errors };
 }

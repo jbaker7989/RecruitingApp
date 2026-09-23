@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
+import { verifyAnyToken } from '../services/tokenService.js';
 import { readStore } from '../models/store.js';
-import { generateId, now, addObservabilityEntry } from '../models/store.js';
+import { checkRevocation } from '../services/revocationService.js';
 
 export interface AuthRequest extends Request {
   user?: { id: string; username: string; role: string };
@@ -19,35 +20,67 @@ export function requireRole(allowedRoles: string[]) {
   };
 }
 
-// Simple auth middleware (for now, reads from header or query)
+// Authenticate any token — JWT or legacy opaque.
+// Public paths skip authentication entirely.
 export async function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
   const token = req.headers['authorization']?.split(' ')[1] || req.query.token as string;
-  
+
   if (!token) {
-    // Allow unauthenticated access for health/root
-    if (req.path === '/health' || req.path === '/') {
+    // Public paths that don't require authentication.
+    // Specific public auth routes listed to avoid a separate router/middleware for just these.
+    const publicPaths = [
+      '/health', '/',
+      '/api/auth/login', '/api/auth/register',
+      '/api/applicants/register', '/api/applicants/login',
+    ];
+    if (publicPaths.includes(req.path)) {
       return next();
     }
     return res.status(401).json({ error: 'No authentication token provided' });
   }
 
   try {
-    const store = await readStore();
-    const user = store.users.find(u => u.id === token || u.username === token);
-    
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid token' });
+    const result = await verifyAnyToken(token);
+    let role: string;
+    if (result.type === 'applicant') {
+      role = 'applicant';
+    } else if (result.jwtPayload && 'role' in result.jwtPayload) {
+      role = (result.jwtPayload as { role: string }).role;
+    } else {
+      // Legacy opaque user token — look up the user's actual role from the store
+      const store = await readStore();
+      const user = store.users.find(u => u.id === result.id);
+      role = user?.role ?? 'user';
     }
 
-    req.user = { id: user.id, username: user.username, role: user.role };
+    // Check password-change bulk revocation for JWT tokens
+    if (result.jwtPayload) {
+      const jwtPayload = result.jwtPayload as { jti: string; iat: number };
+      const revokedReason = await checkRevocation(
+        jwtPayload.jti,
+        result.id,
+        'User',
+        jwtPayload.iat,
+      );
+      if (revokedReason) {
+        return res.status(401).json({ error: revokedReason });
+      }
+    }
+
+    req.user = { id: result.id, username: result.id, role };
     next();
-  } catch (error) {
-    res.status(500).json({ error: 'Authentication failed' });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('revoked')) {
+      return res.status(401).json({ error: 'Token has been revoked' });
+    }
+    res.status(401).json({ error: 'Invalid token' });
   }
 }
 
 // Logging middleware
 export async function logAction(req: AuthRequest, action: string, entityType: string, entityId: string, details: object) {
+  const { generateId, now, addObservabilityEntry } = await import('../models/store.js');
   const userId = req.user?.id || 'anonymous';
   await addObservabilityEntry({
     id: generateId(),
