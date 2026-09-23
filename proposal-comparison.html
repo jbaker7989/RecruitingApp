@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frontend Proposal Comparison</title>
+<style>
+    * { box-sizing: border-box; }
+    body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: #f7f8fa;
+        color: #222;
+        line-height: 1.5;
+    }
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 40px 24px 80px;
+    }
+    header.page-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+    header.page-header h1 {
+        font-size: 2.2em;
+        margin-bottom: 8px;
+    }
+    header.page-header p {
+        color: #666;
+        font-size: 1.05em;
+    }
+    .section-title {
+        font-size: 1.5em;
+        margin: 48px 0 16px;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 8px;
+    }
+    .intro-note {
+        background: #fff;
+        border-radius: 12px;
+        padding: 18px 22px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        color: #555;
+    }
+
+    /* ---- Rendering comparison ---- */
+    .render-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+        align-items: start;
+    }
+    @media (max-width: 900px) {
+        .render-grid { grid-template-columns: 1fr; }
+    }
+    .render-col h3 {
+        margin: 0 0 4px;
+        font-size: 1.2em;
+    }
+    .render-col .render-tagline {
+        color: #666;
+        font-size: 0.92em;
+        margin: 0 0 14px;
+    }
+
+    /* Browser chrome frame */
+    .browser-frame {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        overflow: hidden;
+        border: 1px solid #e3e3e3;
+    }
+    .browser-chrome {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        background: #ececec;
+        border-bottom: 1px solid #ddd;
+    }
+    .browser-chrome .dot {
+        width: 10px; height: 10px; border-radius: 50%;
+    }
+    .browser-chrome .dot.red { background: #ff5f57; }
+    .browser-chrome .dot.yellow { background: #ffbd2e; }
+    .browser-chrome .dot.green { background: #28c840; }
+    .browser-chrome .url-bar {
+        flex: 1;
+        background: #fff;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 0.75em;
+        color: #888;
+        border: 1px solid #ddd;
+    }
+
+    /* ===== Example 1: Warm Welcome Dashboard ===== */
+    .mock1 { background: #F8F9FA; font-family: inherit; }
+    .mock1 .nav {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 20px; background: #fff; border-bottom: 1px solid #eee;
+    }
+    .mock1 .nav .brand { font-weight: 700; color: #333; font-size: 0.95em; }
+    .mock1 .nav .links { display: flex; gap: 16px; font-size: 0.78em; color: #666; }
+    .mock1 .nav .links span.active { color: #4CAF50; font-weight: 600; }
+    .mock1 .nav .avatar { width: 26px; height: 26px; border-radius: 50%; background: #E8F0FE; }
+    .mock1 .content { padding: 20px; }
+    .mock1 .page-title { font-size: 1.1em; font-weight: 700; color: #222; margin: 0 0 2px; }
+    .mock1 .page-sub { font-size: 0.8em; color: #888; margin: 0 0 16px; }
+    .mock1 .app-card {
+        display: flex; align-items: center; gap: 12px;
+        background: #fff; border-radius: 12px; padding: 14px 16px; margin-bottom: 10px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+    .mock1 .app-card .logo {
+        width: 38px; height: 38px; border-radius: 10px; background: #E8F0FE;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; color: #4A76D4; font-size: 0.85em;
+    }
+    .mock1 .app-card .info { flex: 1; }
+    .mock1 .app-card .job { font-size: 0.85em; font-weight: 600; color: #222; }
+    .mock1 .app-card .meta { font-size: 0.72em; color: #999; margin-top: 2px; }
+    .mock1 .badge {
+        font-size: 0.68em; font-weight: 600; padding: 4px 10px; border-radius: 20px;
+    }
+    .mock1 .badge.pending { background: #E8F0FE; color: #4A76D4; }
+    .mock1 .badge.interview { background: #E4F7E9; color: #2E9E4B; }
+    .mock1 .badge.review { background: #FFF3E0; color: #E08A2A; }
+    .mock1 .timeline {
+        display: flex; align-items: center; gap: 4px; margin-top: 10px;
+    }
+    .mock1 .timeline .seg {
+        height: 4px; flex: 1; border-radius: 2px; background: #eee;
+    }
+    .mock1 .timeline .seg.done { background: #4CAF50; }
+    .mock1 .cta {
+        margin-top: 14px; display: inline-block; background: #FF6B6B; color: #fff;
+        font-size: 0.78em; font-weight: 600; padding: 8px 16px; border-radius: 8px;
+    }
+
+    /* ===== Example 2: Community-Driven Explorer ===== */
+    .mock2 { background: #FFF8F0; font-family: inherit; }
+    .mock2 .nav {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 14px 20px; background: linear-gradient(90deg,#FF7E5F,#FEB47B);
+    }
+    .mock2 .nav .brand { font-weight: 800; color: #fff; font-size: 0.95em; }
+    .mock2 .nav .links { display: flex; gap: 16px; font-size: 0.78em; color: #fff; opacity: 0.9; }
+    .mock2 .nav .links span.active { text-decoration: underline; font-weight: 700; opacity: 1; }
+    .mock2 .nav .avatar { width: 26px; height: 26px; border-radius: 50%; background: #fff; }
+    .mock2 .content { padding: 20px; }
+    .mock2 .page-title { font-size: 1.1em; font-weight: 800; color: #333; margin: 0 0 2px; }
+    .mock2 .page-sub { font-size: 0.8em; color: #a06840; margin: 0 0 16px; }
+    .mock2 .skill-row {
+        display: flex; gap: 10px; margin-bottom: 16px;
+    }
+    .mock2 .skill-node {
+        flex: 1; text-align: center; background: #fff; border-radius: 14px; padding: 10px 4px;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.06);
+    }
+    .mock2 .skill-node .icon {
+        width: 30px; height: 30px; border-radius: 50%; margin: 0 auto 6px;
+        display: flex; align-items: center; justify-content: center; font-size: 0.9em;
+        background: linear-gradient(135deg,#FFB88C,#DE6262); color: #fff;
+    }
+    .mock2 .skill-node.locked .icon { background: #eee; color: #bbb; }
+    .mock2 .skill-node .label { font-size: 0.62em; color: #666; font-weight: 600; }
+    .mock2 .post-card {
+        background: #fff; border-radius: 14px; padding: 14px 16px; margin-bottom: 10px;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.06);
+    }
+    .mock2 .post-card .post-head {
+        display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+    }
+    .mock2 .post-card .post-avatar {
+        width: 28px; height: 28px; border-radius: 50%;
+        background: linear-gradient(135deg,#FF7E5F,#FEB47B);
+    }
+    .mock2 .post-card .post-name { font-size: 0.78em; font-weight: 700; color: #333; }
+    .mock2 .post-card .post-time { font-size: 0.68em; color: #aaa; }
+    .mock2 .post-card .post-body { font-size: 0.78em; color: #555; margin-bottom: 8px; }
+    .mock2 .post-card .post-actions {
+        display: flex; gap: 14px; font-size: 0.72em; color: #DE6262; font-weight: 600;
+    }
+
+    .render-caption {
+        margin-top: 12px;
+        font-size: 0.82em;
+        color: #666;
+        background: #fff;
+        border-radius: 10px;
+        padding: 12px 14px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    .animation-demo {
+        margin-top: 28px;
+    }
+    .animation-demo h4 {
+        margin-bottom: 12px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    th, td {
+        text-align: left;
+        padding: 12px 16px;
+        border-bottom: 1px solid #eee;
+    }
+    thead th {
+        background: #333;
+        color: #fff;
+    }
+    tbody tr:last-child td {
+        border-bottom: none;
+    }
+    tbody tr:nth-child(even) {
+        background: #fafafa;
+    }
+    .recommendation-box {
+        background: #e9f7ef;
+        border: 1px solid #b7e4c7;
+        border-radius: 12px;
+        padding: 24px 28px;
+        margin-top: 16px;
+    }
+    .recommendation-box h3 {
+        margin-top: 0;
+    }
+    .recommendation-box ul {
+        padding-left: 20px;
+    }
+    .recommendation-box li {
+        margin-bottom: 6px;
+    }
+    footer {
+        margin-top: 60px;
+        text-align: center;
+        color: #888;
+        font-size: 0.9em;
+        border-top: 1px solid #eee;
+        padding-top: 20px;
+    }
+    footer p {
+        margin: 4px 0;
+    }
+</style>
+</head>
+<body>
+    <div class="container">
+        <header class="page-header">
+            <h1>Frontend Proposal Comparison</h1>
+            <p>Comparing two UX prototype directions for the applicant-facing experience</p>
+        </header>
+        <main>
+            <section>
+                <h2 class="section-title">🖼️ Prototype Renderings</h2>
+                <p class="intro-note">Below are representative renderings of each design direction, built to the actual color palette, spacing, and page layout proposed for each — showing the "My Applications" screen for Example 1 and the "Community" feed for Example 2, the pages where the two directions diverge most.</p>
+
+                <div class="render-grid">
+                    <div class="render-col">
+                        <h3>Example 1: Warm Welcome Dashboard</h3>
+                        <p class="render-tagline">Modern, minimal, applicant-centric progress tracking</p>
+                        <div class="browser-frame">
+                            <div class="browser-chrome">
+                                <div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div>
+                                <div class="url-bar">newfrontier.app/applications</div>
+                            </div>
+                            <div class="mock1">
+                                <div class="nav">
+                                    <div class="brand">New Frontier</div>
+                                    <div class="links">
+                                        <span>Jobs</span>
+                                        <span>Profile</span>
+                                        <span class="active">Applications</span>
+                                        <span>Tips</span>
+                                    </div>
+                                    <div class="avatar"></div>
+                                </div>
+                                <div class="content">
+                                    <p class="page-title">My Applications</p>
+                                    <p class="page-sub">Here's where things stand — keep going!</p>
+
+                                    <div class="app-card">
+                                        <div class="logo">AC</div>
+                                        <div class="info">
+                                            <div class="job">Frontend Engineer — Acme Co.</div>
+                                            <div class="meta">Applied Sep 3</div>
+                                            <div class="timeline">
+                                                <div class="seg done"></div><div class="seg done"></div><div class="seg done"></div><div class="seg"></div>
+                                            </div>
+                                        </div>
+                                        <div class="badge interview">Interview</div>
+                                    </div>
+
+                                    <div class="app-card">
+                                        <div class="logo">BL</div>
+                                        <div class="info">
+                                            <div class="job">UX Designer — Bluelight Labs</div>
+                                            <div class="meta">Applied Aug 28</div>
+                                            <div class="timeline">
+                                                <div class="seg done"></div><div class="seg done"></div><div class="seg"></div><div class="seg"></div>
+                                            </div>
+                                        </div>
+                                        <div class="badge review">Reviewed</div>
+                                    </div>
+
+                                    <div class="app-card">
+                                        <div class="logo">NV</div>
+                                        <div class="info">
+                                            <div class="job">Product Manager — Novaworks</div>
+                                            <div class="meta">Applied Sep 10</div>
+                                            <div class="timeline">
+                                                <div class="seg done"></div><div class="seg"></div><div class="seg"></div><div class="seg"></div>
+                                            </div>
+                                        </div>
+                                        <div class="badge pending">Pending</div>
+                                    </div>
+
+                                    <div class="cta">Browse more jobs →</div>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="render-caption"><strong>What a manager sees:</strong> a calm, uncluttered list with a clear status badge and progress timeline per application. Low visual noise, fast to scan.</p>
+                    </div>
+
+                    <div class="render-col">
+                        <h3>Example 2: Community-Driven Explorer</h3>
+                        <p class="render-tagline">Bold, social, gamified peer-driven experience</p>
+                        <div class="browser-frame">
+                            <div class="browser-chrome">
+                                <div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div>
+                                <div class="url-bar">newfrontier.app/community</div>
+                            </div>
+                            <div class="mock2">
+                                <div class="nav">
+                                    <div class="brand">New Frontier</div>
+                                    <div class="links">
+                                        <span>Discover</span>
+                                        <span>Journey</span>
+                                        <span class="active">Community</span>
+                                        <span>Skills</span>
+                                    </div>
+                                    <div class="avatar"></div>
+                                </div>
+                                <div class="content">
+                                    <p class="page-title">Community Feed</p>
+                                    <p class="page-sub">See what other applicants are up to</p>
+
+                                    <div class="skill-row">
+                                        <div class="skill-node">
+                                            <div class="icon">✓</div>
+                                            <div class="label">Resume</div>
+                                        </div>
+                                        <div class="skill-node">
+                                            <div class="icon">✓</div>
+                                            <div class="label">Interview</div>
+                                        </div>
+                                        <div class="skill-node locked">
+                                            <div class="icon">🔒</div>
+                                            <div class="label">Networking</div>
+                                        </div>
+                                        <div class="skill-node locked">
+                                            <div class="icon">🔒</div>
+                                            <div class="label">Portfolio</div>
+                                        </div>
+                                    </div>
+
+                                    <div class="post-card">
+                                        <div class="post-head">
+                                            <div class="post-avatar"></div>
+                                            <div>
+                                                <div class="post-name">Jordan M.</div>
+                                                <div class="post-time">2h ago</div>
+                                            </div>
+                                        </div>
+                                        <div class="post-body">Just unlocked the "Interview Ready" badge 🎉 The mock interview module really helped!</div>
+                                        <div class="post-actions"><span>❤ 14</span><span>💬 5</span></div>
+                                    </div>
+
+                                    <div class="post-card">
+                                        <div class="post-head">
+                                            <div class="post-avatar"></div>
+                                            <div>
+                                                <div class="post-name">Priya S.</div>
+                                                <div class="post-time">5h ago</div>
+                                            </div>
+                                        </div>
+                                        <div class="post-body">Anyone else applying to design roles this week? Let's swap tips!</div>
+                                        <div class="post-actions"><span>❤ 8</span><span>💬 12</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="render-caption"><strong>What a manager sees:</strong> a richer, feed-driven layout with skill badges and peer posts. Higher visual energy, but more surface area to build and moderate.</p>
+                    </div>
+                </div>
+
+                <div class="animation-demo">
+                    <h4>🎬 Live Demo Simulation (GIF Example)</h4>
+                    <div style="padding: 30px; background: #fff3cd; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08);">
+                        <p style="font-size: 1.1em; color: #666;">Click to simulate a live demo scenario</p>
+                        <p style="margin-top: 15px;">
+                            <strong>Scenario:</strong> An applicant clicks "Apply to Job" → sees a progress bar fill → receives a congratulatory animation → navigates to "My Applications" with a celebratory pulse.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="section-title">📊 Side-by-Side Feature Matrix</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th>Example 1: Warm Welcome Dashboard</th>
+                            <th>Example 2: Community-Driven Explorer</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Primary Focus</td>
+                            <td>Applicant-centric progress tracking &amp; personalization</td>
+                            <td>Peer connection &amp; community culture</td>
+                        </tr>
+                        <tr>
+                            <td>Key Pages</td>
+                            <td>Profile, Applications, Jobs, Tips</td>
+                            <td>Discover, Journey, Community, Skills</td>
+                        </tr>
+                        <tr>
+                            <td>Visual Style</td>
+                            <td>Modern/minimal, soft pastels, rounded cards</td>
+                            <td>Playful illustrations, bold warm colors, rich visuals</td>
+                        </tr>
+                        <tr>
+                            <td>Interaction Type</td>
+                            <td>Timeline, progress bars, simple CTAs</td>
+                            <td>Feed comments, skill unlocks, gamified trees</td>
+                        </tr>
+                        <tr>
+                            <td>Development Complexity</td>
+                            <td>Lower – straightforward dashboards</td>
+                            <td>Higher – social features, gamification</td>
+                        </tr>
+                        <tr>
+                            <td>Time to Build (est.)</td>
+                            <td>4–6 weeks</td>
+                            <td>6–8 weeks</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h2 class="section-title">🎯 Final Recommendation</h2>
+                <div class="recommendation-box">
+                    <h3>✅ Choose Example 1 (Warm Welcome Dashboard)</h3>
+                    <p>Given your selection of the Warm Welcome Dashboard as the primary direction, this proposal offers the fastest path to a polished, impactful product. It delivers clear value quickly while maintaining the warm, inviting tone you wanted.</p>
+
+                    <ul>
+                        <li><strong>Speed to market:</strong> 4–6 weeks to a functional MVP</li>
+                        <li><strong>Clear UX goals:</strong> Applicant progress, easy job discovery, confident application experience</li>
+                        <li><strong>Team alignment:</strong> Minimal scope – no complex social features or gamification systems</li>
+                        <li><strong>Scalability:</strong> Easy to extend later with community features if needed</li>
+                    </ul>
+
+                    <p><em>Example 2 (Community-Driven Explorer) is a fantastic long-term vision – it adds richness and differentiation but requires significantly more time and resources. Consider it as a Phase 2 enhancement after the core dashboard is stable.</em></p>
+                </div>
+            </section>
+
+            <footer>
+                <p>Frontend Proposal Comparison – Dec 2026</p>
+                <p>Comparing Example 1 (Warm Welcome Dashboard) vs. Example 2 (Community-Driven Explorer)</p>
+                <p>Selected Direction: Example 1 – Warm Welcome Dashboard (core pages, modern/minimal, warm)</p>
+                <p>Full comparison with animated demos available in this document.</p>
+            </footer>
+        </main>
+    </div>
+</body>
+</html>

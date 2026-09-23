@@ -1,3 +1,517 @@
 {
-  "logs": []
+  "logs": [
+    {
+      "id": "081d5b5f-5a05-4102-a39f-f80556333cad",
+      "timestamp": "2026-09-15T05:39:15.948Z",
+      "action": "startup",
+      "entityType": "System",
+      "entityId": "server",
+      "userId": "system",
+      "details": {
+        "message": "Server started",
+        "version": "1.0.0"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "4c026c37-c73d-4d90-9d67-5decabd42223",
+      "timestamp": "2026-09-23T20:21:54.794Z",
+      "action": "startup",
+      "entityType": "System",
+      "entityId": "server",
+      "userId": "system",
+      "details": {
+        "message": "Server started",
+        "version": "1.0.0"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "875cdc25-4e11-4ccd-8903-d3cea080fad8",
+      "timestamp": "2026-09-23T20:26:28.845Z",
+      "action": "register",
+      "entityType": "Applicant",
+      "entityId": "4f9c0faa-5256-4969-9722-9803fda5a0ad",
+      "userId": "4f9c0faa-5256-4969-9722-9803fda5a0ad",
+      "details": {
+        "email": "reset-test@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "32f9af96-ab5c-4e96-b51c-95dd4de02398",
+      "timestamp": "2026-09-23T20:26:28.847Z",
+      "action": "token_issued",
+      "entityType": "Applicant",
+      "entityId": "4f9c0faa-5256-4969-9722-9803fda5a0ad",
+      "userId": "4f9c0faa-5256-4969-9722-9803fda5a0ad",
+      "details": {
+        "email": "reset-test@example.com",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "33b7da53-c175-481a-ae7b-631c2da651f4",
+      "timestamp": "2026-09-23T20:26:28.851Z",
+      "action": "password_reset_requested",
+      "entityType": "Applicant",
+      "entityId": "4f9c0faa-5256-4969-9722-9803fda5a0ad",
+      "userId": "4f9c0faa-5256-4969-9722-9803fda5a0ad",
+      "details": {
+        "email": "reset-test@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "392d59c8-2b74-408d-91e4-77529bb12553",
+      "timestamp": "2026-09-23T20:26:28.855Z",
+      "action": "register",
+      "entityType": "Applicant",
+      "entityId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "userId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "details": {
+        "email": "reset-valid@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "0864850d-6f1c-4ade-93db-9adcaa891178",
+      "timestamp": "2026-09-23T20:26:28.855Z",
+      "action": "token_issued",
+      "entityType": "Applicant",
+      "entityId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "userId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "details": {
+        "email": "reset-valid@example.com",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "9bceacc0-1fff-4fe7-aade-052b7176bf2a",
+      "timestamp": "2026-09-23T20:26:28.859Z",
+      "action": "password_reset_requested",
+      "entityType": "Applicant",
+      "entityId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "userId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "details": {
+        "email": "reset-valid@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "a3c9817e-a95a-4701-91cf-8bd9ff6e6a89",
+      "timestamp": "2026-09-23T20:26:28.862Z",
+      "action": "token_revoked",
+      "entityType": "Applicant",
+      "entityId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "userId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "details": {
+        "reason": "password_change",
+        "jti": null
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "3cfd1aea-7771-4c3a-9fbd-793e8463fb8f",
+      "timestamp": "2026-09-23T20:26:28.862Z",
+      "action": "password_reset_completed",
+      "entityType": "Applicant",
+      "entityId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "userId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "details": {},
+      "outcome": "success"
+    },
+    {
+      "id": "d3b8beb1-371e-403e-8334-b68f7fbcfc20",
+      "timestamp": "2026-09-23T20:26:28.866Z",
+      "action": "token_issued",
+      "entityType": "Applicant",
+      "entityId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "userId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "details": {
+        "email": "reset-valid@example.com",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "0039c21d-fd58-4af1-b81a-23d89ec556aa",
+      "timestamp": "2026-09-23T20:26:28.868Z",
+      "action": "register",
+      "entityType": "Applicant",
+      "entityId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "userId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "details": {
+        "email": "reset-expires@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "34334d9d-521a-4fac-963b-8734785c3b39",
+      "timestamp": "2026-09-23T20:26:28.869Z",
+      "action": "token_issued",
+      "entityType": "Applicant",
+      "entityId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "userId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "details": {
+        "email": "reset-expires@example.com",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "37f7740a-8a27-41ac-a100-bcabfc7dfe6e",
+      "timestamp": "2026-09-23T20:26:28.872Z",
+      "action": "password_reset_requested",
+      "entityType": "Applicant",
+      "entityId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "userId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "details": {
+        "email": "reset-expires@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "de80d760-3e1e-4cb2-b16b-3c37e24e7b0f",
+      "timestamp": "2026-09-23T20:26:28.876Z",
+      "action": "token_issued",
+      "entityType": "Applicant",
+      "entityId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "userId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "details": {
+        "email": "reset-expires@example.com",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "a5741bd5-1eac-40cc-b732-e4a6570b28cc",
+      "timestamp": "2026-09-23T20:26:28.878Z",
+      "action": "register",
+      "entityType": "Applicant",
+      "entityId": "91819de3-1aef-4c7a-8360-d8b95a2094a0",
+      "userId": "91819de3-1aef-4c7a-8360-d8b95a2094a0",
+      "details": {
+        "email": "reset-single@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "85b5183a-b3b2-4179-90b2-886413d2b09d",
+      "timestamp": "2026-09-23T20:26:28.879Z",
+      "action": "token_issued",
+      "entityType": "Applicant",
+      "entityId": "91819de3-1aef-4c7a-8360-d8b95a2094a0",
+      "userId": "91819de3-1aef-4c7a-8360-d8b95a2094a0",
+      "details": {
+        "email": "reset-single@example.com",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "57fa7f45-bbfc-40a5-bc69-8700800b36ff",
+      "timestamp": "2026-09-23T20:26:28.881Z",
+      "action": "password_reset_requested",
+      "entityType": "Applicant",
+      "entityId": "91819de3-1aef-4c7a-8360-d8b95a2094a0",
+      "userId": "91819de3-1aef-4c7a-8360-d8b95a2094a0",
+      "details": {
+        "email": "reset-single@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "0d459a35-79eb-475e-ae2e-140db1388413",
+      "timestamp": "2026-09-23T20:26:28.883Z",
+      "action": "token_revoked",
+      "entityType": "Applicant",
+      "entityId": "91819de3-1aef-4c7a-8360-d8b95a2094a0",
+      "userId": "91819de3-1aef-4c7a-8360-d8b95a2094a0",
+      "details": {
+        "reason": "password_change",
+        "jti": null
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "46685c34-bfe0-425d-97aa-94830ef3ee53",
+      "timestamp": "2026-09-23T20:26:28.884Z",
+      "action": "password_reset_completed",
+      "entityType": "Applicant",
+      "entityId": "91819de3-1aef-4c7a-8360-d8b95a2094a0",
+      "userId": "91819de3-1aef-4c7a-8360-d8b95a2094a0",
+      "details": {},
+      "outcome": "success"
+    },
+    {
+      "id": "31d36491-787a-4ba6-ad2a-069554cf3a4e",
+      "timestamp": "2026-09-23T20:26:28.887Z",
+      "action": "register",
+      "entityType": "Applicant",
+      "entityId": "3bb04b18-d330-4da6-9cee-ecd6e310daa3",
+      "userId": "3bb04b18-d330-4da6-9cee-ecd6e310daa3",
+      "details": {
+        "email": "reset-short@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "dcc38fb4-009c-4972-b758-13e145b3a4e6",
+      "timestamp": "2026-09-23T20:26:28.887Z",
+      "action": "token_issued",
+      "entityType": "Applicant",
+      "entityId": "3bb04b18-d330-4da6-9cee-ecd6e310daa3",
+      "userId": "3bb04b18-d330-4da6-9cee-ecd6e310daa3",
+      "details": {
+        "email": "reset-short@example.com",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "ea8d65d5-9971-4fc7-8de7-f976d1be72db",
+      "timestamp": "2026-09-23T20:26:28.889Z",
+      "action": "password_reset_requested",
+      "entityType": "Applicant",
+      "entityId": "3bb04b18-d330-4da6-9cee-ecd6e310daa3",
+      "userId": "3bb04b18-d330-4da6-9cee-ecd6e310daa3",
+      "details": {
+        "email": "reset-short@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "9336f56d-fcf7-47a4-9c79-0bf0f806ecd2",
+      "timestamp": "2026-09-23T20:26:28.895Z",
+      "action": "register",
+      "entityType": "Applicant",
+      "entityId": "b7e46dcf-67e7-47a9-bf18-2a2346296f5a",
+      "userId": "b7e46dcf-67e7-47a9-bf18-2a2346296f5a",
+      "details": {
+        "email": "reset-obs@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "03e287c7-afa2-46a2-9e4d-3eeb515a981f",
+      "timestamp": "2026-09-23T20:26:28.895Z",
+      "action": "token_issued",
+      "entityType": "Applicant",
+      "entityId": "b7e46dcf-67e7-47a9-bf18-2a2346296f5a",
+      "userId": "b7e46dcf-67e7-47a9-bf18-2a2346296f5a",
+      "details": {
+        "email": "reset-obs@example.com",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "ce600d19-265b-4850-b6da-cd10ec2cb8a5",
+      "timestamp": "2026-09-23T20:26:28.897Z",
+      "action": "password_reset_requested",
+      "entityType": "Applicant",
+      "entityId": "b7e46dcf-67e7-47a9-bf18-2a2346296f5a",
+      "userId": "b7e46dcf-67e7-47a9-bf18-2a2346296f5a",
+      "details": {
+        "email": "reset-obs@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "80c28e7f-bf86-4277-b1ae-093a7f503dfa",
+      "timestamp": "2026-09-23T20:26:28.900Z",
+      "action": "token_revoked",
+      "entityType": "Applicant",
+      "entityId": "b7e46dcf-67e7-47a9-bf18-2a2346296f5a",
+      "userId": "b7e46dcf-67e7-47a9-bf18-2a2346296f5a",
+      "details": {
+        "reason": "password_change",
+        "jti": null
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "17594df9-5de5-4522-9771-9b73880a180a",
+      "timestamp": "2026-09-23T20:26:28.900Z",
+      "action": "password_reset_completed",
+      "entityType": "Applicant",
+      "entityId": "b7e46dcf-67e7-47a9-bf18-2a2346296f5a",
+      "userId": "b7e46dcf-67e7-47a9-bf18-2a2346296f5a",
+      "details": {},
+      "outcome": "success"
+    },
+    {
+      "id": "ec8dc8e9-b442-42e5-80c2-c1815d738a97",
+      "timestamp": "2026-09-23T20:26:33.625Z",
+      "action": "password_reset_requested",
+      "entityType": "Applicant",
+      "entityId": "4f9c0faa-5256-4969-9722-9803fda5a0ad",
+      "userId": "4f9c0faa-5256-4969-9722-9803fda5a0ad",
+      "details": {
+        "email": "reset-test@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "fe1c12c7-6bdd-4362-90d6-77ba24791b04",
+      "timestamp": "2026-09-23T20:26:33.654Z",
+      "action": "password_reset_requested",
+      "entityType": "Applicant",
+      "entityId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "userId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "details": {
+        "email": "reset-valid@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "a7816999-52f3-4680-8fc6-77aa9de29cbb",
+      "timestamp": "2026-09-23T20:26:33.670Z",
+      "action": "password_reset_requested",
+      "entityType": "Applicant",
+      "entityId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "userId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "details": {
+        "email": "reset-expires@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "b882b27a-0427-4be2-b87a-eb16f0bd97e2",
+      "timestamp": "2026-09-23T20:26:33.681Z",
+      "action": "token_issued",
+      "entityType": "Applicant",
+      "entityId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "userId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "details": {
+        "email": "reset-expires@example.com",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "f75ab9bd-873c-4b6e-9856-42344daff93b",
+      "timestamp": "2026-09-23T20:26:33.692Z",
+      "action": "password_reset_requested",
+      "entityType": "Applicant",
+      "entityId": "91819de3-1aef-4c7a-8360-d8b95a2094a0",
+      "userId": "91819de3-1aef-4c7a-8360-d8b95a2094a0",
+      "details": {
+        "email": "reset-single@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "1afed790-d9af-4daf-8244-1653e807888c",
+      "timestamp": "2026-09-23T20:26:33.703Z",
+      "action": "password_reset_requested",
+      "entityType": "Applicant",
+      "entityId": "3bb04b18-d330-4da6-9cee-ecd6e310daa3",
+      "userId": "3bb04b18-d330-4da6-9cee-ecd6e310daa3",
+      "details": {
+        "email": "reset-short@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "4e3cf8a1-3d88-49df-9b3f-a3ac31b0a46a",
+      "timestamp": "2026-09-23T20:26:33.716Z",
+      "action": "password_reset_requested",
+      "entityType": "Applicant",
+      "entityId": "b7e46dcf-67e7-47a9-bf18-2a2346296f5a",
+      "userId": "b7e46dcf-67e7-47a9-bf18-2a2346296f5a",
+      "details": {
+        "email": "reset-obs@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "fc0cad99-c403-47f2-876b-49754e494800",
+      "timestamp": "2026-09-23T20:26:59.886Z",
+      "action": "password_reset_requested",
+      "entityType": "Applicant",
+      "entityId": "4f9c0faa-5256-4969-9722-9803fda5a0ad",
+      "userId": "4f9c0faa-5256-4969-9722-9803fda5a0ad",
+      "details": {
+        "email": "reset-test@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "a27ca9e2-9be1-4fbe-83e1-8695e9b5cab2",
+      "timestamp": "2026-09-23T20:26:59.891Z",
+      "action": "password_reset_requested",
+      "entityType": "Applicant",
+      "entityId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "userId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "details": {
+        "email": "reset-valid@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "c454fccb-8df0-4769-a035-1dc087e8f29f",
+      "timestamp": "2026-09-23T20:26:59.897Z",
+      "action": "password_reset_requested",
+      "entityType": "Applicant",
+      "entityId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "userId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "details": {
+        "email": "reset-expires@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "122675ab-a9e8-4939-8f31-57ba6d00f18a",
+      "timestamp": "2026-09-23T20:26:59.902Z",
+      "action": "token_issued",
+      "entityType": "Applicant",
+      "entityId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "userId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "details": {
+        "email": "reset-expires@example.com",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "7a896448-4f85-457c-bb10-8b80b835d040",
+      "timestamp": "2026-09-23T20:26:59.906Z",
+      "action": "password_reset_requested",
+      "entityType": "Applicant",
+      "entityId": "91819de3-1aef-4c7a-8360-d8b95a2094a0",
+      "userId": "91819de3-1aef-4c7a-8360-d8b95a2094a0",
+      "details": {
+        "email": "reset-single@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "24ed66e7-4b60-4702-9201-d32755c3d178",
+      "timestamp": "2026-09-23T20:26:59.911Z",
+      "action": "password_reset_requested",
+      "entityType": "Applicant",
+      "entityId": "3bb04b18-d330-4da6-9cee-ecd6e310daa3",
+      "userId": "3bb04b18-d330-4da6-9cee-ecd6e310daa3",
+      "details": {
+        "email": "reset-short@example.com"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "0520c70f-c5f3-4161-a149-57ca9a279125",
+      "timestamp": "2026-09-23T20:26:59.918Z",
+      "action": "password_reset_requested",
+      "entityType": "Applicant",
+      "entityId": "b7e46dcf-67e7-47a9-bf18-2a2346296f5a",
+      "userId": "b7e46dcf-67e7-47a9-bf18-2a2346296f5a",
+      "details": {
+        "email": "reset-obs@example.com"
+      },
+      "outcome": "success"
+    }
+  ]
 }

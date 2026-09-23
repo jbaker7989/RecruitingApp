@@ -1,0 +1,152 @@
+# Web Frontend Implementation Plan: Warm Welcome Career Dashboard
+
+## Summary
+A modern, minimal-but-warm responsive web frontend for the New Frontier Recruiting API. Focuses on a supportive, applicant-centric experience with clear progress tracking and gentle guidance. Core pages: Homepage, Job Discovery, Job Detail, My Profile, My Applications, Application Detail, Career Tips, and a simple auth flow.
+
+## Tech Stack (finalized)
+- **Framework:** Next.js 14+ (React 18) with App Router
+- **Styling:** Tailwind CSS + Radix UI (minimal, accessible components)
+- **Typography:** Inter (clean sans-serif, rounded-friendly)
+- **Data fetching:** Server-side rendering (SSR) where possible for SEO; client-side fetch for authenticated/mutable data
+- **Deployment:** Static export via `next export` served from `/public`; API calls proxied to existing Express API at `/api/*` (or separate API origin in production)
+
+## Key Design Decisions
+- **Color palette:** Soft warm grays (#F8F9FA), muted blues (#E8F0FE), warm accent greens (#4CAF50), and a restrained coral (#FF6B6B) for key actions.
+- **Spacing:** Generous whitespace, rounded corners (12px cards), subtle drop shadows for depth.
+- **Tone:** Supportive, inclusive, and confident — never pushy. Copy reads like a helpful friend guiding you through the process.
+- **Micro-interactions:** Gentle hover scaling on cards, fade-in on load, subtle confirmation animations on save/apply.
+
+## Data Integration — API Mapping
+The frontend consumes the existing API at `/api/*`:
+
+| Frontend Feature | API Endpoint(s) | Notes |
+|---|---|---|
+| Job list | `GET /api/jobs` | Returns active jobs with embedded `companyInfo` |
+| Job detail | `GET /api/jobs/:id` | Returns full job + company info |
+| Profile (self) | `GET /api/applicants/:id` + `PUT /api/applicants/:id` | Uses session-stored applicant ID |
+| Create profile | `POST /api/applicants` | Requires firstName, lastName, email, phone, address, educationHistory, employmentHistory, rightToWork |
+| Applications list | `GET /api/applications` | Currently requires auth role; applicant role supported |
+| Application detail | `GET /api/applications/:id` | Shows status, matchScore breakdown |
+| Submit application | `POST /api/applications` | Requires `applicantId`, `jobPostingId`; also validates email |
+| Match insights | From `POST /api/agents/matching/score` | Semantic match results (optional supplement to deterministic score) |
+
+### Notes on API constraints to respect
+- Authentication currently uses bearer tokens or simple user ID tokens via `/api/auth`. The frontend will use a simple session/cookie layer with login form calling `POST /api/auth/login`.
+- Application score is a deterministic heuristic (keyword 40%, education 30%, experience 30%, range 1-10). The frontend displays this with a clear explanation so applicants understand the basis — no misleading "AI confidence."
+- Photo/contact staging: the README documents staged visibility — phone hidden during initial review. The frontend mirrors this by only displaying phone number after the applicant explicitly permits sharing or the application reaches a later stage.
+
+## Page-by-Page Specification
+
+### 1. Landing Page (`/`)
+- Hero: "Hi there! Ready to find something great?" with soft gradient background.
+- Three icon cards: "Browse Jobs", "Create Your Profile", "Track Applications".
+- Quick-start flow that walks unauthenticated users to login or profile setup.
+
+### 2. Login / Register (`/login`, `/register`)
+- Minimal form: email + password + role dropdown (default: `applicant`).
+- Friendly copy: "Welcome back! Let's get you in." / "Almost there — just a few details and you're set."
+- Stores session token in HttpOnly cookie.
+
+### 3. Job Discovery (`/jobs`)
+- Search bar with auto-suggest.
+- Filters: location, role type, experience level, salary range.
+- Job cards: logo-style avatar (company initials), title, location, pay range, badge for "remote-friendly".
+- Each card includes a brief one-line "What you'll do" snippet pulled from `positionDescription`.
+
+### 4. Job Detail (`/jobs/:id`)
+- Company banner with logo/name/description.
+- "Why this job?" callout using job `summary` or truncated `positionDescription`.
+- Collapsible sections: About the Team, Responsibilities, Qualifications, Pay & Benefits.
+- Right column: "Match explanation" card — shows deterministic score breakdown (keyword, education, experience) with the note: "This is how we think you might fit — it's just a starting point."
+- Prominent apply button; for unauthenticated users, prompt to create profile or login first.
+
+### 5. My Profile (`/profile`)
+- "About you" section: name, contact method toggle, address.
+- "Work experience" with inline editing (add/remove positions).
+- "Education" with inline editing.
+- "What's missing?" checklist showing required fields for a complete profile, encouraging completion without pressure.
+- Success message on save: "Profile saved! You're making great progress."
+- Photo opt-in with placeholder neutral icon (per product requirement: no-photo = universal race-agnostic icon).
+
+### 6. My Applications (`/applications`)
+- Kanban or list view by status: Pending, Reviewed, Interview Scheduled, Accepted, Rejected.
+- Each row/card: job title, company logo, applied date, match score badge.
+- Progress indicator: a soft timeline showing the application moving through stages.
+- Empty state: "No applications yet — browse jobs and take the next step!" with a link to Job Discovery.
+
+### 7. Application Detail (`/applications/:id`)
+- Header: "Your application to [Job Title]"
+- Status display with friendly label (e.g., "Under review — a recruiter will reach out soon").
+- Match score breakdown card (keyword/edu/experience) — "Here's why we think you might be a good fit."
+- "Next steps" guide: what happens when, and what the applicant can do (e.g., check email, prepare for interview).
+
+### 8. Career Tips (`/tips`)
+- Card grid: articles like "How to write a standout profile", "What recruiters look for", "Prepping for your first interview".
+- Each article: warm tone, short (~2 min read), actionable checklist.
+- Search/filter by topic: Applications, Interviews, Career Growth.
+
+## Phased Build Plan
+
+### Phase 1 — Foundation (Sprint 1, ~2 weeks)
+Goals: set up the dev environment, static pages, routing, styling system, auth UI.
+- Project scaffolding (Next.js + Tailwind)
+- Shared layout with navigation header (soft color scheme, rounded nav links)
+- Landing page + Login/Register pages (stubbed auth)
+- Job Discovery page with static mock data — proves design system
+- Accessibility audit baseline (semantic HTML, ARIA, skip links)
+
+### Phase 2 — Job Browsing & Detail (Sprint 2, ~2 weeks)
+Goals: connect to real API, display jobs beautifully.
+- `GET /api/jobs` integration (SSR for SEO)
+- Job Discovery with filters + search
+- Job Detail page with company info panel
+- Match score display (read-only, with explanation)
+- Unit tests for job list and detail components
+
+### Phase 3 — Applicant Profile & Auth (Sprint 3, ~2 weeks)
+Goals: allow applicants to create and manage their profile.
+- Auth flow with cookie-based session
+- Profile page with inline editors for work experience and education
+- Form validation aligned with backend `validateApplicationBody`
+- "What's missing?" completeness indicator
+- Integration tests for profile CRUD
+
+### Phase 4 — Applications Flow (Sprint 4, ~2 weeks)
+Goals: enable full apply + track experience.
+- Apply button on job detail (calls `POST /api/applications`)
+- Applications list (status-filterable)
+- Application detail page with match explanation
+- Confirmation micro-interactions on apply/save
+- E2E tests for the apply flow
+
+### Phase 5 — Career Tips & Polish (Sprint 5, ~1 week)
+Goals: add supportive content, finalize warm feel.
+- Career Tips content pages (static content)
+- Final micro-interactions, accessibility polish
+- SEO optimization, meta tags
+- Visual regression tests
+
+## Testing Plan
+- **Unit tests**: Component-level testing with Vitest + React Testing Library for forms, filters, and score display.
+- **Integration tests**: API connection layer using Playwright Test to verify job list loads from `GET /api/jobs`.
+- **E2E tests**: Playwright — cover "browse → view job → apply → track in My Applications" and "edit profile → save" flows.
+- **Accessibility**: Automated a11y check with axe-core in Playwright; manual screen-reader spot-checks.
+- **Acceptance criteria**:
+  - Job list renders within 2s of API response.
+  - Profile saves successfully → backend confirms 200/201, frontend shows confirmation without page reload.
+  - Match score display clearly states it's a heuristic, not an AI decision.
+
+## Constraints & Assumptions
+- The API must allow unauthenticated `GET /api/jobs` for public browsing (currently it is open — confirmed in code).
+- Application submission (`POST /api/applications`) requires `applicantId`; the frontend assumes authenticated applicants have a one-to-profile mapping (to be implemented server-side later per NFR-FEAT-001).
+- The current Express backend stores JSON locally (Vercel-safe persistence is a known blocker noted in README), but since this is a portfolio case study and persistence concerns are NFR-034/020 (not in frontend scope), the frontend is designed to work with a properly authenticated, durable backend in the future.
+- The frontend will proxy `/api` to localhost:3000 during local dev, or accept an `NEXT_PUBLIC_API_URL` env override for production.
+- No external CSS framework beyond Tailwind — custom minimal components per design.
+- The brand name is currently undergoing migration ("New Fronteir" → "New Frontier") per the README; the frontend uses "New Frontier" throughout.
+
+## Success Metrics (to validate with later)
+- Application start-to-submit time < 5 minutes on desktop, < 8 min on mobile.
+- Profile completion rate > 80% after 1 visit (measured via completeness indicator).
+- User-reported friendliness score ≥ 4/5 on a post-journey mini-survey.
+- Job discovery → view → apply click-through: > 15%.
+`

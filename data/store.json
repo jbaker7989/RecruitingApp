@@ -1,8 +1,307 @@
 {
   "companies": [],
   "jobs": [],
-  "applicants": [],
+  "applicants": [
+    {
+      "id": "4f9c0faa-5256-4969-9722-9803fda5a0ad",
+      "firstName": "Reset",
+      "lastName": "Test",
+      "email": "reset-test@example.com",
+      "passwordHash": "ba381376f9cd0ba3be5d16820cd65e5c221a8270ff3e25327d499e6d2b1c7862",
+      "phone": "555-0100",
+      "preferredContactMethod": "email",
+      "address": {
+        "state": "",
+        "zip": ""
+      },
+      "educationHistory": [],
+      "employmentHistory": [],
+      "rightToWork": false,
+      "requiresSponsorship": false,
+      "expectedPay": 0,
+      "notificationToManager": false,
+      "hireRecords": [],
+      "createdAt": "2026-09-23T20:26:28.845Z",
+      "updatedAt": "2026-09-23T20:26:28.845Z"
+    },
+    {
+      "id": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "firstName": "Reset",
+      "lastName": "Valid",
+      "email": "reset-valid@example.com",
+      "passwordHash": "e17ce5970cc097db7856d5367a06a1682f8e0ca95cdc7d6bd2d17e7c99db90cf",
+      "phone": "555-0101",
+      "preferredContactMethod": "email",
+      "address": {
+        "state": "",
+        "zip": ""
+      },
+      "educationHistory": [],
+      "employmentHistory": [],
+      "rightToWork": false,
+      "requiresSponsorship": false,
+      "expectedPay": 0,
+      "notificationToManager": false,
+      "hireRecords": [],
+      "createdAt": "2026-09-23T20:26:28.854Z",
+      "updatedAt": "2026-09-23T20:26:28.862Z"
+    },
+    {
+      "id": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "firstName": "Reset",
+      "lastName": "Expires",
+      "email": "reset-expires@example.com",
+      "passwordHash": "f0a5cdf5a9b255d3a71acdee7bd29c6b320f27e71f105b86220696f21b67c6e9",
+      "phone": "555-0102",
+      "preferredContactMethod": "email",
+      "address": {
+        "state": "",
+        "zip": ""
+      },
+      "educationHistory": [],
+      "employmentHistory": [],
+      "rightToWork": false,
+      "requiresSponsorship": false,
+      "expectedPay": 0,
+      "notificationToManager": false,
+      "hireRecords": [],
+      "createdAt": "2026-09-23T20:26:28.868Z",
+      "updatedAt": "2026-09-23T20:26:28.868Z"
+    },
+    {
+      "id": "91819de3-1aef-4c7a-8360-d8b95a2094a0",
+      "firstName": "Reset",
+      "lastName": "Single",
+      "email": "reset-single@example.com",
+      "passwordHash": "296c5085ec73266197571b2e34fa91eab32789af00994f6fb04e4026028accf1",
+      "phone": "555-0103",
+      "preferredContactMethod": "email",
+      "address": {
+        "state": "",
+        "zip": ""
+      },
+      "educationHistory": [],
+      "employmentHistory": [],
+      "rightToWork": false,
+      "requiresSponsorship": false,
+      "expectedPay": 0,
+      "notificationToManager": false,
+      "hireRecords": [],
+      "createdAt": "2026-09-23T20:26:28.878Z",
+      "updatedAt": "2026-09-23T20:26:28.883Z"
+    },
+    {
+      "id": "3bb04b18-d330-4da6-9cee-ecd6e310daa3",
+      "firstName": "Reset",
+      "lastName": "Short",
+      "email": "reset-short@example.com",
+      "passwordHash": "ba381376f9cd0ba3be5d16820cd65e5c221a8270ff3e25327d499e6d2b1c7862",
+      "phone": "555-0104",
+      "preferredContactMethod": "email",
+      "address": {
+        "state": "",
+        "zip": ""
+      },
+      "educationHistory": [],
+      "employmentHistory": [],
+      "rightToWork": false,
+      "requiresSponsorship": false,
+      "expectedPay": 0,
+      "notificationToManager": false,
+      "hireRecords": [],
+      "createdAt": "2026-09-23T20:26:28.887Z",
+      "updatedAt": "2026-09-23T20:26:28.887Z"
+    },
+    {
+      "id": "b7e46dcf-67e7-47a9-bf18-2a2346296f5a",
+      "firstName": "Reset",
+      "lastName": "Obs",
+      "email": "reset-obs@example.com",
+      "passwordHash": "c822a0abf4ef0a5fc2a4c2010ed111e16af3ae95cee462a55e7877b8623ade36",
+      "phone": "555-0105",
+      "preferredContactMethod": "email",
+      "address": {
+        "state": "",
+        "zip": ""
+      },
+      "educationHistory": [],
+      "employmentHistory": [],
+      "rightToWork": false,
+      "requiresSponsorship": false,
+      "expectedPay": 0,
+      "notificationToManager": false,
+      "hireRecords": [],
+      "createdAt": "2026-09-23T20:26:28.895Z",
+      "updatedAt": "2026-09-23T20:26:28.900Z"
+    }
+  ],
   "applications": [],
   "users": [],
-  "observability": []
+  "hires": [],
+  "observability": [],
+  "drafts": [],
+  "passwordResetTokens": [
+    {
+      "id": "e8466d13-80b7-41fe-8f45-0ac1bfb55634",
+      "applicantId": "4f9c0faa-5256-4969-9722-9803fda5a0ad",
+      "email": "reset-test@example.com",
+      "token": "67d1b8c71e722554294a1a15599c9a5930c6374fb9bcf321aa6f395e917eee2f",
+      "expiresAt": "2026-09-23T21:26:28.851Z",
+      "usedAt": null,
+      "createdAt": "2026-09-23T20:26:28.851Z"
+    },
+    {
+      "id": "4d439b93-ebe2-43ea-93e0-587f7952c3ad",
+      "applicantId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "email": "reset-valid@example.com",
+      "token": "1c1a8856d0b2b6dcb9f6f5134dc89b94eeacd56b7489f5a408d6fbb23cae8f4b",
+      "expiresAt": "2026-09-23T21:26:28.858Z",
+      "usedAt": "2026-09-23T20:26:28.862Z",
+      "createdAt": "2026-09-23T20:26:28.858Z"
+    },
+    {
+      "id": "46582d5f-9631-4eec-aad4-1c217b921c22",
+      "applicantId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "email": "reset-expires@example.com",
+      "token": "30a25f6915ddb29b9dae736bccf3a02d54b5a88582b83008e5359f3170d7876c",
+      "expiresAt": "2026-09-23T20:26:58.897Z",
+      "usedAt": null,
+      "createdAt": "2026-09-23T20:26:28.872Z"
+    },
+    {
+      "id": "6e4338f3-4453-4ca6-bbeb-8743ad78b846",
+      "applicantId": "91819de3-1aef-4c7a-8360-d8b95a2094a0",
+      "email": "reset-single@example.com",
+      "token": "ec53f7b474345f3984e3fe02a4f89a0456d48da63195068d6f2f084778a96850",
+      "expiresAt": "2026-09-23T21:26:28.881Z",
+      "usedAt": "2026-09-23T20:26:28.883Z",
+      "createdAt": "2026-09-23T20:26:28.881Z"
+    },
+    {
+      "id": "ec4376e5-14a5-4694-b2e7-bec43edb626a",
+      "applicantId": "3bb04b18-d330-4da6-9cee-ecd6e310daa3",
+      "email": "reset-short@example.com",
+      "token": "5e080f0fa9b0b0ae4c2b4715e6943ecfa6dea968b23936039fc812c4fe364167",
+      "expiresAt": "2026-09-23T21:26:28.889Z",
+      "usedAt": null,
+      "createdAt": "2026-09-23T20:26:28.889Z"
+    },
+    {
+      "id": "efa9360f-6bd2-4570-b947-8dd05b495ad3",
+      "applicantId": "b7e46dcf-67e7-47a9-bf18-2a2346296f5a",
+      "email": "reset-obs@example.com",
+      "token": "27f2a65d8af986a6a3f93f8bf0dd5c9a6a12ce4b25b9200abed008bd00013f88",
+      "expiresAt": "2026-09-23T21:26:28.897Z",
+      "usedAt": "2026-09-23T20:26:28.899Z",
+      "createdAt": "2026-09-23T20:26:28.897Z"
+    },
+    {
+      "id": "cd3c366d-5b92-4871-8bb7-d200b222a7d6",
+      "applicantId": "4f9c0faa-5256-4969-9722-9803fda5a0ad",
+      "email": "reset-test@example.com",
+      "token": "85860a916c6af5c5b2a2b19a365bbb0f795beb6e0c25ad73124a6a20d67d7a0d",
+      "expiresAt": "2026-09-23T21:26:33.624Z",
+      "usedAt": null,
+      "createdAt": "2026-09-23T20:26:33.624Z"
+    },
+    {
+      "id": "887e973f-34c1-4652-90cd-2762badce9b5",
+      "applicantId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "email": "reset-valid@example.com",
+      "token": "2a23708a40325a7889435c4706495d291f0e2ae054fb90567b3e818d591eeff3",
+      "expiresAt": "2026-09-23T21:26:33.647Z",
+      "usedAt": null,
+      "createdAt": "2026-09-23T20:26:33.647Z"
+    },
+    {
+      "id": "eb602bd8-73db-42be-8303-d88d3b42af60",
+      "applicantId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "email": "reset-expires@example.com",
+      "token": "f18d2ab9120a0859881c451e4119f4a6b426be430c0f72708fcd38c9bd11a367",
+      "expiresAt": "2026-09-23T21:26:33.670Z",
+      "usedAt": null,
+      "createdAt": "2026-09-23T20:26:33.670Z"
+    },
+    {
+      "id": "503c700b-c9a8-4975-8c97-822b70ac3a00",
+      "applicantId": "91819de3-1aef-4c7a-8360-d8b95a2094a0",
+      "email": "reset-single@example.com",
+      "token": "017f8638c1f5dff9bfdaa09764a2b6bd987034a9c41de8d67250934ca9fe85d1",
+      "expiresAt": "2026-09-23T21:26:33.691Z",
+      "usedAt": null,
+      "createdAt": "2026-09-23T20:26:33.691Z"
+    },
+    {
+      "id": "5dac9f90-2d84-480d-a01b-739320bf38c1",
+      "applicantId": "3bb04b18-d330-4da6-9cee-ecd6e310daa3",
+      "email": "reset-short@example.com",
+      "token": "65ce9ecaf23c039148e4db1bf82bb2d0bd0e3fceb8cea0760c06c4a09b9d70c4",
+      "expiresAt": "2026-09-23T21:26:33.703Z",
+      "usedAt": null,
+      "createdAt": "2026-09-23T20:26:33.703Z"
+    },
+    {
+      "id": "702bce90-1f42-4a49-8296-ff12c980ab87",
+      "applicantId": "b7e46dcf-67e7-47a9-bf18-2a2346296f5a",
+      "email": "reset-obs@example.com",
+      "token": "4496e9b7643e9403da6ad1583c727696f01bcd2a68cb5f47fed90f1411c4e18c",
+      "expiresAt": "2026-09-23T21:26:33.715Z",
+      "usedAt": null,
+      "createdAt": "2026-09-23T20:26:33.715Z"
+    },
+    {
+      "id": "a6588509-6929-451b-92e4-7844e6fadcfa",
+      "applicantId": "4f9c0faa-5256-4969-9722-9803fda5a0ad",
+      "email": "reset-test@example.com",
+      "token": "70b61ddf9c5cf8bd83d9fa487cf50d69aae407f05c4cfd59020e99dabc0b22c1",
+      "expiresAt": "2026-09-23T21:26:59.885Z",
+      "usedAt": null,
+      "createdAt": "2026-09-23T20:26:59.885Z"
+    },
+    {
+      "id": "8013da8b-bd7f-472b-8e82-a6840d52f636",
+      "applicantId": "5d05ee2f-bcbc-43b2-a22e-b82e8e2c31b6",
+      "email": "reset-valid@example.com",
+      "token": "6dd58e785a15bc89610740bfa36d8a6497b937d57031ede6e5f5113b416855de",
+      "expiresAt": "2026-09-23T21:26:59.891Z",
+      "usedAt": null,
+      "createdAt": "2026-09-23T20:26:59.891Z"
+    },
+    {
+      "id": "aa68c9b1-c001-43b9-abbe-cf2fe4b47a80",
+      "applicantId": "137d81ba-8c66-4aa9-b981-53603faa540b",
+      "email": "reset-expires@example.com",
+      "token": "7efd6e6566e9dd6e83f945a6306b8a5fb837ecbc720e1b157e40c6a982b564f1",
+      "expiresAt": "2026-09-23T21:26:59.896Z",
+      "usedAt": null,
+      "createdAt": "2026-09-23T20:26:59.896Z"
+    },
+    {
+      "id": "3cdbd545-fd2e-427c-a62d-a9515369baad",
+      "applicantId": "91819de3-1aef-4c7a-8360-d8b95a2094a0",
+      "email": "reset-single@example.com",
+      "token": "3603354e627bebde908ec18e7708cb57b4fad9413305a2a0b221bf1a6b9661c6",
+      "expiresAt": "2026-09-23T21:26:59.906Z",
+      "usedAt": null,
+      "createdAt": "2026-09-23T20:26:59.906Z"
+    },
+    {
+      "id": "0944eeee-acff-4754-aec3-83554d732712",
+      "applicantId": "3bb04b18-d330-4da6-9cee-ecd6e310daa3",
+      "email": "reset-short@example.com",
+      "token": "5a9e34e6062360a6fe0d07a2d55c8d8e80769d2bc7be95b7df855f709dbc31ae",
+      "expiresAt": "2026-09-23T21:26:59.910Z",
+      "usedAt": null,
+      "createdAt": "2026-09-23T20:26:59.910Z"
+    },
+    {
+      "id": "f0c2ae00-9955-4a76-9312-49bdbe36ce47",
+      "applicantId": "b7e46dcf-67e7-47a9-bf18-2a2346296f5a",
+      "email": "reset-obs@example.com",
+      "token": "616abcb2ddc46b2b46df79e27e4c6c4acb6ced364b6949c59a354dba48932681",
+      "expiresAt": "2026-09-23T21:26:59.918Z",
+      "usedAt": null,
+      "createdAt": "2026-09-23T20:26:59.918Z"
+    }
+  ]
 }

@@ -5,7 +5,8 @@
 
 import { Router } from 'express';
 import { requireRole } from '../../middleware/auth.js';
-import { readStore, generateId, now, addObservabilityEntry } from '../../models/store.js';
+import { readStore, writeStore, generateId, now, addObservabilityEntry } from '../../models/store.js';
+import type { ScreeningRequest, ScreeningJobResponse, ScreeningResult, CandidateInput } from '../../types/screening.js';
 import { parseResumeFromBuffer, parseResume } from '../../chains/resumeParsing.js';
 import {
   calculateMatchScore,
@@ -366,5 +367,271 @@ router.post('/scheduling/complete', requireRole(['recruiter', 'hiring-manager', 
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to complete interview' });
   }
 });
+
+// ============================================
+// Candidate Screening Workflow Endpoints
+// ============================================
+
+const SCREENING_SERVICE_URL =
+  process.env.SCREENING_SERVICE_URL || 'http://localhost:8001';
+
+/**
+ * POST /api/agents/screening/screen
+ * Submit a batch screening job for a job posting.
+ * Runs the LangGraph parallel candidate processing workflow.
+ */
+router.post(
+  '/screening/screen',
+  requireRole(['recruiter', 'hiring-manager', 'member-services']),
+  async (req: any, res) => {
+    try {
+      const { jobId, applications, scoreThreshold } = req.body as {
+        jobId: string;
+        applications: Array<{
+          applicationId: string;
+          applicantId: string;
+          applicantName: string;
+          resumeText: string;
+        }>;
+        scoreThreshold?: number;
+      };
+
+      if (!jobId || !applications?.length) {
+        return res.status(400).json({
+          error: 'jobId and at least one application are required',
+        });
+      }
+
+      const store = await readStore();
+      const job = store.jobs.find((j: any) => j.id === jobId);
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      const candidates: CandidateInput[] = applications.map(
+        (app: any) => ({
+          id: app.applicationId,
+          name: app.applicantName,
+          resume_text: app.resumeText,
+        }),
+      );
+
+      const requestBody: ScreeningRequest = {
+        job_id: jobId,
+        job_posting: {
+          jobTitle: job.jobTitle,
+          requiredSkills: job.requiredSkills,
+          requiredExperience: job.requiredExperience,
+          qualifications: job.qualifications,
+          requirements: job.requirements,
+        },
+        candidates,
+        score_threshold: scoreThreshold ?? 70,
+      };
+
+      const pythonRes = await fetch(
+        `${SCREENING_SERVICE_URL}/screening/screen`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody),
+          signal: AbortSignal.timeout(10_000),
+        },
+      );
+
+      if (!pythonRes.ok) {
+        const errText = await pythonRes.text();
+        throw new Error(`Screening service error ${pythonRes.status}: ${errText}`);
+      }
+
+      const jobResponse: ScreeningJobResponse =
+        await pythonRes.json() as ScreeningJobResponse;
+
+      await addObservabilityEntry({
+        id: generateId(),
+        timestamp: now(),
+        action: 'screening_job_submitted',
+        entityType: 'Job',
+        entityId: jobId,
+        userId: req.user.id,
+        details: {
+          pythonJobId: jobResponse.job_id,
+          totalCandidates: jobResponse.total_candidates,
+          scoreThreshold: scoreThreshold ?? 70,
+        },
+        outcome: 'success',
+      });
+
+      res.status(202).json({
+        success: true,
+        data: jobResponse,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await addObservabilityEntry({
+        id: generateId(),
+        timestamp: now(),
+        action: 'screening_job_submitted',
+        entityType: 'Job',
+        entityId: req.body?.jobId ?? 'unknown',
+        userId: req.user.id,
+        details: { error: message },
+        outcome: 'failure',
+      });
+
+      res.status(500).json({ error: `Failed to submit screening job: ${message}` });
+    }
+  },
+);
+
+/**
+ * GET /api/agents/screening/jobs/:pythonJobId
+ * Poll the status of a submitted screening job.
+ */
+router.get(
+  '/screening/jobs/:pythonJobId',
+  requireRole(['recruiter', 'hiring-manager', 'member-services']),
+  async (req: any, res) => {
+    try {
+      const { pythonJobId } = req.params;
+
+      const pythonRes = await fetch(
+        `${SCREENING_SERVICE_URL}/screening/jobs/${pythonJobId}`,
+        { signal: AbortSignal.timeout(10_000) },
+      );
+
+      if (!pythonRes.ok) {
+        if (pythonRes.status === 404) {
+          return res.status(404).json({ error: 'Screening job not found' });
+        }
+        throw new Error(`Screening service error ${pythonRes.status}`);
+      }
+
+      const jobResponse: ScreeningJobResponse =
+        await pythonRes.json() as ScreeningJobResponse;
+
+      res.json({ success: true, data: jobResponse });
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Failed to poll screening job',
+      });
+    }
+  },
+);
+
+/**
+ * GET /api/agents/screening/:jobId/result
+ * Get completed screening results for a job posting.
+ * Returns 202 if the job is still running.
+ */
+router.get(
+  '/screening/:jobId/result',
+  requireRole(['recruiter', 'hiring-manager', 'member-services']),
+  async (req: any, res) => {
+    try {
+      // jobId here is the original app job posting id; we look up the
+      // most recent python job id from observability or accept pythonJobId param
+      const { jobId } = req.params;
+      const { pythonJobId } = req.query as { pythonJobId?: string };
+
+      if (!pythonJobId) {
+        return res.status(400).json({
+          error: 'pythonJobId query parameter is required',
+        });
+      }
+
+      const pythonRes = await fetch(
+        `${SCREENING_SERVICE_URL}/screening/jobs/${pythonJobId}/result`,
+        { signal: AbortSignal.timeout(10_000) },
+      );
+
+      if (pythonRes.status === 202) {
+        const body = await pythonRes.json() as { status: string };
+        return res.status(202).json({
+          success: false,
+          status: body.status,
+          message: 'Screening job not yet complete',
+        });
+      }
+
+      if (!pythonRes.ok) {
+        throw new Error(`Screening service error ${pythonRes.status}`);
+      }
+
+      const result: ScreeningResult =
+        await pythonRes.json() as ScreeningResult;
+
+      // story-slop-cleanup-screening-vectorstore: `updated` was computed
+      // then discarded via `void updated; // suppress lint` instead of
+      // being used. Replaced below with an updatedCount that feeds the
+      // observability log.
+      // if (result.ranked_candidates?.length) {
+      //   const store = await readStore();
+      //   let updated = 0;
+      //   for (const ranked of result.ranked_candidates) {
+      //     const app = store.applications.find(
+      //       (a: any) => a.id === ranked.applicant_id,
+      //     );
+      //     if (app) {
+      //       app.matchScore = Math.round(ranked.overall_score / 10); // 0-100 → 0-10
+      //       (app as any).llmSkillScore = ranked.skill_score;
+      //       (app as any).llmExperienceScore = ranked.experience_score;
+      //       (app as any).llmEducationScore = ranked.education_score;
+      //       (app as any).llmScoringReasoning = ranked.scoring_reasoning;
+      //       app.updatedAt = now();
+      //       updated++;
+      //     }
+      //   }
+      //   await writeStore(store);
+      //   void updated; // suppress lint
+      // }
+      let updatedCount = 0;
+      if (result.ranked_candidates?.length) {
+        const store = await readStore();
+        for (const ranked of result.ranked_candidates) {
+          const app = store.applications.find(
+            (a: any) => a.id === ranked.applicant_id,
+          );
+          if (app) {
+            app.matchScore = Math.round(ranked.overall_score / 10); // 0-100 → 0-10
+            (app as any).llmSkillScore = ranked.skill_score;
+            (app as any).llmExperienceScore = ranked.experience_score;
+            (app as any).llmEducationScore = ranked.education_score;
+            (app as any).llmScoringReasoning = ranked.scoring_reasoning;
+            app.updatedAt = now();
+            updatedCount++;
+          }
+        }
+        await writeStore(store);
+      }
+
+      await addObservabilityEntry({
+        id: generateId(),
+        timestamp: now(),
+        action: 'screening_result_retrieved',
+        entityType: 'Job',
+        entityId: jobId,
+        userId: req.user.id,
+        details: {
+          pythonJobId,
+          passedCount: result.passed_count,
+          totalCandidates: result.total_candidates,
+          applicationsUpdated: updatedCount,
+        },
+        outcome: 'success',
+      });
+
+      res.json({ success: true, data: result });
+    } catch (error) {
+      res.status(500).json({
+        error: error instanceof Error ? error.message : 'Failed to retrieve screening result',
+      });
+    }
+  },
+);
+
+// story-slop-cleanup-screening-vectorstore: removed process-narration
+// comment "── Keep existing routes above, add new screening section
+// below ──" — it documented how the diff was authored, not the code.
 
 export default router;

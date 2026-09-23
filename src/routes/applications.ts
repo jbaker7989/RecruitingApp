@@ -9,18 +9,42 @@ const router = Router();
 // POST /api/applications - Submit a new application
 router.post('/', async (req: any, res) => {
   try {
+    // story-slop-cleanup-screening-vectorstore: `false` is already
+    // validateApplicationBody's default for requireProfile.
+    // const validation = validateApplicationBody(req.body, false);
     const validation = validateApplicationBody(req.body);
     if (!validation.valid) {
       return res.status(400).json({ errors: validation.errors });
     }
 
     const store = await readStore();
-    const applicant = store.applicants.find(a => a.id === req.body.applicantId);
     const job = store.jobs.find(j => j.id === req.body.jobPostingId);
 
-    if (!applicant) return res.status(404).json({ error: 'Applicant not found' });
     if (!job) return res.status(404).json({ error: 'Job not found' });
     if (!job.isActive) return res.status(400).json({ error: 'Job is no longer accepting applications' });
+
+    // Resolve applicant: authenticated applicant takes priority, else body.applicantId
+    const applicantId = (req.user?.role === 'applicant' ? req.user.id : req.body.applicantId);
+    const applicant = store.applicants.find(a => a.id === applicantId);
+    if (!applicant) return res.status(404).json({ error: 'Applicant not found' });
+
+    // Duplicate application check
+    const existing = store.applications.find(
+      a => a.applicantId === applicantId && a.jobPostingId === req.body.jobPostingId
+    );
+    if (existing) {
+      await addObservabilityEntry({
+        id: generateId(),
+        timestamp: now(),
+        action: 'apply',
+        entityType: 'Application',
+        entityId: existing.id,
+        userId: applicantId,
+        details: { jobPostingId: req.body.jobPostingId, duplicate: true },
+        outcome: 'failure',
+      });
+      return res.status(409).json({ error: 'Already applied to this job', applicationId: existing.id });
+    }
 
     // Calculate match score
     const { matchScore, keywordMatches, educationMatchScore, experienceMatchScore } = calculateMatchScore(applicant, job);
