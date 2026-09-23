@@ -6,6 +6,7 @@ import { signApplicantToken, verifyApplicantToken } from '../services/tokenServi
 import { revokeToken, revokeAllForUser } from '../services/revocationService.js';
 import { createResetToken, validateAndConsumeResetToken } from '../services/passwordResetService.js';
 import { createHash } from 'crypto'; // ponytail: bcrypt when prod
+import { initiateGoogle, initiateLinkedIn, handleGoogleCallback, handleLinkedInCallback } from '../services/oauthService.js';
 
 const router = Router();
 
@@ -71,6 +72,8 @@ router.post('/register', async (req: any, res) => {
       expectedPay: 0,
       notificationToManager: false,
       hireRecords: [],
+      oauthProvider: null,
+      oauthProviderId: null,
       createdAt: now(),
       updatedAt: now(),
     };
@@ -298,6 +301,8 @@ router.post('/', async (req: any, res) => {
       expectedPay: req.body.expectedPay || 0,
       notificationToManager: req.body.notificationToManager || false,
       hireRecords: [],
+      oauthProvider: null,
+      oauthProviderId: null,
       createdAt: now(),
       updatedAt: now(),
     };
@@ -491,6 +496,72 @@ router.post('/reset-password', async (req: any, res) => {
     res.json({ message: 'Password has been reset successfully. Please log in with your new password.' });
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to reset password' });
+  }
+});
+
+// ─── OAuth / Social Login ───────────────────────────────────────────────────────
+
+// GET /api/applicants/auth/google — redirect to Google authorization
+router.get('/auth/google', async (req: any, res) => {
+  try {
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const { redirectTo } = initiateGoogle(baseUrl);
+    res.redirect(302, redirectTo);
+  } catch (error) {
+    res.status(503).json({ error: 'Google login is not configured' });
+  }
+});
+
+// GET /api/applicants/auth/google/callback — handle Google OAuth callback
+router.get('/auth/google/callback', async (req: any, res) => {
+  const { code, state, error } = req.query as { code?: string; state?: string; error?: string };
+
+  if (error) {
+    return res.status(400).json({ error: `Google authorization denied: ${error}` });
+  }
+  if (!code || !state) {
+    return res.status(400).json({ error: 'Missing code or state parameter' });
+  }
+
+  try {
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const result = await handleGoogleCallback(code, state, baseUrl);
+    return res.json({ token: result.token, expiresIn: result.expiresIn });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'OAuth callback failed';
+    return res.status(401).json({ error: msg });
+  }
+});
+
+// GET /api/applicants/auth/linkedin — redirect to LinkedIn authorization
+router.get('/auth/linkedin', async (req: any, res) => {
+  try {
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const { redirectTo } = initiateLinkedIn(baseUrl);
+    res.redirect(302, redirectTo);
+  } catch (error) {
+    res.status(503).json({ error: 'LinkedIn login is not configured' });
+  }
+});
+
+// GET /api/applicants/auth/linkedin/callback — handle LinkedIn OAuth callback
+router.get('/auth/linkedin/callback', async (req: any, res) => {
+  const { code, state, error } = req.query as { code?: string; state?: string; error?: string };
+
+  if (error) {
+    return res.status(400).json({ error: `LinkedIn authorization denied: ${error}` });
+  }
+  if (!code || !state) {
+    return res.status(400).json({ error: 'Missing code or state parameter' });
+  }
+
+  try {
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const result = await handleLinkedInCallback(code, state, baseUrl);
+    return res.json({ token: result.token, expiresIn: result.expiresIn });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'OAuth callback failed';
+    return res.status(401).json({ error: msg });
   }
 });
 

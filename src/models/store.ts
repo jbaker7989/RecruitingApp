@@ -80,6 +80,8 @@ export interface Applicant {
   expectedPay: number;
   notificationToManager: boolean;
   hireRecords: string[];
+  oauthProvider: string | null;
+  oauthProviderId: string | null;
   createdAt: string;
   updatedAt: string;
 }
