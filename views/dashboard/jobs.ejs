@@ -1,0 +1,86 @@
+<%# Jobs browse page partial %>
+
+<div class="page-header">
+  <p class="page-header__eyebrow">Discover</p>
+  <h1 class="page-header__title">Browse Jobs</h1>
+  <p class="page-header__sub">Find your next opportunity and take the next step.</p>
+</div>
+
+<% if (jobs.length === 0) { %>
+<div class="empty-state">
+  <svg class="empty-state__icon" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="28" cy="28" r="22" stroke="currentColor" stroke-width="2"/>
+    <path d="M20 20l16 16M28 16v6M28 34v-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </svg>
+  <h2 class="empty-state__title">No open positions right now</h2>
+  <p class="empty-state__sub">Check back soon — new opportunities are posted regularly.</p>
+  <a href="/dashboard/applications" class="btn btn--ghost">View My Applications</a>
+</div>
+<% } else { %>
+<div class="jobs-grid">
+<% jobs.forEach(function(job) { %>
+  <div class="job-card">
+    <div class="job-card__header">
+      <div class="job-card__avatar" style="background:<%= job.companyColor %>;"><%= job.companyInitials %></div>
+      <div class="job-card__meta">
+        <div class="job-card__title"><%= job.title %></div>
+        <div class="job-card__company"><%= job.companyName %></div>
+      </div>
+    </div>
+    <div class="job-card__details">
+      <span class="job-card__tag">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+          <path d="M5.5 1C3.567 1 2 2.567 2 4.5c0 2.7 3.5 5.5 3.5 5.5S9 7.2 9 4.5C9 2.567 7.433 1 5.5 1z" stroke="currentColor" stroke-width="1.2"/>
+          <circle cx="5.5" cy="4.5" r="1" fill="currentColor"/>
+        </svg>
+        <%= job.location %>
+      </span>
+      <span class="job-card__tag">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+          <rect x="1" y="2" width="9" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M3 2V1.5a1 1 0 011-1h3a1 1 0 011 1V2" stroke="currentColor" stroke-width="1.2"/>
+        </svg>
+        <%= job.type %>
+      </span>
+      <% if (job.remote) { %>
+      <span class="job-card__tag">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+          <path d="M1 5.5h9M6.5 2.5L9 5.5 6.5 8.5M4.5 8.5L2 5.5 4.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Remote
+      </span>
+      <% } %>
+      <% if (job.postedAt) { %>
+      <span class="job-card__tag">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" aria-hidden="true">
+          <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M5.5 3v2.5l1.5 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        <%= job.postedAt %>
+      </span>
+      <% } %>
+    </div>
+    <div class="job-card__actions">
+      <% if (job.applied) { %>
+      <button class="btn btn--applied" disabled>
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+          <path d="M2.5 7l3 3 5-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Applied
+      </button>
+      <a href="/dashboard/applications" class="btn btn--ghost">View Status</a>
+      <% } else { %>
+      <form method="POST" action="/dashboard/jobs/<%= job.id %>/apply" style="display:contents;">
+        <button type="submit" class="btn btn--primary">Apply Now</button>
+      </form>
+      <% } %>
+    </div>
+  </div>
+<% }) %>
+</div>
+
+<div class="section-cta">
+  <span class="section-cta__sub"><%= jobs.length %> open position<%= jobs.length !== 1 ? 's' : '' %></span>
+  <a href="/dashboard/applications" class="btn btn--ghost">My Applications</a>
+</div>
+<% } %>

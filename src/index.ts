@@ -1,9 +1,11 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
 import { fileURLToPath } from 'url';
 import { realpathSync } from 'fs';
 import { resolve } from 'path';
+import dashboardRouter from './routes/dashboard.js';
 import { initializeStore, readStore, addObservabilityEntry, generateId, now } from './models/store.js';
 import { authenticate } from './middleware/auth.js';
 import { errorHandler } from './middleware/auth.js';
@@ -24,10 +26,18 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+
+// EJS view engine — templates in src/../views
+app.set('view engine', 'ejs');
+app.set('views', resolve(fileURLToPath(import.meta.url), '../../views'));
 
 app.use('/health', (_req, res) => {
   res.json({ status: 'ok', message: 'New Fronteir Recruiting API', timestamp: new Date().toISOString() });
 });
+
+// Dashboard UI — cookie-based auth, mounts before global JWT middleware
+app.use('/dashboard', dashboardRouter);
 
 // Mount public routes before the global authenticate middleware so their
 // static paths (register, login) don't require auth.

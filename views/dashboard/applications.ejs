@@ -1,0 +1,62 @@
+<%# Applications page partial %>
+
+<div class="page-header">
+  <p class="page-header__eyebrow">Dashboard</p>
+  <h1 class="page-header__title">My Applications</h1>
+  <p class="page-header__sub">Here's where things stand — keep going.</p>
+</div>
+
+<% if (applications.length === 0) { %>
+<div class="empty-state">
+  <svg class="empty-state__icon" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="10" width="48" height="36" rx="4" stroke="currentColor" stroke-width="2"/>
+    <path d="M4 18h48" stroke="currentColor" stroke-width="2"/>
+    <path d="M16 28h24M16 35h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </svg>
+  <h2 class="empty-state__title">No applications yet</h2>
+  <p class="empty-state__sub">Start exploring open positions and take the first step toward your next role.</p>
+  <a href="/dashboard/jobs" class="btn btn--primary">Browse Open Jobs</a>
+</div>
+<% } else { %>
+<div class="applications-list">
+<% applications.forEach(function(app) {
+  const statusMap = {
+    'pending':             { label: 'Pending',            cls: 'badge--pending'    },
+    'reviewed':            { label: 'Reviewed',           cls: 'badge--reviewed'   },
+    'interview scheduled':  { label: 'Interview Scheduled', cls: 'badge--interview' },
+    'accepted':             { label: 'Accepted',           cls: 'badge--accepted'   },
+    'rejected':             { label: 'Rejected',           cls: 'badge--rejected'   },
+  };
+  const info = statusMap[app.status] || { label: app.status, cls: 'badge--pending' };
+  const steps = ['Applied', 'Reviewed', 'Interview', 'Decision'];
+  const stepIdx = { pending: 0, reviewed: 1, 'interview scheduled': 2, accepted: 3, rejected: 3 };
+  const current = stepIdx[app.status] ?? 0;
+  const isRejected = app.status === 'rejected';
+%>
+  <div class="app-card">
+    <div class="app-card__avatar" style="background:<%= app.companyColor %>;"><%= app.companyInitials %></div>
+    <div class="app-card__info">
+      <div class="app-card__job-title"><%= app.jobTitle %></div>
+      <div class="app-card__company"><%= app.companyName %></div>
+      <div class="app-card__date">Applied <%= app.appliedDate %></div>
+      <div class="app-card__timeline" aria-label="Application progress">
+        <% steps.forEach(function(step, i) { %>
+        <div class="timeline-step<%= i <= current ? (isRejected && i === 3 ? ' timeline-step--rejected' : ' timeline-step--filled') : '' %><%= i === current && !isRejected ? ' timeline-step--current' : '' %>">
+          <div class="timeline-step__dot" title="<%= step %>"></div>
+          <% if (i < steps.length - 1) { %><div class="timeline-step__line"></div><% } %>
+        </div>
+        <% }) %>
+      </div>
+    </div>
+    <div>
+      <span class="badge <%= info.cls %>"><%= info.label %></span>
+    </div>
+  </div>
+<% }) %>
+</div>
+
+<div class="section-cta">
+  <span class="section-cta__sub"><%= applications.length %> application<%= applications.length !== 1 ? 's' : '' %> total</span>
+  <a href="/dashboard/jobs" class="btn btn--primary">Browse More Jobs</a>
+</div>
+<% } %>

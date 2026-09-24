@@ -1,0 +1,50 @@
+<header class="dash-nav">
+  <div class="dash-nav__brand">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <polygon points="12,2 20,8 20,16 12,22 4,16 4,8" stroke="#3DAA6C" stroke-width="1.5" fill="rgba(61,170,108,0.1)"/>
+      <text x="12" y="15.5" text-anchor="middle" font-size="7" font-weight="800" fill="#3DAA6C" font-family="sans-serif" letter-spacing="0.05em">NF</text>
+    </svg>
+    <span class="dash-nav__brand-name">NEW FRONTIER</span>
+  </div>
+
+  <nav class="dash-nav__links" aria-label="Main navigation">
+    <a href="/dashboard/applications"
+       class="dash-nav__link<%= currentPage === 'applications' ? ' dash-nav__link--active' : '' %>">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <rect x="1" y="3" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M4 3V2a1 1 0 011-1h6a1 1 0 011 1v1" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="4" y1="7" x2="12" y2="7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        <line x1="4" y1="10" x2="9" y2="10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+      My Applications
+    </a>
+    <a href="/dashboard/jobs"
+       class="dash-nav__link<%= currentPage === 'jobs' ? ' dash-nav__link--active' : '' %>">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M6.5 6.5 L9.5 9.5 M8 5v3.5 M5.5 8H8.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+      Browse Jobs
+    </a>
+    <a href="/dashboard/profile"
+       class="dash-nav__link<%= currentPage === 'profile' ? ' dash-nav__link--active' : '' %>">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <circle cx="8" cy="5.5" r="3" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M2 14c0-3.314 2.686-6 6-6s6 2.686 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      Profile
+    </a>
+  </nav>
+
+  <div class="dash-nav__right">
+    <div class="dash-nav__avatar" aria-hidden="true">
+      <%= (applicant?.firstName?.[0] || 'A').toUpperCase() %>
+    </div>
+    <a href="/dashboard/logout" class="dash-nav__logout" title="Sign out">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M11 11l3-3-3-3M14 8H6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </a>
+  </div>
+</header>

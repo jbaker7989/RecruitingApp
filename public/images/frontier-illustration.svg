@@ -1,0 +1,456 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" role="img" aria-label="New Frontier — Premium Isometric Brand Illustration">
+  <title>New Frontier</title>
+  <desc>Refined isometric brand illustration for New Frontier — geometric UI panels, frosted glass cards, and a precision compass representing the job seeker journey</desc>
+
+  <defs>
+    <!-- ── Color Palette ──────────────────────────── -->
+    <!-- Background: deep midnight blue (like Linear/Linear-style) -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0D0F1A"/>
+      <stop offset="60%" stop-color="#131628"/>
+      <stop offset="100%" stop-color="#1A1D35"/>
+    </linearGradient>
+
+    <!-- Radial ambient glow — bottom right -->
+    <radialGradient id="ambientGlow" cx="75%" cy="85%" r="60%">
+      <stop offset="0%" stop-color="#2E4A2E" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#1A2D4A" stop-opacity="0.4"/>
+      <stop offset="100%" stop-color="#0D0F1A" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Subtle glow — top left accent -->
+    <radialGradient id="topGlow" cx="20%" cy="15%" r="40%">
+      <stop offset="0%" stop-color="#4A3A6B" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#0D0F1A" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Compass emerald -->
+    <linearGradient id="emerald" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3DAA6C"/>
+      <stop offset="100%" stop-color="#2D8A52"/>
+    </linearGradient>
+
+    <!-- Compass gold -->
+    <linearGradient id="compassGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D4A84B"/>
+      <stop offset="100%" stop-color="#B8923A"/>
+    </linearGradient>
+
+    <!-- Glass card fill -->
+    <linearGradient id="glassFill" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.02"/>
+    </linearGradient>
+
+    <!-- Glass card border -->
+    <linearGradient id="glassBorder" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.05"/>
+    </linearGradient>
+
+    <!-- Path / line accent — emerald -->
+    <linearGradient id="lineAccent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2E8A52" stop-opacity="0"/>
+      <stop offset="30%" stop-color="#3DAA6C"/>
+      <stop offset="100%" stop-color="#3DAA6C"/>
+    </linearGradient>
+
+    <!-- Progress gradient -->
+    <linearGradient id="progressGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2D8A52"/>
+      <stop offset="100%" stop-color="#3DAA6C"/>
+    </linearGradient>
+
+    <!-- Frosted UI panel fill -->
+    <linearGradient id="panelFill" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.02"/>
+    </linearGradient>
+
+    <!-- ── Filters ──────────────────────────────── -->
+    <!-- Soft glow for accents -->
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Ambient card shadow -->
+    <filter id="cardGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="16" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+
+    <!-- Tight shadow for panels -->
+    <filter id="panelShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+
+    <!-- Emerald glow -->
+    <filter id="emeraldGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Clip for isometric planes -->
+    <clipPath id="glassClip">
+      <rect x="-80" y="-60" width="160" height="120" rx="12"/>
+    </clipPath>
+  </defs>
+
+  <!-- ═══ BACKGROUND ═══ -->
+  <rect width="800" height="480" fill="url(#bgGrad)"/>
+  <rect width="800" height="480" fill="url(#ambientGlow)"/>
+  <rect width="800" height="480" fill="url(#topGlow)"/>
+
+  <!-- Subtle dot grid pattern (premium tech feel) -->
+  <g fill="#FFFFFF" opacity="0.04">
+    <script>
+      // Generated via loop below
+    </script>
+    <!-- Grid dots: 40px spacing -->
+    <circle cx="40" cy="40" r="1"/>
+    <circle cx="80" cy="40" r="1"/>
+    <circle cx="120" cy="40" r="1"/>
+    <circle cx="160" cy="40" r="1"/>
+    <circle cx="200" cy="40" r="1"/>
+    <circle cx="240" cy="40" r="1"/>
+    <circle cx="280" cy="40" r="1"/>
+    <circle cx="320" cy="40" r="1"/>
+    <circle cx="360" cy="40" r="1"/>
+    <circle cx="400" cy="40" r="1"/>
+    <circle cx="440" cy="40" r="1"/>
+    <circle cx="480" cy="40" r="1"/>
+    <circle cx="520" cy="40" r="1"/>
+    <circle cx="560" cy="40" r="1"/>
+    <circle cx="600" cy="40" r="1"/>
+    <circle cx="640" cy="40" r="1"/>
+    <circle cx="680" cy="40" r="1"/>
+    <circle cx="720" cy="40" r="1"/>
+    <circle cx="760" cy="40" r="1"/>
+    <circle cx="40" cy="80" r="1"/>
+    <circle cx="80" cy="80" r="1"/>
+    <circle cx="120" cy="80" r="1"/>
+    <circle cx="160" cy="80" r="1"/>
+    <circle cx="200" cy="80" r="1"/>
+    <circle cx="240" cy="80" r="1"/>
+    <circle cx="280" cy="80" r="1"/>
+    <circle cx="320" cy="80" r="1"/>
+    <circle cx="360" cy="80" r="1"/>
+    <circle cx="400" cy="80" r="1"/>
+    <circle cx="440" cy="80" r="1"/>
+    <circle cx="480" cy="80" r="1"/>
+    <circle cx="520" cy="80" r="1"/>
+    <circle cx="560" cy="80" r="1"/>
+    <circle cx="600" cy="80" r="1"/>
+    <circle cx="640" cy="80" r="1"/>
+    <circle cx="680" cy="80" r="1"/>
+    <circle cx="720" cy="80" r="1"/>
+    <circle cx="760" cy="80" r="1"/>
+    <circle cx="40" cy="120" r="1"/>
+    <circle cx="80" cy="120" r="1"/>
+    <circle cx="120" cy="120" r="1"/>
+    <circle cx="160" cy="120" r="1"/>
+    <circle cx="200" cy="120" r="1"/>
+    <circle cx="240" cy="120" r="1"/>
+    <circle cx="280" cy="120" r="1"/>
+    <circle cx="320" cy="120" r="1"/>
+    <circle cx="360" cy="120" r="1"/>
+    <circle cx="400" cy="120" r="1"/>
+    <circle cx="440" cy="120" r="1"/>
+    <circle cx="480" cy="120" r="1"/>
+    <circle cx="520" cy="120" r="1"/>
+    <circle cx="560" cy="120" r="1"/>
+    <circle cx="600" cy="120" r="1"/>
+    <circle cx="640" cy="120" r="1"/>
+    <circle cx="680" cy="120" r="1"/>
+    <circle cx="720" cy="120" r="1"/>
+    <circle cx="760" cy="120" r="1"/>
+    <circle cx="40" cy="160" r="1"/>
+    <circle cx="80" cy="160" r="1"/>
+    <circle cx="120" cy="160" r="1"/>
+    <circle cx="160" cy="160" r="1"/>
+    <circle cx="200" cy="160" r="1"/>
+    <circle cx="240" cy="160" r="1"/>
+    <circle cx="280" cy="160" r="1"/>
+    <circle cx="320" cy="160" r="1"/>
+    <circle cx="360" cy="160" r="1"/>
+    <circle cx="400" cy="160" r="1"/>
+    <circle cx="440" cy="160" r="1"/>
+    <circle cx="480" cy="160" r="1"/>
+    <circle cx="520" cy="160" r="1"/>
+    <circle cx="560" cy="160" r="1"/>
+    <circle cx="600" cy="160" r="1"/>
+    <circle cx="640" cy="160" r="1"/>
+    <circle cx="680" cy="160" r="1"/>
+    <circle cx="720" cy="160" r="1"/>
+    <circle cx="760" cy="160" r="1"/>
+    <circle cx="40" cy="440" r="1"/>
+    <circle cx="80" cy="440" r="1"/>
+    <circle cx="120" cy="440" r="1"/>
+    <circle cx="160" cy="440" r="1"/>
+    <circle cx="200" cy="440" r="1"/>
+    <circle cx="240" cy="440" r="1"/>
+    <circle cx="280" cy="440" r="1"/>
+    <circle cx="320" cy="440" r="1"/>
+    <circle cx="360" cy="440" r="1"/>
+    <circle cx="400" cy="440" r="1"/>
+    <circle cx="440" cy="440" r="1"/>
+    <circle cx="480" cy="440" r="1"/>
+    <circle cx="520" cy="440" r="1"/>
+    <circle cx="560" cy="440" r="1"/>
+    <circle cx="600" cy="440" r="1"/>
+    <circle cx="640" cy="440" r="1"/>
+    <circle cx="680" cy="440" r="1"/>
+    <circle cx="720" cy="440" r="1"/>
+    <circle cx="760" cy="440" r="1"/>
+  </g>
+
+  <!-- Ambient emerald glow in center -->
+  <ellipse cx="400" cy="240" rx="300" ry="200" fill="#2E8A52" opacity="0.03" filter="url(#softGlow)"/>
+
+  <!-- ═══ ISOMETRIC GRID FLOOR (subtle) ═══ -->
+  <!-- Dark geometric floor plane suggesting depth -->
+  <path d="M-50 400 L400 180 L850 400 L-50 400Z" fill="#0D1020" opacity="0.5"/>
+  <path d="M-50 400 L400 180 L850 400" stroke="#FFFFFF" stroke-opacity="0.04" stroke-width="1" fill="none"/>
+
+  <!-- ═══ CENTERPIECE: ISOMETRIC COMPASS ═══ -->
+  <!-- The compass as an isometric gem/crystal form — premium and symbolic -->
+
+  <!-- Compass shadow on floor -->
+  <ellipse cx="400" cy="340" rx="80" ry="30" fill="#000000" opacity="0.3" filter="url(#softGlow)"/>
+
+  <!-- Compass base — isometric hexagonal platform -->
+  <g transform="translate(400, 300)">
+    <!-- Platform base (top face) -->
+    <polygon points="0,-70 60,-35 60,35 0,70 -60,35 -60,-35" fill="#1A2035" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="1"/>
+    <!-- Platform right face -->
+    <polygon points="60,-35 60,35 0,70 0,0" fill="#0D1020" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="1"/>
+    <!-- Platform left face -->
+    <polygon points="-60,-35 -60,35 0,70 0,0" fill="#151A2E" stroke="#FFFFFF" stroke-opacity="0.06" stroke-width="1"/>
+
+    <!-- Inner ring (top face) -->
+    <polygon points="0,-52 45,-26 45,26 0,52 -45,26 -45,-26" fill="#1E2440" stroke="#3DAA6C" stroke-opacity="0.3" stroke-width="1"/>
+
+    <!-- Compass dial — outer circle (isometric ellipse) -->
+    <ellipse cx="0" cy="-8" rx="42" ry="42" fill="#1A2035" stroke="#3DAA6C" stroke-width="1.5" stroke-opacity="0.6"/>
+
+    <!-- Compass dial face -->
+    <ellipse cx="0" cy="-8" rx="36" ry="36" fill="#0D1020" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="0.8"/>
+
+    <!-- Cardinal tick marks (N/E/S/W) -->
+    <g stroke="#3DAA6C" stroke-width="1.5" stroke-opacity="0.7">
+      <line x1="0" y1="-36" x2="0" y2="-42" transform="translate(0,-8)"/>
+      <line x1="36" y1="0" x2="42" y2="0" transform="translate(0,-8)"/>
+      <line x1="0" y1="36" x2="0" y2="42" transform="translate(0,-8)"/>
+      <line x1="-36" y1="0" x2="-42" y2="0" transform="translate(0,-8)"/>
+    </g>
+    <!-- Minor ticks -->
+    <g stroke="#FFFFFF" stroke-width="0.8" stroke-opacity="0.15">
+      <line x1="25" y1="-25" x2="29" y2="-29" transform="translate(0,-8)"/>
+      <line x1="25" y1="25" x2="29" y2="29" transform="translate(0,-8)"/>
+      <line x1="-25" y1="25" x2="-29" y2="29" transform="translate(0,-8)"/>
+      <line x1="-25" y1="-25" x2="-29" y2="-29" transform="translate(0,-8)"/>
+    </g>
+
+    <!-- N label -->
+    <text x="0" y="-47" text-anchor="middle" fill="#3DAA6C" font-size="9" font-weight="600"
+          font-family="-apple-system, 'Segoe UI', Roboto, sans-serif" opacity="0.9">N</text>
+
+    <!-- Needle — pointing toward horizon (NE) -->
+    <g transform="translate(0,-8) rotate(-30)">
+      <!-- North needle (emerald, pointing up) -->
+      <polygon points="0,-28 5,0 0,-6 -5,0" fill="url(#emerald)"/>
+      <!-- South needle (silver) -->
+      <polygon points="0,28 5,0 0,6 -5,0" fill="#6A7A8A"/>
+      <!-- Center jewel -->
+      <circle cx="0" cy="0" r="5" fill="url(#compassGold)"/>
+      <circle cx="0" cy="0" r="2.5" fill="#1A2035"/>
+    </g>
+
+    <!-- Compass rises off the platform (3D depth) -->
+    <!-- Right wall of platform -->
+    <polygon points="0,-8 0,20 0,62 60,-13 60,-35 0,-8" fill="#0D1020" stroke="#FFFFFF" stroke-opacity="0.05" stroke-width="1"/>
+    <!-- Left wall of platform -->
+    <polygon points="0,-8 0,20 0,62 -60,-13 -60,-35 0,-8" fill="#141928" stroke="#FFFFFF" stroke-opacity="0.05" stroke-width="1"/>
+  </g>
+
+  <!-- ═══ PROGRESS JOURNEY LINE (elegant curved line graph) ═══ -->
+  <!-- The career path as a precision line chart — premium data visualization -->
+  <g opacity="0.7">
+    <!-- Faint grid lines behind chart -->
+    <line x1="80" y1="380" x2="620" y2="380" stroke="#FFFFFF" stroke-opacity="0.04" stroke-width="1"/>
+    <line x1="80" y1="330" x2="620" y2="330" stroke="#FFFFFF" stroke-opacity="0.04" stroke-width="1"/>
+    <line x1="80" y1="280" x2="620" y2="280" stroke="#FFFFFF" stroke-opacity="0.04" stroke-width="1"/>
+    <line x1="80" y1="230" x2="620" y2="230" stroke="#FFFFFF" stroke-opacity="0.04" stroke-width="1"/>
+
+    <!-- The curve: precise Bézier representing application progress -->
+    <path d="M100 390 C160 390 180 370 220 360 C280 345 300 310 360 295 C420 280 450 250 510 230 C560 215 600 200 680 180"
+          stroke="url(#lineAccent)" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+    <!-- Progress area fill under curve (very subtle) -->
+    <path d="M100 390 C160 390 180 370 220 360 C280 345 300 310 360 295 C420 280 450 250 510 230 C560 215 600 200 680 180 L680 390 L100 390 Z"
+          fill="url(#progressGrad)" opacity="0.06"/>
+
+    <!-- Milestone dots on the curve -->
+    <!-- Point 1: Applied (start) -->
+    <circle cx="100" cy="390" r="5" fill="#1A2035" stroke="#3DAA6C" stroke-width="1.5"/>
+    <!-- Point 2: Reviewed -->
+    <circle cx="220" cy="360" r="5" fill="#1A2035" stroke="#3DAA6C" stroke-width="1.5"/>
+    <!-- Point 3: Interview -->
+    <circle cx="360" cy="295" r="7" fill="#3DAA6C" filter="url(#emeraldGlow)"/>
+    <circle cx="360" cy="295" r="4" fill="#1A2035"/>
+    <!-- Point 4: Offer — destination (largest, glowing) -->
+    <circle cx="510" cy="230" r="8" fill="#D4A84B" filter="url(#emeraldGlow)"/>
+    <circle cx="510" cy="230" r="4" fill="#1A2035"/>
+
+    <!-- Active cursor (current position) -->
+    <circle cx="430" cy="265" r="10" fill="#3DAA6C" opacity="0.15" filter="url(#softGlow)"/>
+    <circle cx="430" cy="265" r="6" fill="#1A2035" stroke="#3DAA6C" stroke-width="1.5"/>
+    <circle cx="430" cy="265" r="2.5" fill="#3DAA6C"/>
+
+    <!-- Milestone labels (minimal) -->
+    <text x="100" y="408" text-anchor="middle" fill="#6A7A8A" font-size="8" font-family="-apple-system, sans-serif">Applied</text>
+    <text x="220" y="378" text-anchor="middle" fill="#6A7A8A" font-size="8" font-family="-apple-system, sans-serif">Reviewed</text>
+    <text x="360" y="316" text-anchor="middle" fill="#3DAA6C" font-size="8" font-weight="600" font-family="-apple-system, sans-serif">Interview</text>
+    <text x="510" y="250" text-anchor="middle" fill="#D4A84B" font-size="8" font-weight="600" font-family="-apple-system, sans-serif">Offer</text>
+  </g>
+
+  <!-- ═══ FROSTED GLASS UI CARDS (premium floating panels) ═══ -->
+
+  <!-- Card 1: Application status — top left -->
+  <g transform="translate(110, 130)" filter="url(#cardGlow)">
+    <!-- Glass card -->
+    <rect x="-72" y="-50" width="144" height="100" rx="10" fill="url(#glassFill)"/>
+    <rect x="-72" y="-50" width="144" height="100" rx="10" fill="none" stroke="url(#glassBorder)" stroke-width="1"/>
+
+    <!-- Card header bar -->
+    <rect x="-60" y="-38" width="120" height="2" rx="1" fill="#FFFFFF" opacity="0.12"/>
+
+    <!-- Application avatar -->
+    <rect x="-60" y="-30" width="36" height="36" rx="6" fill="#FFFFFF" opacity="0.06"/>
+    <rect x="-60" y="-30" width="36" height="36" rx="6" fill="none" stroke="#FFFFFF" opacity="0.1" stroke-width="0.8"/>
+    <circle cx="-42" cy="-18" r="10" fill="#3DAA6C" opacity="0.6"/>
+    <rect x="-52" y="-4" width="20" height="3" rx="1.5" fill="#FFFFFF" opacity="0.3"/>
+    <rect x="-52" y="2" width="14" height="2" rx="1" fill="#FFFFFF" opacity="0.15"/>
+
+    <!-- Application info -->
+    <rect x="-14" y="-26" width="70" height="6" rx="3" fill="#FFFFFF" opacity="0.5"/>
+    <rect x="-14" y="-14" width="50" height="4" rx="2" fill="#FFFFFF" opacity="0.2"/>
+    <rect x="-14" y="-6" width="38" height="4" rx="2" fill="#FFFFFF" opacity="0.2"/>
+
+    <!-- Status pill -->
+    <rect x="-60" y="14" width="50" height="16" rx="8" fill="#3DAA6C" opacity="0.3"/>
+    <rect x="-60" y="14" width="50" height="16" rx="8" fill="none" stroke="#3DAA6C" stroke-width="0.8" stroke-opacity="0.5"/>
+    <circle cx="-50" cy="22" r="3" fill="#3DAA6C"/>
+    <rect x="-44" y="20" width="28" height="4" rx="2" fill="#3DAA6C" opacity="0.8"/>
+
+    <!-- Progress bar -->
+    <rect x="0" y="14" width="56" height="6" rx="3" fill="#FFFFFF" opacity="0.08"/>
+    <rect x="0" y="14" width="38" height="6" rx="3" fill="#3DAA6C" opacity="0.5"/>
+  </g>
+
+  <!-- Card 2: Job listing preview — top right -->
+  <g transform="translate(660, 160)" filter="url(#cardGlow)">
+    <rect x="-64" y="-44" width="128" height="88" rx="10" fill="url(#glassFill)"/>
+    <rect x="-64" y="-44" width="128" height="88" rx="10" fill="none" stroke="url(#glassBorder)" stroke-width="1"/>
+
+    <!-- Company logo placeholder -->
+    <rect x="-52" y="-32" width="28" height="28" rx="5" fill="#FFFFFF" opacity="0.06"/>
+    <rect x="-52" y="-32" width="28" height="28" rx="5" fill="none" stroke="#FFFFFF" opacity="0.12" stroke-width="0.8"/>
+    <circle cx="-38" cy="-18" r="7" fill="#4A6A9A" opacity="0.5"/>
+
+    <!-- Job title line -->
+    <rect x="-16" y="-30" width="52" height="6" rx="3" fill="#FFFFFF" opacity="0.5"/>
+    <!-- Company -->
+    <rect x="-16" y="-18" width="36" height="4" rx="2" fill="#FFFFFF" opacity="0.2"/>
+    <!-- Location -->
+    <rect x="-16" y="-10" width="28" height="3" rx="1.5" fill="#FFFFFF" opacity="0.12"/>
+
+    <!-- Tags -->
+    <rect x="-52" y="2" width="32" height="12" rx="6" fill="#FFFFFF" opacity="0.06"/>
+    <rect x="-52" y="2" width="32" height="12" rx="6" fill="none" stroke="#FFFFFF" opacity="0.1" stroke-width="0.8"/>
+    <rect x="-48" y="6" width="22" height="4" rx="2" fill="#FFFFFF" opacity="0.25"/>
+
+    <rect x="-14" y="2" width="36" height="12" rx="6" fill="#FFFFFF" opacity="0.06"/>
+    <rect x="-14" y="2" width="36" height="12" rx="6" fill="none" stroke="#FFFFFF" opacity="0.1" stroke-width="0.8"/>
+    <rect x="-9" y="6" width="26" height="4" rx="2" fill="#FFFFFF" opacity="0.25"/>
+
+    <!-- Save/bookmark icon -->
+    <rect x="36" y="-30" width="16" height="20" rx="3" fill="none" stroke="#FFFFFF" opacity="0.2" stroke-width="1"/>
+    <path d="M44 -20 L44 -12 M40 -20 L40 -12 M36 -22 L48 -12 L48 -22 Z" fill="#FFFFFF" opacity="0.15"/>
+  </g>
+
+  <!-- Card 3: Profile/completeness — bottom left -->
+  <g transform="translate(90, 370)" filter="url(#cardGlow)">
+    <rect x="-58" y="-38" width="116" height="76" rx="10" fill="url(#glassFill)"/>
+    <rect x="-58" y="-38" width="116" height="76" rx="10" fill="none" stroke="url(#glassBorder)" stroke-width="1"/>
+
+    <!-- Profile avatar -->
+    <circle cx="-36" cy="-14" r="16" fill="#FFFFFF" opacity="0.06"/>
+    <circle cx="-36" cy="-14" r="16" fill="none" stroke="#FFFFFF" opacity="0.12" stroke-width="0.8"/>
+    <circle cx="-36" cy="-20" r="7" fill="#3DAA6C" opacity="0.5"/>
+    <path d="M-50 -6 Q-36 0 -22 -6" fill="#3DAA6C" opacity="0.5"/>
+
+    <!-- Profile completeness -->
+    <rect x="-10" y="-26" width="44" height="5" rx="2.5" fill="#FFFFFF" opacity="0.4"/>
+    <rect x="-10" y="-16" width="30" height="3" rx="1.5" fill="#FFFFFF" opacity="0.15"/>
+
+    <!-- Circular progress ring -->
+    <circle cx="-36" cy="18" r="14" fill="none" stroke="#FFFFFF" opacity="0.08" stroke-width="3"/>
+    <path d="M-36 4 A14 14 0 1 1 -36 32" fill="none" stroke="#3DAA6C" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+    <text x="-36" y="21" text-anchor="middle" fill="#3DAA6C" font-size="8" font-weight="700" font-family="-apple-system, sans-serif">75%</text>
+  </g>
+
+  <!-- Card 4: Notification/activity feed — bottom right -->
+  <g transform="translate(700, 340)" filter="url(#cardGlow)">
+    <rect x="-52" y="-36" width="104" height="72" rx="10" fill="url(#glassFill)"/>
+    <rect x="-52" y="-36" width="104" height="72" rx="10" fill="none" stroke="url(#glassBorder)" stroke-width="1"/>
+
+    <!-- Notification items -->
+    <circle cx="-36" cy="-18" r="6" fill="#3DAA6C" opacity="0.5"/>
+    <rect x="-24" y="-22" width="36" height="4" rx="2" fill="#FFFFFF" opacity="0.35"/>
+    <rect x="-24" y="-14" width="24" height="3" rx="1.5" fill="#FFFFFF" opacity="0.15"/>
+
+    <circle cx="-36" cy="0" r="5" fill="#D4A84B" opacity="0.4"/>
+    <rect x="-24" y="-4" width="30" height="4" rx="2" fill="#FFFFFF" opacity="0.25"/>
+    <rect x="-24" y="4" width="20" height="3" rx="1.5" fill="#FFFFFF" opacity="0.12"/>
+
+    <circle cx="-36" cy="16" r="4" fill="#FFFFFF" opacity="0.1"/>
+    <rect x="-24" y="12" width="32" height="4" rx="2" fill="#FFFFFF" opacity="0.15"/>
+    <rect x="-24" y="20" width="18" height="3" rx="1.5" fill="#FFFFFF" opacity="0.08"/>
+  </g>
+
+  <!-- ═══ CONNECTING LINE from compass to chart (visual flow) ═══ -->
+  <path d="M460 290 Q520 280 560 290 Q600 300 640 295"
+        stroke="#3DAA6C" stroke-width="1" fill="none" stroke-dasharray="4,4"
+        opacity="0.3"/>
+
+  <!-- ═══ MINIMAL FLOATING ACCENTS ═══ -->
+  <!-- Small geometric shapes — premium brand accent elements -->
+  <!-- Emerald diamond -->
+  <g transform="translate(680, 90)" opacity="0.5">
+    <polygon points="0,-10 7,0 0,10 -7,0" fill="none" stroke="#3DAA6C" stroke-width="1" opacity="0.6"/>
+    <polygon points="0,-5 4,0 0,5 -4,0" fill="#3DAA6C" opacity="0.3"/>
+  </g>
+  <!-- Gold diamond -->
+  <g transform="translate(720, 130)" opacity="0.4">
+    <polygon points="0,-8 6,0 0,8 -6,0" fill="none" stroke="#D4A84B" stroke-width="1" opacity="0.6"/>
+    <polygon points="0,-4 3,0 0,4 -3,0" fill="#D4A84B" opacity="0.3"/>
+  </g>
+  <!-- Small emerald dots -->
+  <circle cx="140" cy="320" r="3" fill="#3DAA6C" opacity="0.3"/>
+  <circle cx="600" cy="380" r="2" fill="#3DAA6C" opacity="0.25"/>
+  <circle cx="760" cy="280" r="2.5" fill="#D4A84B" opacity="0.25"/>
+
+  <!-- Thin horizontal rule accent -->
+  <line x1="80" y1="420" x2="200" y2="420" stroke="#3DAA6C" stroke-width="1" opacity="0.3"/>
+  <line x1="600" y1="420" x2="720" y2="420" stroke="#D4A84B" stroke-width="1" opacity="0.3"/>
+
+  <!-- ═══ BRAND WORDMARK ═══ -->
+  <text x="400" y="452" text-anchor="middle"
+        font-size="13" font-weight="700" font-family="-apple-system, 'Segoe UI', Roboto, sans-serif"
+        fill="#FFFFFF" letter-spacing="0.3em" opacity="0.85">NEW FRONTIER</text>
+
+  <text x="400" y="468" text-anchor="middle"
+        font-size="9" font-family="-apple-system, 'Segoe UI', Roboto, sans-serif"
+        fill="#6A8A7A" letter-spacing="0.15em" opacity="0.6">CAREER JOURNEY PLATFORM</text>
+</svg>

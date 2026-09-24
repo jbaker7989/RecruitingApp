@@ -1,0 +1,241 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-label="Warm Welcome Dashboard - Applicant Hero Illustration">
+  <title>Warm Welcome Dashboard Hero</title>
+  <desc>Friendly illustrated scene showing applicants and recruiters connected by warm, inviting UI elements representing job applications and career growth</desc>
+
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="heroBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F8F9FA"/>
+      <stop offset="100%" stop-color="#E8F0FE"/>
+    </linearGradient>
+
+    <!-- Coral gradient for CTA elements -->
+    <linearGradient id="coralGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF6B6B"/>
+      <stop offset="100%" stop-color="#FF8E8E"/>
+    </linearGradient>
+
+    <!-- Green gradient for success/progress -->
+    <linearGradient id="greenGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4CAF50"/>
+      <stop offset="100%" stop-color="#6BCF7A"/>
+    </linearGradient>
+
+    <!-- Blue gradient for pending -->
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4A76D4"/>
+      <stop offset="100%" stop-color="#6B8FE4"/>
+    </linearGradient>
+
+    <!-- Soft orange for reviewed -->
+    <linearGradient id="orangeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#E08A2A"/>
+      <stop offset="100%" stop-color="#F0A04A"/>
+    </linearGradient>
+
+    <!-- Card shadow -->
+    <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#00000015"/>
+    </filter>
+
+    <!-- Soft glow -->
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Person clip paths -->
+    <clipPath id="person1Clip">
+      <circle cx="0" cy="0" r="40"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="500" fill="url(#heroBg)" rx="16"/>
+
+  <!-- Decorative background shapes -->
+  <circle cx="650" cy="80" r="120" fill="#FF6B6B" opacity="0.06"/>
+  <circle cx="100" cy="420" r="100" fill="#4CAF50" opacity="0.06"/>
+  <circle cx="400" cy="250" r="180" fill="#4A76D4" opacity="0.04"/>
+
+  <!-- ========== LEFT SIDE: APPLICANT FIGURE ========== -->
+  <g transform="translate(120, 140)">
+    <!-- Person body (simple, friendly style) -->
+    <ellipse cx="0" cy="95" rx="35" ry="45" fill="#4A76D4"/>
+    <!-- Head -->
+    <circle cx="0" cy="25" r="32" fill="#FFDBB4"/>
+    <!-- Hair -->
+    <path d="M-28 15 Q-30 -20 0 -25 Q30 -20 28 15 Q25 5 0 8 Q-25 5 -28 15Z" fill="#5D4037"/>
+    <!-- Face - simple warm expression -->
+    <circle cx="-10" cy="22" r="4" fill="#5D4037"/>
+    <circle cx="10" cy="22" r="4" fill="#5D4037"/>
+    <path d="M-10 35 Q0 45 10 35" stroke="#5D4037" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    <!-- Glasses (friendly academic look) -->
+    <rect x="-18" y="15" width="14" height="12" rx="3" fill="none" stroke="#5D4037" stroke-width="2"/>
+    <rect x="4" y="15" width="14" height="12" rx="3" fill="none" stroke="#5D4037" stroke-width="2"/>
+    <line x1="-4" y1="21" x2="4" y2="21" stroke="#5D4037" stroke-width="2"/>
+
+    <!-- Laptop -->
+    <g transform="translate(10, 100)">
+      <rect x="-50" y="0" width="100" height="65" rx="4" fill="#E0E0E0"/>
+      <rect x="-45" y="5" width="90" height="50" rx="2" fill="#263238"/>
+      <!-- Screen content - application card on laptop -->
+      <rect x="-38" y="10" width="76" height="18" rx="3" fill="#FFFFFF"/>
+      <circle cx="-28" cy="19" r="5" fill="#E8F0FE"/>
+      <rect x="-18" y="15" width="35" height="4" rx="2" fill="#4A76D4"/>
+      <rect x="-18" y="22" width="25" height="3" rx="1.5" fill="#BDBDBD"/>
+      <rect x="30" y="16" width="22" height="6" rx="3" fill="url(#greenGrad)"/>
+      <!-- Laptop base -->
+      <path d="M-55 65 L-45 65 L-40 70 L60 70 L65 65 L55 65" fill="#BDBDBD"/>
+    </g>
+
+    <!-- Floating elements around applicant -->
+    <!-- Small job card -->
+    <g transform="translate(-80, 30)" filter="url(#cardShadow)">
+      <rect x="-30" y="-20" width="60" height="40" rx="8" fill="#FFFFFF"/>
+      <circle cx="-18" cy="0" r="6" fill="#E8F0FE"/>
+      <rect x="-8" y="-4" width="28" height="4" rx="2" fill="#4A76D4"/>
+      <rect x="-8" y="4" width="18" height="3" rx="1.5" fill="#BDBDBD"/>
+    </g>
+
+    <!-- Checkmark badge -->
+    <g transform="translate(50, -20)" filter="url(#cardShadow)">
+      <circle cx="0" cy="0" r="14" fill="url(#greenGrad)"/>
+      <path d="M-6 0 L-2 4 L6 -4" stroke="#FFFFFF" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <!-- Chat bubble -->
+    <g transform="translate(-50, -50)">
+      <path d="M0 0 Q-20 -10 -20 -25 Q-20 -40 0 -40 L30 -40 Q50 -40 50 -25 Q50 -10 30 0 Z" fill="#FFFFFF" filter="url(#cardShadow)"/>
+      <circle cx="-5" cy="-25" r="3" fill="#4CAF50"/>
+      <circle cx="5" cy="-25" r="3" fill="#4CAF50"/>
+      <circle cx="15" cy="-25" r="3" fill="#4CAF50"/>
+    </g>
+  </g>
+
+  <!-- ========== CENTER: CONNECTION/FLOW ========== -->
+  <g transform="translate(400, 250)">
+    <!-- Winding path connecting applicant to recruiter -->
+    <path d="M-180 0 Q-100 -60 0 -60 Q100 -60 180 0" stroke="#4CAF50" stroke-width="3" fill="none" stroke-dasharray="8,6" opacity="0.6"/>
+
+    <!-- Floating application cards in the flow -->
+    <!-- Card 1: Pending -->
+    <g transform="translate(-120, -30)" filter="url(#cardShadow)">
+      <rect x="-35" y="-22" width="70" height="44" rx="10" fill="#FFFFFF"/>
+      <circle cx="-20" cy="0" r="8" fill="#E8F0FE"/>
+      <text x="-20" y="4" text-anchor="middle" fill="#4A76D4" font-size="10" font-weight="bold">AC</text>
+      <rect x="-8" y="-6" width="35" height="5" rx="2.5" fill="#4A76D4"/>
+      <rect x="-8" y="4" width="25" height="4" rx="2" fill="#BDBDBD"/>
+      <rect x="18" y="-2" width="10" height="10" rx="2" fill="#E8F0FE"/>
+      <text x="23" y="4" text-anchor="middle" fill="#4A76D4" font-size="7" font-weight="bold">P</text>
+    </g>
+
+    <!-- Card 2: Interview -->
+    <g transform="translate(0, -70)" filter="url(#cardShadow)">
+      <rect x="-35" y="-22" width="70" height="44" rx="10" fill="#FFFFFF"/>
+      <circle cx="-20" cy="0" r="8" fill="#E4F7E9"/>
+      <text x="-20" y="4" text-anchor="middle" fill="#2E9E4B" font-size="10" font-weight="bold">BL</text>
+      <rect x="-8" y="-6" width="35" height="5" rx="2.5" fill="#2E9E4B"/>
+      <rect x="-8" y="4" width="25" height="4" rx="2" fill="#BDBDBD"/>
+      <rect x="18" y="-2" width="10" height="10" rx="2" fill="#E4F7E9"/>
+      <text x="23" y="4" text-anchor="middle" fill="#2E9E4B" font-size="7" font-weight="bold">I</text>
+    </g>
+
+    <!-- Card 3: Reviewed -->
+    <g transform="translate(120, -30)" filter="url(#cardShadow)">
+      <rect x="-35" y="-22" width="70" height="44" rx="10" fill="#FFFFFF"/>
+      <circle cx="-20" cy="0" r="8" fill="#FFF3E0"/>
+      <text x="-20" y="4" text-anchor="middle" fill="#E08A2A" font-size="10" font-weight="bold">NV</text>
+      <rect x="-8" y="-6" width="35" height="5" rx="2.5" fill="#E08A2A"/>
+      <rect x="-8" y="4" width="25" height="4" rx="2" fill="#BDBDBD"/>
+      <rect x="18" y="-2" width="10" height="10" rx="2" fill="#FFF3E0"/>
+      <text x="23" y="4" text-anchor="middle" fill="#E08A2A" font-size="7" font-weight="bold">R</text>
+    </g>
+
+    <!-- Progress dots on the path -->
+    <circle cx="-120" cy="-30" r="6" fill="#4A76D4"/>
+    <circle cx="-60" cy="-50" r="5" fill="#4CAF50"/>
+    <circle cx="0" cy="-60" r="6" fill="#2E9E4B"/>
+    <circle cx="60" cy="-50" r="5" fill="#E08A2A"/>
+    <circle cx="120" cy="-30" r="6" fill="#4A76D4"/>
+  </g>
+
+  <!-- ========== RIGHT SIDE: RECRUITER/COMPANY FIGURE ========== -->
+  <g transform="translate(680, 140)">
+    <!-- Person body -->
+    <ellipse cx="0" cy="95" rx="35" ry="45" fill="#4CAF50"/>
+    <!-- Head -->
+    <circle cx="0" cy="25" r="32" fill="#FFDBB4"/>
+    <!-- Hair (different style) -->
+    <path d="M-28 10 Q-32 -20 0 -22 Q32 -20 28 10 Q20 0 0 3 Q-20 0 -28 10Z" fill="#3E2723"/>
+    <!-- Face -->
+    <circle cx="-10" cy="22" r="4" fill="#3E2723"/>
+    <circle cx="10" cy="22" r="4" fill="#3E2723"/>
+    <path d="M-10 35 Q0 42 10 35" stroke="#3E2723" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+    <!-- Clipboard/Dashboard element -->
+    <g transform="translate(-55, 60)">
+      <rect x="-30" y="-20" width="60" height="75" rx="6" fill="#FFFFFF" filter="url(#cardShadow)"/>
+      <rect x="-25" y="-15" width="50" height="8" rx="2" fill="#4CAF50"/>
+      <!-- Mini chart bars -->
+      <rect x="-20" y="5" width="10" height="25" rx="2" fill="#E8F0FE"/>
+      <rect x="-5" y="-5" width="10" height="35" rx="2" fill="#4A76D4"/>
+      <rect x="10" y="0" width="10" height="30" rx="2" fill="#E08A2A"/>
+      <!-- Line chart -->
+      <path d="M-20 35 L-10 28 L0 32 L10 20 L20 25" stroke="#4CAF50" stroke-width="2" fill="none"/>
+      <circle cx="-20" cy="35" r="3" fill="#4CAF50"/>
+      <circle cx="-10" cy="28" r="3" fill="#4CAF50"/>
+      <circle cx="0" cy="32" r="3" fill="#4CAF50"/>
+      <circle cx="10" cy="20" r="3" fill="#4CAF50"/>
+      <circle cx="20" cy="25" r="3" fill="#4CAF50"/>
+    </g>
+
+    <!-- Star/success badge -->
+    <g transform="translate(-65, -30)" filter="url(#cardShadow)">
+      <circle cx="0" cy="0" r="16" fill="url(#greenGrad)"/>
+      <path d="M0 -9 L2 -3 L8 -3 L3 1 L5 7 L0 3 L-5 7 L-3 1 L-8 -3 L-2 -3 Z" fill="#FFFFFF"/>
+    </g>
+
+    <!-- Inbox/notification -->
+    <g transform="translate(40, 20)">
+      <rect x="-18" y="-15" width="36" height="30" rx="6" fill="#FFFFFF" filter="url(#cardShadow)"/>
+      <path d="M-18 -8 L0 -2 L18 -8" stroke="#E0E0E0" stroke-width="2" fill="none"/>
+      <circle cx="10" cy="-10" r="8" fill="#FF6B6B"/>
+      <text x="10" y="-6" text-anchor="middle" fill="#FFFFFF" font-size="10" font-weight="bold">3</text>
+    </g>
+  </g>
+
+  <!-- ========== FLOATING DECORATIVE ELEMENTS ========== -->
+  <!-- Skill badges floating -->
+  <g transform="translate(300, 80)">
+    <rect x="-35" y="-12" width="70" height="24" rx="12" fill="#E8F0FE"/>
+    <text x="0" y="5" text-anchor="middle" fill="#4A76D4" font-size="11" font-weight="600">React</text>
+  </g>
+
+  <g transform="translate(500, 420)">
+    <rect x="-30" y="-12" width="60" height="24" rx="12" fill="#E4F7E9"/>
+    <text x="0" y="5" text-anchor="middle" fill="#2E9E4B" font-size="11" font-weight="600">Node.js</text>
+  </g>
+
+  <g transform="translate(150, 400)">
+    <rect x="-35" y="-12" width="70" height="24" rx="12" fill="#FFF3E0"/>
+    <text x="0" y="5" text-anchor="middle" fill="#E08A2A" font-size="11" font-weight="600">Python</text>
+  </g>
+
+  <!-- Timeline mini element -->
+  <g transform="translate(550, 120)" filter="url(#cardShadow)">
+    <rect x="-40" y="-15" width="80" height="30" rx="8" fill="#FFFFFF"/>
+    <rect x="-32" y="-3" width="12" height="6" rx="3" fill="#4CAF50"/>
+    <rect x="-16" y="-3" width="12" height="6" rx="3" fill="#4CAF50"/>
+    <rect x="0" y="-3" width="12" height="6" rx="3" fill="#E0E0E0"/>
+    <rect x="16" y="-3" width="12" height="6" rx="3" fill="#E0E0E0"/>
+  </g>
+
+  <!-- ========== BOTTOM TEXT / TAGLINE ========== -->
+  <text x="400" y="470" text-anchor="middle" fill="#666666" font-size="14" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+    Track your applications · Discover new opportunities · Land your dream job
+  </text>
+</svg>

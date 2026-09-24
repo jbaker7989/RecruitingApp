@@ -512,6 +512,32 @@
         "email": "reset-obs@example.com"
       },
       "outcome": "success"
+    },
+    {
+      "id": "04dcf963-8e50-478a-a6f0-b917934979f1",
+      "timestamp": "2026-09-24T04:20:09.288Z",
+      "action": "startup",
+      "entityType": "System",
+      "entityId": "server",
+      "userId": "system",
+      "details": {
+        "message": "Server started",
+        "version": "1.0.0"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "b9873449-3f32-423b-9e9d-3d9167828e0a",
+      "timestamp": "2026-09-24T04:20:20.015Z",
+      "action": "startup",
+      "entityType": "System",
+      "entityId": "server",
+      "userId": "system",
+      "details": {
+        "message": "Server started",
+        "version": "1.0.0"
+      },
+      "outcome": "success"
     }
   ]
 }

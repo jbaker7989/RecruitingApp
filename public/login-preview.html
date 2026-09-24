@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login Page Preview — Both Illustrations</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f0f2f5;
+      color: #222;
+      line-height: 1.5;
+    }
+
+    h1 {
+      text-align: center;
+      padding: 40px 20px 10px;
+      font-size: 1.8em;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #666;
+      padding: 0 20px 30px;
+      font-size: 1em;
+    }
+
+    /* ── Option Cards ─────────────────────────────── */
+    .options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 24px 60px;
+    }
+
+    @media (max-width: 900px) {
+      .options-grid { grid-template-columns: 1fr; }
+    }
+
+    .option-card {
+      background: #fff;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.10);
+    }
+
+    .option-card header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .option-card h2 {
+      font-size: 1.1em;
+      font-weight: 700;
+      color: #1a1a2e;
+    }
+
+    .option-card .tagline {
+      font-size: 0.85em;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .option-card .option-badge {
+      display: inline-block;
+      margin-top: 8px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.72em;
+      font-weight: 600;
+    }
+
+    .badge-hero  { background: #E8F0FE; color: #4A76D4; }
+    .badge-frontier { background: #E4F7E9; color: #2E9E4B; }
+
+    /* ── Illustration wrapper ─────────────────────── */
+    .illustration-wrap {
+      background: #F8F9FA;
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 320px;
+    }
+
+    .illustration-wrap svg {
+      max-width: 100%;
+      height: auto;
+      max-height: 300px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    }
+
+    /* ── Login Mockup ─────────────────────────────── */
+    .mockup-section {
+      padding: 20px 24px 24px;
+      background: #fff;
+    }
+
+    .mockup-section h3 {
+      font-size: 0.9em;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 12px;
+    }
+
+    .mockup-frame {
+      background: #fff;
+      border: 2px solid #e8e8e8;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    }
+
+    /* Browser chrome */
+    .browser-bar {
+      background: #f5f5f5;
+      padding: 10px 14px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot.red   { background: #ff5f57; }
+    .dot.yellow{ background: #ffbd2e; }
+    .dot.green { background: #28c840; }
+
+    .url-bar {
+      flex: 1;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 0.72em;
+      color: #888;
+      margin-left: 4px;
+    }
+
+    /* Login page inside */
+    .login-page {
+      padding: 32px 28px;
+      background: #F8F9FA;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    /* ── Option 1: Illustrated Hero ─────────────── */
+    .hero-login .login-graphic {
+      width: 100%;
+      max-height: 220px;
+      object-fit: contain;
+      margin-bottom: 20px;
+    }
+
+    .hero-login .brand-block {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .hero-login .brand-name {
+      font-size: 1.5em;
+      font-weight: 800;
+      color: #1a1a2e;
+    }
+
+    .hero-login .brand-tagline {
+      font-size: 0.85em;
+      color: #888;
+      margin-top: 4px;
+    }
+
+    /* ── Option 2: Frontier ─────────────────────── */
+    .frontier-login .login-graphic {
+      width: 100%;
+      max-height: 180px;
+      object-fit: contain;
+      margin-bottom: 16px;
+    }
+
+    .frontier-login .brand-block {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .frontier-login .brand-name {
+      font-size: 1.5em;
+      font-weight: 800;
+      color: #2E7D32;
+    }
+
+    .frontier-login .brand-tagline {
+      font-size: 0.8em;
+      color: #6A8A7A;
+      margin-top: 4px;
+      letter-spacing: 0.08em;
+    }
+
+    /* Frontier form overrides (dark theme) */
+    .frontier-login {
+      background: linear-gradient(160deg, #0D0F1A 0%, #131628 100%) !important;
+    }
+    .frontier-login .form-group label { color: #8A9AAA; }
+    .frontier-login .form-group input {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #fff;
+    }
+    .frontier-login .form-group input::placeholder { color: rgba(255,255,255,0.25); }
+    .frontier-login .form-group input:focus { border-color: #3DAA6C; outline: none; }
+    .frontier-login .cta-btn { background: #3DAA6C; }
+    .frontier-login .cta-btn:hover { background: #2D8A52; }
+    .frontier-login .alt-link { color: #6A8A7A; }
+    .frontier-login .alt-link a { color: #3DAA6C; }
+
+    /* ── Shared Form ─────────────────────────────── */
+    .login-form {
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.8em;
+      font-weight: 600;
+      color: #555;
+      margin-bottom: 6px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 10px;
+      font-size: 0.9em;
+      background: #fff;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #4A76D4;
+    }
+
+    .cta-btn {
+      width: 100%;
+      padding: 12px;
+      background: #FF6B6B;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95em;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 4px;
+      transition: background 0.2s;
+    }
+
+    .cta-btn:hover { background: #ff5252; }
+
+    .alt-link {
+      text-align: center;
+      margin-top: 14px;
+      font-size: 0.8em;
+      color: #888;
+    }
+
+    .alt-link a {
+      color: #4A76D4;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    /* ── Comparison table ───────────────────────── */
+    .comparison {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 24px 60px;
+    }
+
+    .comparison table {
+      width: 100%;
+      background: #fff;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+      border-collapse: collapse;
+    }
+
+    .comparison th {
+      background: #1a1a2e;
+      color: #fff;
+      padding: 14px 20px;
+      text-align: left;
+      font-size: 0.85em;
+    }
+
+    .comparison td {
+      padding: 12px 20px;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 0.88em;
+      color: #444;
+    }
+
+    .comparison tr:last-child td { border-bottom: none; }
+    .comparison tr:nth-child(even) td { background: #fafafa; }
+
+    .comparison .check { color: #4CAF50; font-weight: bold; }
+    .comparison .minus { color: #E08A2A; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<h1>Login Page — Illustration Options</h1>
+<p class="subtitle">Two directions for the landing page hero. Scroll down for side-by-side comparison.</p>
+
+<!-- ── Side-by-side Option Cards ─────────────────── -->
+<div class="options-grid">
+
+  <!-- ══ Option 1: Illustrated Hero ══ -->
+  <div class="option-card">
+    <header>
+      <h2>Option A — Illustrated Hero</h2>
+      <p class="tagline">Friendly human scene with warm career-growth metaphor</p>
+      <span class="option-badge badge-hero">#A — Human &amp; Inviting</span>
+    </header>
+
+    <div class="illustration-wrap">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 300" role="img" aria-label="Warm Welcome Dashboard Hero Illustration">
+        <defs>
+          <linearGradient id="hBg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#F8F9FA"/>
+            <stop offset="100%" stop-color="#E8F0FE"/>
+          </linearGradient>
+          <linearGradient id="coral" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FF6B6B"/><stop offset="100%" stop-color="#FF8E8E"/>
+          </linearGradient>
+          <linearGradient id="green" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#4CAF50"/><stop offset="100%" stop-color="#6BCF7A"/>
+          </linearGradient>
+          <linearGradient id="blue" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#4A76D4"/><stop offset="100%" stop-color="#6B8BE4"/>
+          </linearGradient>
+          <linearGradient id="orange" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#E08A2A"/><stop offset="100%" stop-color="#F0A04A"/>
+          </linearGradient>
+          <filter id="hCard" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#00000012"/>
+          </filter>
+        </defs>
+        <rect width="800" height="300" fill="url(#hBg)" rx="12"/>
+        <circle cx="650" cy="50" r="90" fill="#FF6B6B" opacity="0.06"/>
+        <circle cx="80" cy="260" r="80" fill="#4CAF50" opacity="0.06"/>
+
+        <!-- Applicant (left) -->
+        <g transform="translate(100, 90)">
+          <ellipse cx="0" cy="85" rx="28" ry="38" fill="url(#blue)"/>
+          <circle cx="0" cy="20" r="26" fill="#FFDBB4"/>
+          <path d="M-22 12 Q-24 -12 0 -16 Q24 -12 22 12 Q18 4 0 6 Q-18 4 -22 12Z" fill="#5D4037"/>
+          <circle cx="-8" cy="17" r="3" fill="#5D4037"/>
+          <circle cx="8" cy="17" r="3" fill="#5D4037"/>
+          <path d="M-8 28 Q0 35 8 28" stroke="#5D4037" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <!-- Laptop -->
+          <g transform="translate(8, 88)">
+            <rect x="-40" y="0" width="80" height="52" rx="3" fill="#E0E0E0"/>
+            <rect x="-36" y="4" width="72" height="40" rx="2" fill="#263238"/>
+            <rect x="-30" y="8" width="60" height="14" rx="2" fill="#FFFFFF"/>
+            <circle cx="-22" cy="15" r="4" fill="#E8F0FE"/>
+            <rect x="-14" y="12" width="28" height="3" rx="1.5" fill="#4A76D4"/>
+            <rect x="-14" y="18" width="20" height="2" rx="1" fill="#BDBDBD"/>
+            <rect x="20" y="13" width="18" height="6" rx="3" fill="url(#green)"/>
+            <path d="M-44 52 L-36 52 L-32 56 L48 56 L52 52 L44 52" fill="#BDBDBD"/>
+          </g>
+          <!-- Floating badge -->
+          <g transform="translate(-60, 10)" filter="url(#hCard)">
+            <circle cx="0" cy="0" r="12" fill="url(#green)"/>
+            <path d="M-5 0 L-2 3 L5 -3" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          </g>
+        </g>
+
+        <!-- Flow path (center) -->
+        <path d="M220 150 Q320 100 400 100 Q480 100 580 150" stroke="#4CAF50" stroke-width="2.5" fill="none" stroke-dasharray="7,5" opacity="0.5"/>
+
+        <!-- Card 1 (pending) -->
+        <g transform="translate(280, 110)" filter="url(#hCard)">
+          <rect x="-28" y="-18" width="56" height="36" rx="8" fill="#FFFFFF"/>
+          <circle cx="-18" cy="0" r="6" fill="#E8F0FE"/>
+          <rect x="-8" y="-5" width="28" height="4" rx="2" fill="#4A76D4"/>
+          <rect x="-8" y="4" width="18" height="3" rx="1.5" fill="#BDBDBD"/>
+          <rect x="14" y="-2" width="8" height="8" rx="2" fill="#E8F0FE"/>
+        </g>
+
+        <!-- Card 2 (interview) -->
+        <g transform="translate(400, 90)" filter="url(#hCard)">
+          <rect x="-28" y="-18" width="56" height="36" rx="8" fill="#FFFFFF"/>
+          <circle cx="-18" cy="0" r="6" fill="#E4F7E9"/>
+          <rect x="-8" y="-5" width="28" height="4" rx="2" fill="#2E9E4B"/>
+          <rect x="-8" y="4" width="18" height="3" rx="1.5" fill="#BDBDBD"/>
+          <rect x="14" y="-2" width="8" height="8" rx="2" fill="#E4F7E9"/>
+        </g>
+
+        <!-- Card 3 (reviewed) -->
+        <g transform="translate(520, 110)" filter="url(#hCard)">
+          <rect x="-28" y="-18" width="56" height="36" rx="8" fill="#FFFFFF"/>
+          <circle cx="-18" cy="0" r="6" fill="#FFF3E0"/>
+          <rect x="-8" y="-5" width="28" height="4" rx="2" fill="#E08A2A"/>
+          <rect x="-8" y="4" width="18" height="3" rx="1.5" fill="#BDBDBD"/>
+          <rect x="14" y="-2" width="8" height="8" rx="2" fill="#FFF3E0"/>
+        </g>
+
+        <!-- Recruiter (right) -->
+        <g transform="translate(680, 90)">
+          <ellipse cx="0" cy="85" rx="28" ry="38" fill="url(#green)"/>
+          <circle cx="0" cy="20" r="26" fill="#FFDBB4"/>
+          <path d="M-22 8 Q-26 -14 0 -16 Q26 -14 22 8 Q16 0 0 2 Q-16 0 -22 8Z" fill="#3E2723"/>
+          <circle cx="-8" cy="17" r="3" fill="#3E2723"/>
+          <circle cx="8" cy="17" r="3" fill="#3E2723"/>
+          <path d="M-8 28 Q0 35 8 28" stroke="#3E2723" stroke-width="2" fill="none" stroke-linecap="round"/>
+          <!-- Dashboard clipboard -->
+          <g transform="translate(-45, 55)">
+            <rect x="-24" y="-16" width="48" height="60" rx="5" fill="#FFFFFF" filter="url(#hCard)"/>
+            <rect x="-20" y="-11" width="40" height="6" rx="2" fill="#4CAF50"/>
+            <rect x="-16" y="0" width="8" height="20" rx="2" fill="#E8F0FE"/>
+            <rect x="-4" y="-4" width="8" height="24" rx="2" fill="url(#blue)"/>
+            <rect x="8" y="2" width="8" height="18" rx="2" fill="url(#orange)"/>
+          </g>
+          <!-- Star badge -->
+          <g transform="translate(-55, -20)" filter="url(#hCard)">
+            <circle cx="0" cy="0" r="14" fill="url(#green)"/>
+            <path d="M0 -8 L2 -3 L7 -3 L3 1 L5 6 L0 3 L-5 6 L-3 1 L-7 -3 L-2 -3Z" fill="#FFFFFF"/>
+          </g>
+        </g>
+
+        <!-- Floating tags -->
+        <g transform="translate(200, 60)">
+          <rect x="-28" y="-10" width="56" height="20" rx="10" fill="#E8F0FE"/>
+          <text x="0" y="5" text-anchor="middle" fill="#4A76D4" font-size="10" font-weight="600" font-family="sans-serif">React</text>
+        </g>
+        <g transform="translate(590, 60)">
+          <rect x="-28" y="-10" width="56" height="20" rx="10" fill="#E4F7E9"/>
+          <text x="0" y="5" text-anchor="middle" fill="#2E9E4B" font-size="10" font-weight="600" font-family="sans-serif">Node.js</text>
+        </g>
+        <g transform="translate(400, 230)">
+          <text x="0" y="0" text-anchor="middle" fill="#666" font-size="11" font-family="sans-serif">
+            Track · Apply · Grow
+          </text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="mockup-section">
+      <h3>Login page mockup</h3>
+      <div class="mockup-frame">
+        <div class="browser-bar">
+          <div class="dot red"></div>
+          <div class="dot yellow"></div>
+          <div class="dot green"></div>
+          <div class="url-bar">newfrontier.app/login</div>
+        </div>
+        <div class="login-page hero-login">
+          <img class="login-graphic" src="images/illustrated-hero.svg" alt="Warm Welcome Dashboard Hero Illustration" onerror="this.style.display='none'"/>
+          <div class="brand-block">
+            <div class="brand-name">New Frontier</div>
+            <div class="brand-tagline">Your career starts here</div>
+          </div>
+          <div class="login-form">
+            <div class="form-group">
+              <label>Email address</label>
+              <input type="email" placeholder="you@example.com" value=""/>
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" placeholder="••••••••" value=""/>
+            </div>
+            <button class="cta-btn">Sign In</button>
+            <div class="alt-link">
+              New here? <a href="#">Create an account</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Option 2: Frontier ══ -->
+  <div class="option-card">
+    <header>
+      <h2>Option B — Custom Frontier Illustration</h2>
+      <p class="tagline">Compass + winding path: brand-driven, aspirational journey metaphor — refined editorial style</p>
+      <span class="option-badge badge-frontier">#B — Brand &amp; Symbolic</span>
+    </header>
+
+    <div class="illustration-wrap" style="background:#0D0F1A;">
+      <img src="images/frontier-illustration.svg" alt="New Frontier Brand Illustration" style="max-width:100%;height:auto;max-height:300px;"/>
+        <defs>
+          <linearGradient id="fSky" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#4A76D4"/>
+            <stop offset="40%" stop-color="#E8F0FE"/>
+            <stop offset="100%" stop-color="#FF8E8E"/>
+          </linearGradient>
+          <radialGradient id="fSun" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stop-color="#FF6B6B" stop-opacity="0.5"/>
+            <stop offset="100%" stop-color="#FF6B6B" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="fMtn" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#6B8E6B"/>
+            <stop offset="100%" stop-color="#4A6B4A"/>
+          </linearGradient>
+          <linearGradient id="fMtn2" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#5D8AA5"/>
+            <stop offset="100%" stop-color="#4A7A8A"/>
+          </linearGradient>
+          <linearGradient id="fPath" x1="0%" y1="100%" x2="0%" y2="0%">
+            <stop offset="0%" stop-color="#FF6B6B"/>
+            <stop offset="100%" stop-color="#FFB5B5"/>
+          </linearGradient>
+          <linearGradient id="fRose" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#4CAF50"/>
+            <stop offset="100%" stop-color="#2E7D32"/>
+          </linearGradient>
+          <linearGradient id="fGold" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#FFD700"/>
+            <stop offset="100%" stop-color="#FFA500"/>
+          </linearGradient>
+          <linearGradient id="fGround" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#8BC34A"/>
+            <stop offset="100%" stop-color="#689F38"/>
+          </linearGradient>
+          <filter id="fShadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#00000020"/>
+          </filter>
+          <filter id="fGlow" x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur stdDeviation="6" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+        <rect width="800" height="300" fill="url(#fSky)" rx="12"/>
+
+        <!-- Sun glow -->
+        <ellipse cx="400" cy="200" rx="150" ry="80" fill="url(#fSun)" filter="url(#fGlow)"/>
+
+        <!-- Stars -->
+        <g fill="#FFD700">
+          <polygon points="120,40 122,47 130,47 124,51 126,58 120,54 114,58 116,51 110,47 118,47"/>
+          <polygon points="680,55 682,62 690,62 684,66 686,73 680,69 674,73 676,66 670,62 678,62"/>
+          <polygon points="720,85 721,90 727,90 723,93 724,99 720,96 716,99 717,93 713,90 719,90"/>
+          <polygon points="80,75 81,80 87,80 83,83 84,89 80,86 76,89 77,83 73,80 79,80"/>
+          <circle cx="200" cy="35" r="2"/>
+          <circle cx="600" cy="30" r="2"/>
+          <circle cx="320" cy="50" r="1.5"/>
+          <circle cx="500" cy="40" r="1.5"/>
+        </g>
+
+        <!-- Far mountains -->
+        <path d="M-20 200 L60 130 L130 165 L210 110 L310 155 L410 100 L510 145 L610 95 L710 140 L820 200 Z" fill="url(#fMtn2)" opacity="0.5"/>
+        <!-- Near mountains -->
+        <path d="M-20 200 L40 145 L100 170 L180 125 L270 160 L370 115 L470 155 L570 110 L670 150 L750 120 L820 200 Z" fill="url(#fMtn)"/>
+        <!-- Snow caps -->
+        <path d="M180 125 L205 150 L230 175 L205 165 L180 175 Z" fill="#fff" opacity="0.7"/>
+        <path d="M370 115 L392 138 L415 162 L392 152 L370 162 Z" fill="#fff" opacity="0.7"/>
+        <path d="M570 110 L594 135 L618 160 L594 150 L570 160 Z" fill="#fff" opacity="0.7"/>
+        <!-- Ground -->
+        <rect x="0" y="200" width="800" height="100" fill="url(#fGround)"/>
+
+        <!-- The winding path -->
+        <path d="M400 300 Q380 260 420 220 Q360 180 400 140 Q340 100 380 65"
+              stroke="url(#fPath)" stroke-width="16" fill="none" stroke-linecap="round"/>
+        <path d="M400 300 Q380 260 420 220 Q360 180 400 140 Q340 100 380 65"
+              stroke="#FFB5B5" stroke-width="20" fill="none" stroke-linecap="round" opacity="0.3"/>
+
+        <!-- Path waypoints -->
+        <circle cx="400" cy="275" r="9" fill="#fff" filter="url(#fShadow)"/>
+        <circle cx="400" cy="275" r="6" fill="url(#fRose)"/>
+        <circle cx="400" cy="275" r="3" fill="#fff"/>
+        <circle cx="400" cy="215" r="7" fill="#fff" filter="url(#fShadow)"/>
+        <circle cx="400" cy="215" r="4.5" fill="url(#fRose)"/>
+        <circle cx="400" cy="215" r="2" fill="#fff"/>
+        <circle cx="400" cy="155" r="7" fill="#fff" filter="url(#fShadow)"/>
+        <circle cx="400" cy="155" r="4.5" fill="url(#fRose)"/>
+        <circle cx="400" cy="155" r="2" fill="#fff"/>
+        <circle cx="380" cy="100" r="12" fill="#fff" filter="url(#fShadow)"/>
+        <circle cx="380" cy="100" r="8" fill="url(#fRose)"/>
+        <circle cx="380" cy="100" r="4" fill="#fff"/>
+        <circle cx="380" cy="100" r="2" fill="url(#fGold)"/>
+        <!-- Destination -->
+        <circle cx="380" cy="50" r="10" fill="#fff" filter="url(#fShadow)"/>
+        <circle cx="380" cy="50" r="7" fill="url(#fGold)"/>
+        <circle cx="380" cy="50" r="3.5" fill="#fff"/>
+
+        <!-- Compass -->
+        <g transform="translate(580, 160)" filter="url(#fShadow)">
+          <circle cx="0" cy="0" r="65" fill="#fff"/>
+          <circle cx="0" cy="0" r="65" fill="none" stroke="url(#fRose)" stroke-width="3"/>
+          <g stroke="#4CAF50" stroke-width="2">
+            <line x1="0" y1="-56" x2="0" y2="-48"/>
+            <line x1="56" y1="0" x2="48" y2="0"/>
+            <line x1="0" y1="56" x2="0" y2="48"/>
+            <line x1="-56" y1="0" x2="-48" y2="0"/>
+          </g>
+          <circle cx="0" cy="0" r="48" fill="#FAFAFA"/>
+          <circle cx="0" cy="0" r="48" fill="none" stroke="#E0E0E0" stroke-width="0.8"/>
+          <text x="0" y="-38" text-anchor="middle" fill="#4CAF50" font-size="11" font-weight="bold" font-family="sans-serif">N</text>
+          <text x="40" y="4" text-anchor="middle" fill="#aaa" font-size="8" font-family="sans-serif">E</text>
+          <text x="0" y="48" text-anchor="middle" fill="#aaa" font-size="8" font-family="sans-serif">S</text>
+          <text x="-40" y="4" text-anchor="middle" fill="#aaa" font-size="8" font-family="sans-serif">W</text>
+          <!-- Needle (pointing toward horizon) -->
+          <g transform="rotate(-25)">
+            <polygon points="0,-34 6,0 0,-5 -6,0" fill="url(#fRose)"/>
+            <polygon points="0,34 6,0 0,5 -6,0" fill="#E0E0E0"/>
+            <circle cx="0" cy="0" r="6" fill="url(#fGold)"/>
+            <circle cx="0" cy="0" r="3" fill="#fff"/>
+          </g>
+          <text x="0" y="22" text-anchor="middle" fill="#4CAF50" font-size="13" font-weight="bold" font-family="sans-serif" opacity="0.15">NF</text>
+        </g>
+
+        <!-- Sun on horizon -->
+        <circle cx="400" cy="195" r="28" fill="#FF6B6B" opacity="0.8" filter="url(#fGlow)"/>
+        <circle cx="400" cy="195" r="18" fill="#FF8E8E"/>
+        <circle cx="400" cy="195" r="10" fill="#FFB5B5"/>
+
+        <!-- Floating UI cards -->
+        <g transform="translate(160, 60)" filter="url(#fShadow)">
+          <rect x="-30" y="-20" width="60" height="40" rx="8" fill="#fff"/>
+          <circle cx="-18" cy="0" r="8" fill="#E8F0FE"/>
+          <rect x="-6" y="-5" width="28" height="4" rx="2" fill="#4A76D4"/>
+          <rect x="-6" y="4" width="20" height="3" rx="1.5" fill="#ddd"/>
+          <rect x="14" y="1" width="10" height="7" rx="3.5" fill="#4CAF50"/>
+        </g>
+        <g transform="translate(680, 90)" filter="url(#fShadow)">
+          <rect x="-36" y="-12" width="72" height="24" rx="6" fill="#fff"/>
+          <rect x="-28" y="-3" width="16" height="5" rx="2.5" fill="#4CAF50"/>
+          <rect x="-8" y="-3" width="16" height="5" rx="2.5" fill="#4CAF50"/>
+          <rect x="12" y="-3" width="16" height="5" rx="2.5" fill="#ddd"/>
+          <circle cx="28" cy="-0.5" r="4" fill="#4CAF50"/>
+        </g>
+        <g transform="translate(720, 240)" filter="url(#fShadow)">
+          <path d="M-24 0 Q-28 -16 -14 -18 Q0 -20 8 -18 Q24 -16 24 0 Q24 12 8 15 L4 20 L0 15 Q-16 17 -24 12 Z" fill="#fff"/>
+          <circle cx="-12" y="-4" r="2.5" fill="#4CAF50"/>
+          <circle cx="-4" y="-4" r="2.5" fill="#4CAF50"/>
+          <circle cx="4" y="-4" r="2.5" fill="#4CAF50"/>
+        </g>
+
+        <!-- Brand text -->
+        <text x="400" y="288" text-anchor="middle" fill="#2E7D32" font-size="13" font-weight="bold" font-family="sans-serif">NEW FRONTIER</text>
+        <text x="400" y="296" text-anchor="middle" fill="#4A6B4A" font-size="9" font-family="sans-serif">Your career journey starts here</text>
+      </svg>
+    </div>
+
+    <div class="mockup-section">
+      <h3>Login page mockup</h3>
+      <div class="mockup-frame">
+        <div class="browser-bar">
+          <div class="dot red"></div>
+          <div class="dot yellow"></div>
+          <div class="dot green"></div>
+          <div class="url-bar">newfrontier.app/login</div>
+        </div>
+        <div class="login-page frontier-login">
+          <img class="login-graphic" src="images/frontier-illustration.svg" alt="New Frontier Brand Illustration" style="max-width:280px;height:auto;margin-bottom:16px;" onerror="this.style.display='none'"/>
+          <div class="brand-block">
+            <div class="brand-name">NEW FRONTIER</div>
+            <div class="brand-tagline">Your career journey starts here</div>
+          </div>
+          <div class="login-form">
+            <div class="form-group">
+              <label>Email address</label>
+              <input type="email" placeholder="you@example.com" value=""/>
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" placeholder="••••••••" value=""/>
+            </div>
+            <button class="cta-btn">Sign In</button>
+            <div class="alt-link">
+              New here? <a href="#">Create an account</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Comparison Table ───────────────────────────── -->
+<div class="comparison">
+  <table>
+    <thead>
+      <tr>
+        <th>Criteria</th>
+        <th>Option A — Illustrated Hero</th>
+        <th>Option B — Frontier Illustration</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Emotional tone</strong></td>
+        <td>Warm, human, approachable — applicants see themselves</td>
+        <td>Inspirational, aspirational — journey/achievement focused</td>
+      </tr>
+      <tr>
+        <td><strong>Brand differentiation</strong></td>
+        <td class="minus">Generic friendly illustration</td>
+        <td class="check">Tied to "New Frontier" name — unique &amp; ownable</td>
+      </tr>
+      <tr>
+        <td><strong>Management demo impact</strong></td>
+        <td>Clear UX/story, easy to understand quickly</td>
+        <td>Strong visual identity, memorable brand moment</td>
+      </tr>
+      <tr>
+        <td><strong>Implementation effort</strong></td>
+        <td>Medium — full SVG scene</td>
+        <td>Medium — full SVG scene</td>
+      </tr>
+      <tr>
+        <td><strong>Scalability / mobile</strong></td>
+        <td>Works at all sizes — simplified in hero strip</td>
+        <td>Works at all sizes — compass is iconic at small sizes</td>
+      </tr>
+      <tr>
+        <td><strong>Files created</strong></td>
+        <td><code>public/images/illustrated-hero.svg</code></td>
+        <td><code>public/images/frontier-illustration.svg</code></td>
+      </tr>
+      <tr>
+        <td><strong>Best for</strong></td>
+        <td>Applicant-first, empathy-driven demo</td>
+        <td>Brand-forward, differentiated demo</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>

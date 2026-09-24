@@ -1,0 +1,150 @@
+<%# Profile page partial %>
+
+<div class="page-header">
+  <p class="page-header__eyebrow">Account</p>
+  <h1 class="page-header__title">My Profile</h1>
+  <p class="page-header__sub">Keep your profile complete — the more information, the better your matches.</p>
+</div>
+
+<% if (updated) { %>
+<div class="dash-flash" role="alert" style="position:static;margin-bottom:20px;animation:none;background:rgba(61,170,108,0.1);border:1px solid rgba(61,170,108,0.3);">
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <circle cx="8" cy="8" r="6" stroke="#3DAA6C" stroke-width="1.5"/>
+    <path d="M5 8l2 2 4-4" stroke="#3DAA6C" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  Profile saved successfully.
+</div>
+<% } %>
+
+<div class="profile-grid">
+
+  <!-- Left column: editable info -->
+  <div>
+    <div class="profile-card">
+      <h2 class="profile-card__title">Personal Information</h2>
+      <form method="POST" action="/dashboard/profile" class="profile-fields">
+        <div class="form-row">
+          <div class="form-field">
+            <label for="firstName">First name</label>
+            <input type="text" id="firstName" name="firstName"
+              value="<%= applicant.firstName || '' %>"
+              placeholder="Ada"
+              autocomplete="given-name"/>
+          </div>
+          <div class="form-field">
+            <label for="lastName">Last name</label>
+            <input type="text" id="lastName" name="lastName"
+              value="<%= applicant.lastName || '' %>"
+              placeholder="Lovelace"
+              autocomplete="family-name"/>
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="email">Email address</label>
+          <input type="email" id="email" name="email"
+            value="<%= applicant.email || '' %>"
+            readonly title="Email cannot be changed here"/>
+        </div>
+
+        <div class="form-field">
+          <label for="phone">Phone number</label>
+          <input type="tel" id="phone" name="phone"
+            value="<%= applicant.phone || '' %>"
+            placeholder="+1 (555) 000-0000"
+            autocomplete="tel"/>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="state">State</label>
+            <input type="text" id="state" name="state"
+              value="<%= applicant.address?.state || '' %>"
+              placeholder="CA"
+              maxlength="2"
+              autocomplete="address-level1"/>
+          </div>
+          <div class="form-field">
+            <label for="zip">ZIP code</label>
+            <input type="text" id="zip" name="zip"
+              value="<%= applicant.address?.zip || '' %>"
+              placeholder="94102"
+              maxlength="10"
+              autocomplete="postal-code"/>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+
+    <% if (applicant.educationHistory && applicant.educationHistory.length > 0) { %>
+    <div class="profile-card" style="margin-top:16px;">
+      <h2 class="profile-card__title">Education</h2>
+      <% applicant.educationHistory.forEach(function(e) { %>
+      <div style="padding:12px 0;border-bottom:1px solid var(--border);">
+        <div style="font-weight:600;color:var(--text-1);font-size:0.9em;"><%= e.school || 'School' %></div>
+        <div style="font-size:0.82em;color:var(--text-3);margin-top:2px;"><%= [e.degree, e.field].filter(Boolean).join(' · ') || '' %></div>
+        <div style="font-size:0.8em;color:var(--text-4);margin-top:2px;"><%= e.startYear || '' %><%= e.endYear ? ' – ' + e.endYear : '' %></div>
+      </div>
+      <% }) %>
+    </div>
+    <% } %>
+
+    <% if (applicant.employmentHistory && applicant.employmentHistory.length > 0) { %>
+    <div class="profile-card" style="margin-top:16px;">
+      <h2 class="profile-card__title">Work Experience</h2>
+      <% applicant.employmentHistory.forEach(function(e) { %>
+      <div style="padding:12px 0;border-bottom:1px solid var(--border);">
+        <div style="font-weight:600;color:var(--text-1);font-size:0.9em;"><%= e.title || 'Position' %></div>
+        <div style="font-size:0.82em;color:var(--text-3);margin-top:2px;"><%= e.company || 'Company' %></div>
+        <div style="font-size:0.8em;color:var(--text-4);margin-top:2px;">
+          <%= e.startDate || '' %><% if (e.endDate) { %> – <%= e.endDate %><% } else if (e.current) { %> – Present<% } %>
+        </div>
+        <% if (e.description) { %>
+        <div style="font-size:0.82em;color:var(--text-3);margin-top:6px;white-space:pre-wrap;"><%= e.description %></div>
+        <% } %>
+      </div>
+      <% }) %>
+    </div>
+    <% } %>
+  </div>
+
+  <!-- Right column: completeness ring + summary -->
+  <div>
+    <div class="completeness-card">
+      <div class="completeness-ring" aria-label="Profile completeness: <%= completeness %>%">
+        <svg width="100" height="100" viewBox="0 0 100 100">
+          <circle class="completeness-ring__bg" cx="50" cy="50" r="40"/>
+          <circle
+            class="completeness-ring__fill"
+            cx="50" cy="50" r="40"
+            stroke-dasharray="<%= 2 * Math.PI * 40 %>"
+            stroke-dashoffset="<%= 2 * Math.PI * 40 * (1 - completeness / 100) %>"/>
+        </svg>
+        <div class="completeness-ring__label">
+          <span class="completeness-ring__pct"><%= completeness %>%</span>
+          <span class="completeness-ring__sub">complete</span>
+        </div>
+      </div>
+      <h3 class="completeness-card__title">Profile Strength</h3>
+      <p class="completeness-card__sub">Complete every section to improve your visibility to recruiters.</p>
+    </div>
+
+    <% if (applicant.resumeUrl) { %>
+    <div style="margin-top:16px;background:rgba(212,135,90,0.08);border:1px solid rgba(212,135,90,0.25);border-radius:var(--radius-lg);padding:16px;">
+      <p style="font-size:0.85em;color:var(--text-2);margin-bottom:6px;font-weight:600;">Resume on file</p>
+      <p style="font-size:0.8em;color:var(--text-3);">Recruiters can view your resume when reviewing your profile.</p>
+    </div>
+    <% } %>
+
+    <div style="margin-top:16px;">
+      <a href="/dashboard/applications" class="btn btn--ghost" style="width:100%;justify-content:center;">
+        My Applications →
+      </a>
+    </div>
+  </div>
+
+</div>
