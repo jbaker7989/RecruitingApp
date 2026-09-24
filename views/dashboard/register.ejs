@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Create Account — New Frontier</title>
+  <link rel="icon" type="image/svg+xml" href="/images/favicon.svg"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #0D0F1A;
+      color: #E0E4EE;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Register wrapper ── */
+    .register-wrap {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      min-height: 100vh;
+    }
+
+    @media (max-width: 768px) {
+      .register-wrap { grid-template-columns: 1fr; }
+      .register-graphic-col { display: none; }
+    }
+
+    /* ── Illustration column ── */
+    .register-graphic-col {
+      background: linear-gradient(155deg, #0D0F1A 0%, #131628 50%, #1A1D35 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .register-graphic-col::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 70% 80%, rgba(61, 170, 108, 0.08) 0%, transparent 60%),
+                  radial-gradient(ellipse at 20% 20%, rgba(74, 58, 107, 0.1) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .register-graphic-col svg,
+    .register-graphic-col img {
+      max-width: 100%;
+      height: auto;
+      max-height: 480px;
+      position: relative;
+      border-radius: 8px;
+    }
+
+    /* ── Form column ── */
+    .register-form-col {
+      background: #0D0F1A;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 40px;
+    }
+
+    .register-card {
+      width: 100%;
+      max-width: 360px;
+    }
+
+    .register-card__logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+
+    .register-card__logo-mark {
+      width: 36px;
+      height: 36px;
+    }
+
+    .register-card__logo-text {
+      font-size: 1.1em;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: 0.2em;
+    }
+
+    .register-card__heading {
+      font-size: 1.5em;
+      font-weight: 700;
+      color: #FFFFFF;
+      margin-bottom: 6px;
+    }
+
+    .register-card__sub {
+      font-size: 0.875em;
+      color: #6A7A8A;
+      margin-bottom: 32px;
+    }
+
+    /* ── Form elements ── */
+    .form-field {
+      margin-bottom: 18px;
+    }
+
+    .form-field label {
+      display: block;
+      font-size: 0.8em;
+      font-weight: 600;
+      color: #8A9AAA;
+      margin-bottom: 7px;
+      letter-spacing: 0.03em;
+    }
+
+    .form-field input {
+      width: 100%;
+      padding: 11px 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #FFFFFF;
+      font-size: 0.9em;
+      font-family: inherit;
+      transition: border-color 0.2s, background 0.2s;
+    }
+
+    .form-field input::placeholder {
+      color: rgba(255, 255, 255, 0.2);
+    }
+
+    .form-field input:focus {
+      outline: none;
+      border-color: #3DAA6C;
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 480px) {
+      .form-row { grid-template-columns: 1fr; }
+    }
+
+    /* ── Error message ── */
+    .form-error {
+      background: rgba(220, 60, 60, 0.1);
+      border: 1px solid rgba(220, 60, 60, 0.3);
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.85em;
+      color: #E07070;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-error svg {
+      flex-shrink: 0;
+    }
+
+    /* ── Submit button ── */
+    .btn-primary {
+      width: 100%;
+      padding: 13px;
+      background: #3DAA6C;
+      color: #FFFFFF;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95em;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      letter-spacing: 0.02em;
+    }
+
+    .btn-primary:hover { background: #2D8A52; }
+    .btn-primary:active { transform: scale(0.99); }
+
+    /* ── Footer links ── */
+    .register-footer {
+      margin-top: 24px;
+      text-align: center;
+      font-size: 0.8em;
+      color: #4A5568;
+    }
+
+    .register-footer a {
+      color: #3DAA6C;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .register-footer a:hover { text-decoration: underline; }
+
+    .register-divider {
+      height: 1px;
+      background: rgba(255,255,255,0.06);
+      margin: 24px 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="register-wrap">
+
+  <!-- ── Left: Brand illustration ── -->
+  <div class="register-graphic-col">
+    <img
+      src="/images/frontier-illustration.svg"
+      alt="New Frontier — guiding your career journey"
+      width="800"
+      height="480"
+    />
+  </div>
+
+  <!-- ── Right: Register form ── -->
+  <div class="register-form-col">
+    <div class="register-card">
+
+      <!-- Logo -->
+      <div class="register-card__logo">
+        <svg class="register-card__logo-mark" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="18,3 33,12 33,24 18,33 3,24 3,12" stroke="#3DAA6C" stroke-width="2" fill="rgba(61,170,108,0.1)"/>
+          <text x="18" y="22" text-anchor="middle" font-size="11" font-weight="800" fill="#3DAA6C" font-family="-apple-system, sans-serif" letter-spacing="0.1em">NF</text>
+        </svg>
+        <span class="register-card__logo-text">NEW FRONTIER</span>
+      </div>
+
+      <h1 class="register-card__heading">Create your account</h1>
+      <p class="register-card__sub">Track applications, save jobs, and get matched with opportunities.</p>
+
+      <!-- Error -->
+      <% if (error) { %>
+      <div class="form-error" role="alert">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+          <circle cx="7" cy="7" r="6" stroke="#E07070" stroke-width="1.5"/>
+          <path d="M7 4v3.5M7 9.5v.5" stroke="#E07070" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <%= error %>
+      </div>
+      <% } %>
+
+      <form method="POST" action="/dashboard/register" autocomplete="on">
+        <!-- Preserve redirect target -->
+        <% if (next) { %>
+        <input type="hidden" name="next" value="<%= next %>"/>
+        <% } %>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="firstName">First name</label>
+            <input
+              type="text"
+              id="firstName"
+              name="firstName"
+              placeholder="Ada"
+              value="<%= firstName || '' %>"
+              required
+              autocomplete="given-name"
+            />
+          </div>
+          <div class="form-field">
+            <label for="lastName">Last name</label>
+            <input
+              type="text"
+              id="lastName"
+              name="lastName"
+              placeholder="Lovelace"
+              value="<%= lastName || '' %>"
+              required
+              autocomplete="family-name"
+            />
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="email">Email address</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="you@example.com"
+            value="<%= email || '' %>"
+            required
+            autofocus
+            autocomplete="email"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="phone">Phone number</label>
+          <input
+            type="tel"
+            id="phone"
+            name="phone"
+            placeholder="+1 (555) 000-0000"
+            value="<%= phone || '' %>"
+            autocomplete="tel"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="••••••••"
+            required
+            minlength="8"
+            autocomplete="new-password"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="confirmPassword">Confirm password</label>
+          <input
+            type="password"
+            id="confirmPassword"
+            name="confirmPassword"
+            placeholder="••••••••"
+            required
+            minlength="8"
+            autocomplete="new-password"
+          />
+        </div>
+
+        <button type="submit" class="btn-primary">Create Account</button>
+      </form>
+
+      <div class="register-divider"></div>
+
+      <p class="register-footer">
+        Already have an account? <a href="/dashboard/login">Sign In</a>
+      </p>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
