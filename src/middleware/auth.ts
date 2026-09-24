@@ -32,6 +32,8 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
       '/health', '/',
       '/api/auth/login', '/api/auth/register',
       '/api/applicants/register', '/api/applicants/login',
+      '/api/mcp/health',
+      '/dashboard/login', '/dashboard/register', '/dashboard/logout',
     ];
     if (publicPaths.includes(req.path)) {
       return next();
