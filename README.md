@@ -103,7 +103,7 @@ The status column is deliberately specific. “Implemented” does not mean “a
 | Production-grade authentication | **Blocked** | Current bearer identity is forgeable and must be replaced before real user or photo traffic (`NFR-008`). |
 | Automatic Git-to-Vercel deployment | **Blocked** | GitHub CI works; Vercel Git-provider project connection remains unresolved (`NFR-035`). |
 | Brand-copy migration | **In development** | This README uses "New Frontier Recruiting"; deployed API responses and legacy internal documents still contain "New Fronteir Recruiting." |
-| Browser frontend | **Not implemented** | This repository currently demonstrates an API-first backend and product-delivery system. |
+| Applicant Dashboard UI | **Partially implemented on `main`** | Server-rendered EJS pages at `/dashboard/*` (login, applications, jobs, profile); dark premium design; commit `6a84ae2`, NFR-055. Register page and OAuth dashboard login remain open. |
 
 ---
 
@@ -312,7 +312,54 @@ See [Linear REC-5](https://linear.app/recruiting-app/issue/REC-5) for full roadm
 - Skills Taxonomy & Normalization
 - Duplicate Candidate Detection
 
-### 12. Delivery and review services
+### 12. Applicant Dashboard UI
+
+Server-rendered HTML pages at `/dashboard/*` using EJS templates. Demonstrates the applicant experience for management review. Auth is JWT in an `httpOnly` cookie (`SameSite=Lax`).
+
+### Routes
+
+| Route | Method | Auth | Description |
+|---|---|---|---|
+| `/dashboard/login` | GET | Public | Dark-themed login page with brand SVG hero |
+| `/dashboard/login` | POST | — | Verify credentials, set JWT cookie, redirect |
+| `/dashboard/logout` | GET | — | Clear cookie, redirect to login |
+| `/dashboard/applications` | GET | Cookie required | Timeline cards with 4-step progress + status badges |
+| `/dashboard/jobs` | GET | Cookie required | Job grid with apply / Applied state |
+| `/dashboard/jobs/:id/apply` | POST | Cookie required | Submit application inline, redirect |
+| `/dashboard/profile` | GET | Cookie required | Editable form + circular completeness ring |
+| `/dashboard/profile` | POST | Cookie required | Save profile updates |
+
+### Design
+
+- **Aesthetic:** Dark premium — `#0D0F1A` background, `#3DAA6C` emerald, `#D4A84B` gold
+- **Nav:** Sticky, glass-blur, with logo, page links, avatar, and logout
+- **Applications:** Company-initial avatar + job title + 4-segment progress timeline + status badge
+- **Jobs:** Card grid with location/type/remote tags; "Apply Now" → "Applied" state on submission
+- **Profile:** Two-column layout — editable fields left, circular completeness ring right
+- **Brand hero:** Custom isometric SVG compass + journey visualization (`public/images/frontier-illustration.svg`)
+- **Stylesheet:** `public/css/dashboard.css` (~700 lines, CSS custom properties)
+
+### Files
+
+```
+views/dashboard/
+  layout.ejs        shared HTML shell + sticky nav
+  _nav.ejs          nav bar partial
+  login.ejs         self-contained dark login page
+  applications.ejs   application timeline cards
+  jobs.ejs          job grid with apply/Applied state
+  profile.ejs        editable form + completeness ring
+src/routes/dashboard.ts   route handlers (auth, CRUD, apply)
+public/css/dashboard.css  full dark premium design system
+public/images/frontier-illustration.svg  brand hero SVG
+```
+
+### Status
+
+Implemented: login, logout, applications, jobs browse, apply inline, profile CRUD.
+Open: `/dashboard/register` (self-registration UI), OAuth dashboard login (Google/LinkedIn).
+
+## 13. Delivery and review services
 
 | Service | Exact use |
 |---|---|
@@ -443,10 +490,12 @@ These are approved product requirements. Only the Phase 1 profile foundation and
 ```mermaid
 flowchart LR
     Client[Applicant / recruiter / hiring manager client]
+    Browser[Applicant Dashboard<br/>(EJS + httpOnly cookie auth)]
     Agent[External agent or integration]
     API[Express 5 API on Node.js 24]
     Auth[Authentication and RBAC middleware]
     Routes[Company / job / applicant / application / MCP routes]
+    DashboardRoutes[/dashboard/* EJS routes]
     AgentRoutes[Agentic AI routes]
     Match[Deterministic matching service]
     SemanticMatch[Semantic Matching (LLM + Vectors)]
@@ -460,6 +509,8 @@ flowchart LR
     Vercel[Vercel preview / production]
 
     Client --> API
+    Browser -->|GET/POST /dashboard/*| DashboardRoutes
+    DashboardRoutes --> Auth
     Agent -->|MCP-shaped JSON HTTP| API
     API --> Auth --> Routes
     API --> Auth --> AgentRoutes
