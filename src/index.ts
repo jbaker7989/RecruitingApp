@@ -28,12 +28,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Static assets from public/ (images, css)
-app.use(express.static(resolve(fileURLToPath(import.meta.url), '../../public')));
+// Resolve project root (works from both src/ and dist/)
+const projectRoot = resolve(fileURLToPath(import.meta.url), '..', '..');
 
-// EJS view engine — templates in src/../views
+// Static assets from public/ (images, css)
+app.use(express.static(resolve(projectRoot, 'public')));
+
+// EJS view engine — templates in project views/
 app.set('view engine', 'ejs');
-app.set('views', resolve(fileURLToPath(import.meta.url), '../../views'));
+app.set('views', resolve(projectRoot, 'views'));
 
 app.use('/health', (_req, res) => {
   res.json({ status: 'ok', message: 'New Fronteir Recruiting API', timestamp: new Date().toISOString() });
