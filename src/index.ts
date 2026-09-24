@@ -50,11 +50,11 @@ app.use('/dashboard', dashboardRouter);
 // Protected paths within those routers use their own route-level middleware.
 app.use('/api/applicants', applicantRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/mcp', mcpRoutes);
 app.use('/', authenticate);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/companies', companyRoutes);
-app.use('/api/mcp', mcpRoutes);
 app.use('/api/agents', handleFileUpload, agentRoutes);
 
 app.get('/', (_req, res) => {
