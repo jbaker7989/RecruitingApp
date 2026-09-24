@@ -101,14 +101,28 @@ test('NFR-004 (integration): accepting an application creates a hire record inst
       educationHistory: [{ institution: 'UCLA', degree: 'BS', fieldOfStudy: 'EE', startDate: '2014', endDate: '2018' }],
       employmentHistory: [{ company: 'Y', position: 'typescript dev', startDate: '2018-01-01', endDate: '2023-01-01' }],
       rightToWork: true,
+      // passwordHash is SHA-256 of 'password123' so we can log in for an applicant JWT.
+      // POST /api/applications injects req.user.id as applicantId (NFR-048 auth guard);
+      // a member-services token (req.user.id='u-admin') would produce applicantId='u-admin'
+      // which no applicant record satisfies.
+      passwordHash: 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f',
     }),
   });
   assert.equal(appRes.status, 201);
   const applicant = await appRes.json() as any;
 
-  // Application (full profile body currently required by validation — see NFR-015)
+  // Login as the applicant to obtain a JWT for POST /api/applications
+  const loginRes = await fetch(`${baseUrl}/api/applicants/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'john@x.com', password: 'password123' }),
+  });
+  assert.equal(loginRes.status, 200, `applicant login failed: ${await loginRes.clone().text()}`);
+  const { token: applicantToken } = await loginRes.json() as { token: string };
+  const APPLICANT_AUTH = { Authorization: `Bearer ${applicantToken}`, 'Content-Type': 'application/json' };
+
   const applyRes = await fetch(`${baseUrl}/api/applications`, {
-    method: 'POST', headers: AUTH,
+    method: 'POST', headers: APPLICANT_AUTH,
     body: JSON.stringify({
       applicantId: applicant.id, jobPostingId: job.id,
       firstName: 'John', lastName: 'Roe', email: 'john@x.com', emailConfirmation: 'john@x.com', phone: '5559999',
@@ -118,7 +132,7 @@ test('NFR-004 (integration): accepting an application creates a hire record inst
       rightToWork: true,
     }),
   });
-  assert.equal(applyRes.status, 201);
+  assert.equal(applyRes.status, 201, `POST /api/applications failed: ${await applyRes.clone().text()}`);
   const application = await applyRes.json() as any;
 
   // The operation that crashed pre-fix with: Cannot read properties of undefined (reading 'push')

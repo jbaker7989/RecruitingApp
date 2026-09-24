@@ -5,10 +5,14 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// DATA_DIR env override allows tests to run against isolated temp directories
-const DATA_DIR = process.env.DATA_DIR ? resolve(process.env.DATA_DIR) : join(process.cwd(), 'data');
-const STORE_FILE = join(DATA_DIR, 'store.json');
-const OBSERVABILITY_FILE = join(DATA_DIR, 'observability.json');
+// DATA_DIR env override allows tests to run against isolated temp directories.
+// Paths are re-resolved on every call so that setting process.env.DATA_DIR before
+// (re-)importing src/index.js always takes effect even when other test files have
+// already loaded the store module into the ESM cache.
+// ponytail: replace with a reinit() call + plain lets when the test-runner constraint is gone.
+function dataDir() { return process.env.DATA_DIR ? resolve(process.env.DATA_DIR) : join(process.cwd(), 'data'); }
+function storeFile() { return join(dataDir(), 'store.json'); }
+function observabilityFile() { return join(dataDir(), 'observability.json'); }
 
 export interface Company {
   id: string;
@@ -203,8 +207,8 @@ export interface DataStore {
 }
 
 async function ensureDataDir() {
-  if (!existsSync(DATA_DIR)) {
-    await mkdir(DATA_DIR, { recursive: true });
+  if (!existsSync(dataDir())) {
+    await mkdir(dataDir(), { recursive: true });
   }
 }
 
@@ -226,7 +230,7 @@ export function emptyStore(): DataStore {
 
 export async function readStore(): Promise<DataStore> {
   await ensureDataDir();
-  const data = await readFile(STORE_FILE, 'utf-8');
+  const data = await readFile(storeFile(), 'utf-8');
   const parsed = JSON.parse(data);
   // Normalize on read (NFR-004): files written before a collection existed
   // (e.g. no `hires` key) are migrated in memory so store.hires.push/filter
@@ -237,22 +241,22 @@ export async function readStore(): Promise<DataStore> {
 
 export async function writeStore(data: DataStore): Promise<void> {
   await ensureDataDir();
-  await writeFile(STORE_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  await writeFile(storeFile(), JSON.stringify(data, null, 2), 'utf-8');
 }
 
 export async function readObservability(): Promise<ObservabilityLog[]> {
   await ensureDataDir();
-  if (!existsSync(OBSERVABILITY_FILE)) {
-    await writeFile(OBSERVABILITY_FILE, JSON.stringify({ logs: [] }, null, 2), 'utf-8');
+  if (!existsSync(observabilityFile())) {
+    await writeFile(observabilityFile(), JSON.stringify({ logs: [] }, null, 2), 'utf-8');
     return [];
   }
-  const data = await readFile(OBSERVABILITY_FILE, 'utf-8');
+  const data = await readFile(observabilityFile(), 'utf-8');
   return JSON.parse(data).logs || [];
 }
 
 export async function writeObservability(logs: ObservabilityLog[]): Promise<void> {
   await ensureDataDir();
-  await writeFile(OBSERVABILITY_FILE, JSON.stringify({ logs }, null, 2), 'utf-8');
+  await writeFile(observabilityFile(), JSON.stringify({ logs }, null, 2), 'utf-8');
 }
 
 export async function addObservabilityEntry(entry: ObservabilityLog): Promise<void> {
@@ -271,7 +275,7 @@ export function now(): string {
 
 export async function initializeStore(): Promise<DataStore> {
   await ensureDataDir();
-  if (!existsSync(STORE_FILE)) {
+  if (!existsSync(storeFile())) {
     const initialStore: DataStore = emptyStore();
     await writeStore(initialStore);
     return initialStore;
