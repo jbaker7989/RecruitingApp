@@ -24,6 +24,147 @@ async function requireApplicant(req: any, res: any, next: any) {
   }
 }
 
+// ─── Register (GET) ───────────────────────────────────────────────────────────
+
+router.get('/register', (req: any, res: any) => {
+  const token = req.cookies?.token;
+  if (token) {
+    try {
+      verifyApplicantToken(token);
+      const next = req.query.next || '/dashboard/applications';
+      return res.redirect(next);
+    } catch {
+      res.clearCookie('token');
+    }
+  }
+  res.render('dashboard/register', {
+    error: null,
+    email: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    next: req.query.next || '',
+  });
+});
+
+// ─── Register (POST) ──────────────────────────────────────────────────────────
+
+router.post('/register', async (req: any, res: any) => {
+  const { email, password, confirmPassword, firstName, lastName, phone, next } = req.body;
+  const destination = (next && typeof next === 'string') ? next : '/dashboard/applications';
+
+  // Basic validation (phone is optional)
+  if (!email || !password || !confirmPassword || !firstName || !lastName) {
+    return res.status(200).render('dashboard/register', {
+      error: 'All required fields must be filled.',
+      email,
+      firstName,
+      lastName,
+      phone,
+      next,
+    });
+  }
+
+  if (password !== confirmPassword) {
+    return res.status(200).render('dashboard/register', {
+      error: 'Passwords do not match.',
+      email,
+      firstName,
+      lastName,
+      phone,
+      next,
+    });
+  }
+
+  if (password.length < 8) {
+    return res.status(200).render('dashboard/register', {
+      error: 'Password must be at least 8 characters.',
+      email,
+      firstName,
+      lastName,
+      phone,
+      next,
+    });
+  }
+
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(email)) {
+    return res.status(200).render('dashboard/register', {
+      error: 'Invalid email format.',
+      email,
+      firstName,
+      lastName,
+      phone,
+      next,
+    });
+  }
+
+  try {
+    const store = await readStore();
+    
+    // Check for existing applicant with this email
+    const existing = store.applicants.find(
+      (a: any) => a.email?.toLowerCase() === email.toLowerCase(),
+    );
+    if (existing) {
+      return res.status(200).render('dashboard/register', {
+        error: 'An account with this email already exists.',
+        email,
+        firstName,
+        lastName,
+        phone,
+        next,
+      });
+    }
+
+    const { generateId, now, hashPassword } = await import('../models/store.js');
+    
+    const passwordHash = await hashPassword(password);
+    
+    const applicant = {
+      id: generateId(),
+      firstName,
+      lastName,
+      email: email.toLowerCase(),
+      passwordHash,
+      phone,
+      preferredContactMethod: 'email' as const,
+      address: { state: '', zip: '' },
+      educationHistory: [],
+      employmentHistory: [],
+      rightToWork: false,
+      requiresSponsorship: false,
+      expectedPay: 0,
+      notificationToManager: false,
+      hireRecords: [],
+      oauthProvider: null,
+      oauthProviderId: null,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+
+    store.applicants.push(applicant);
+    const { writeStore } = await import('../models/store.js');
+    await writeStore(store);
+
+    const { signApplicantToken } = await import('../services/tokenService.js');
+    const token = await signApplicantToken(applicant.id, true); // hasCredentials = true
+
+    res.setHeader('Set-Cookie', `token=${token}; ${COOKIE_OPTS}`);
+    res.redirect(destination);
+  } catch (err) {
+    console.error('[dashboard] Register error:', err);
+    res.status(200).render('dashboard/register', {
+      error: 'Something went wrong. Please try again.',
+      email,
+      firstName,
+      lastName,
+      phone,
+      next,
+    });
+  }
+});
+
 // ─── Login (GET) ──────────────────────────────────────────────────────────────
 
 router.get('/login', (req: any, res: any) => {
