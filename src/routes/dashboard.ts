@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { readStore } from '../models/store.js';
 import { verifyApplicantToken } from '../services/tokenService.js';
+import { revokeToken } from '../services/revocationService.js';
 
 const router = Router();
 
@@ -240,7 +241,17 @@ router.post('/login', async (req: any, res: any) => {
 
 // ─── Logout ───────────────────────────────────────────────────────────────────
 
-router.get('/logout', (req: any, res: any) => {
+router.get('/logout', async (req: any, res: any) => {
+  const token = req.cookies?.token;
+  if (token) {
+    try {
+      const payload = await verifyApplicantToken(token);
+      // Applicant tokens expire in 7 days (604800s)
+      await revokeToken(payload.jti, 604800, payload.sub, 'Applicant');
+    } catch {
+      // Token invalid/expired — nothing to revoke
+    }
+  }
   res.setHeader('Set-Cookie', `token=; ${COOKIE_OPTS} Max-Age=0`);
   res.redirect('/dashboard/login');
 });
