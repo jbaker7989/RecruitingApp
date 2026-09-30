@@ -134,6 +134,54 @@ Role vocabulary:
 
 The intended authorization model is role-based and applicant-owned. The current prototype does **not** meet production security requirements: global middleware placement blocks unauthenticated registration/login (`NFR-003`), and user IDs/usernames currently function as bearer tokens (`NFR-008`). I treat those as release blockers, not documentation footnotes.
 
+#### 2.1 OAuth 2.0 / OIDC Social Login (Applicant)
+
+Routes under `/api/applicants/auth`:
+
+| Provider | Initiate | Callback |
+|---|---|---|
+| Google | `GET /api/applicants/auth/google` | `GET /api/applicants/auth/google/callback` |
+| LinkedIn | `GET /api/applicants/auth/linkedin` | `GET /api/applicants/auth/linkedin/callback` |
+| Facebook | `GET /api/applicants/auth/facebook` | `GET /api/applicants/auth/facebook/callback` |
+
+**Flow:**
+1. Applicant clicks "Continue with Google/LinkedIn/Facebook" on `/dashboard/login` or `/dashboard/register`
+2. Backend generates CSRF `state`, stores in Redis (if `REDIS_URL` configured) or in-memory fallback
+3. Redirect to IdP authorization endpoint with `client_id`, `redirect_uri`, `scope`, `state`
+4. Applicant consents → IdP redirects to callback with `code` and `state`
+5. Backend validates `state`, exchanges `code` for tokens with IdP using `client_secret`
+6. Backend extracts claims (`email`, `given_name`, `family_name`, `sub`) from `id_token` or UserInfo endpoint
+7. Upserts applicant by email (creates new or links to existing)
+8. Issues applicant JWT with `hasCredentials: false` (OAuth-only, no password)
+9. Returns `{ token, expiresIn: 604800, applicantId, isNewApplicant }`
+
+**Security features:**
+- `state` parameter validated on callback (CSRF protection)
+- Client secrets never exposed to frontend
+- Email must be verified by IdP
+- Applicant JWT has `hasCredentials: false` — distinguishes OAuth from password login
+- Deduplication by email — existing accounts linked, not duplicated
+
+**Required environment variables:**
+```bash
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+LINKEDIN_CLIENT_ID=...
+LINKEDIN_CLIENT_SECRET=...
+FACEBOOK_CLIENT_ID=...
+FACEBOOK_CLIENT_SECRET=...
+```
+
+**Production Redis (horizontal scaling):**
+```bash
+REDIS_URL=redis://localhost:6379
+```
+If `REDIS_URL` is not set, falls back to in-memory Map with 10-min TTL (single-instance only).
+
+**Vercel deployment:** Add env vars in Vercel dashboard → Settings → Environment Variables. For Redis, use Vercel KV or external provider (Upstash, Redis Cloud).
+
+**UI:** Buttons added to `/dashboard/login` and `/dashboard/register` with inline SVG icons.
+
 ### 3. Company service
 
 Routes under `/api/companies` support:

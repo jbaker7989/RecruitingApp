@@ -108,7 +108,7 @@ test('NFR-053: GET /api/applicants/auth/google with valid env var redirects to G
   process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
   // Dynamically import the service to pick up the env var
   const { initiateGoogle } = await import('../../src/services/oauthService.js');
-  const { redirectTo } = initiateGoogle(baseUrl);
+  const { redirectTo } = await initiateGoogle(baseUrl);
 
   assert.ok(redirectTo.startsWith('https://accounts.google.com/o/oauth2/v2/auth'), `Must redirect to Google, got: ${redirectTo}`);
   assert.ok(redirectTo.includes('client_id=test-google-client-id'), 'URL must contain client_id');
@@ -120,7 +120,7 @@ test('NFR-053: GET /api/applicants/auth/google with valid env var redirects to G
 test('NFR-053: GET /api/applicants/auth/linkedin with valid env var redirects to LinkedIn authorization URL', async () => {
   process.env.LINKEDIN_CLIENT_ID = 'test-linkedin-client-id';
   const { initiateLinkedIn } = await import('../../src/services/oauthService.js');
-  const { redirectTo } = initiateLinkedIn(baseUrl);
+  const { redirectTo } = await initiateLinkedIn(baseUrl);
 
   assert.ok(redirectTo.startsWith('https://www.linkedin.com/oauth/v2/authorization'), `Must redirect to LinkedIn, got: ${redirectTo}`);
   assert.ok(redirectTo.includes('client_id=test-linkedin-client-id'), 'URL must contain client_id');
@@ -187,7 +187,7 @@ test('NFR-053: Google OAuth callback creates new applicant and returns JWT (firs
 
   // Generate a valid state token by calling initiateGoogle
   const { initiateGoogle } = await import('../../src/services/oauthService.js');
-  const { redirectTo } = initiateGoogle(baseUrl);
+  const { redirectTo } = await initiateGoogle(baseUrl);
   const stateParam = new URL(redirectTo).searchParams.get('state')!;
   const fakeCode = 'test-auth-code-from-google';
 
@@ -231,7 +231,7 @@ test('NFR-053: LinkedIn OAuth callback creates new applicant and returns JWT (fi
   process.env.LINKEDIN_CLIENT_SECRET = 'test-linkedin-client-secret';
 
   const { initiateLinkedIn } = await import('../../src/services/oauthService.js');
-  const { redirectTo } = initiateLinkedIn(baseUrl);
+  const { redirectTo } = await initiateLinkedIn(baseUrl);
   const stateParam = new URL(redirectTo).searchParams.get('state')!;
   const fakeCode = 'test-auth-code-from-linkedin';
 
@@ -284,7 +284,7 @@ test('NFR-053: Google OAuth callback returns 401 when Google does not return an 
   process.env.GOOGLE_CLIENT_SECRET = 'test-google-client-secret';
 
   const { initiateGoogle } = await import('../../src/services/oauthService.js');
-  const { redirectTo } = initiateGoogle(baseUrl);
+  const { redirectTo } = await initiateGoogle(baseUrl);
   const stateParam = new URL(redirectTo).searchParams.get('state')!;
 
   const originalFetch = globalThis.fetch;
@@ -325,7 +325,7 @@ test('NFR-053: Google OAuth callback returns existing applicant on second login 
 
   // First login: create applicant via Google
   const { initiateGoogle } = await import('../../src/services/oauthService.js');
-  const { redirectTo: redirect1 } = initiateGoogle(baseUrl);
+  const { redirectTo: redirect1 } = await initiateGoogle(baseUrl);
   const state1 = new URL(redirect1).searchParams.get('state')!;
 
   const originalFetch = globalThis.fetch;
@@ -360,7 +360,7 @@ test('NFR-053: Google OAuth callback returns existing applicant on second login 
 
     // Second login: same email — must return the same applicant
     const { initiateGoogle: reinitGoogle } = await import('../../src/services/oauthService.js');
-    const { redirectTo: redirect2 } = reinitGoogle(baseUrl);
+    const { redirectTo: redirect2 } = await reinitGoogle(baseUrl);
     const state2 = new URL(redirect2).searchParams.get('state')!;
 
     const res2 = await getQuery(`/api/applicants/auth/google/callback?code=secondcode&state=${state2}`);
@@ -378,7 +378,7 @@ test('NFR-053: OAuth-registered applicant has hasCredentials=false in JWT', asyn
   process.env.GOOGLE_CLIENT_SECRET = 'test-google-client-secret';
 
   const { initiateGoogle } = await import('../../src/services/oauthService.js');
-  const { redirectTo } = initiateGoogle(baseUrl);
+  const { redirectTo } = await initiateGoogle(baseUrl);
   const stateParam = new URL(redirectTo).searchParams.get('state')!;
 
   const originalFetch = globalThis.fetch;
@@ -425,7 +425,7 @@ test('NFR-053: OAuth login logs an oauth_login observability event', async () =>
   process.env.GOOGLE_CLIENT_SECRET = 'test-google-client-secret';
 
   const { initiateGoogle } = await import('../../src/services/oauthService.js');
-  const { redirectTo } = initiateGoogle(baseUrl);
+  const { redirectTo } = await initiateGoogle(baseUrl);
   const stateParam = new URL(redirectTo).searchParams.get('state')!;
 
   const originalFetch = globalThis.fetch;
