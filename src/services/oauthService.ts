@@ -1,17 +1,80 @@
 /**
- * OAuth 2.0 Service — Google and LinkedIn social login for applicants.
+ * OAuth 2.0 Service — Google, LinkedIn, and Facebook social login for applicants.
  *
  * Implements the authorization code flow:
  *   1. Initiate  → redirect to IdP authorization endpoint
  *   2. Callback  → exchange code for id_token, extract claims, upsert applicant
  *
- * State parameter (CSRF protection): stored in an in-memory Map with 10-min TTL.
- * Production: replace with Redis or signed HttpOnly cookie.
+ * State parameter (CSRF protection): stored in Redis (if REDIS_URL configured)
+ * or in-memory Map with 10-min TTL as fallback.
  */
 import { randomBytes } from 'crypto';
 import { addObservabilityEntry, generateId, now } from '../models/store.js';
 import { readStore, writeStore } from '../models/store.js';
 import { signApplicantToken } from './tokenService.js';
+
+// ─── Redis state store (CSRF) ─────────────────────────────────────────────────
+
+let redisClient: unknown = null;
+let useRedis = false;
+
+async function initRedis(): Promise<void> {
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) return;
+
+  try {
+    const { default: Redis } = await import('ioredis');
+    redisClient = new Redis(redisUrl, {
+      maxRetriesPerRequest: 3,
+      retryStrategy: (times) => (times > 3 ? null : Math.min(times * 200, 2000)),
+      lazyConnect: true,
+    });
+    await (redisClient as any).connect();
+    useRedis = true;
+    console.log('[oauth] Redis state store enabled');
+  } catch (err) {
+    console.warn('[oauth] Redis connection failed, falling back to in-memory:', (err as Error).message);
+    useRedis = false;
+  }
+}
+
+const STATE_TTL_SECONDS = 600; // 10 minutes
+const inMemoryStateStore = new Map<string, { createdAt: number; provider: string }>();
+
+async function storeState(state: string, provider: string): Promise<void> {
+  if (useRedis && redisClient) {
+    await (redisClient as any).setex(`oauth:state:${state}`, STATE_TTL_SECONDS, provider);
+  } else {
+    inMemoryStateStore.set(state, { createdAt: Date.now(), provider });
+  }
+}
+
+async function validateState(state: string): Promise<boolean> {
+  if (useRedis && redisClient) {
+    const result = await (redisClient as any).getdel(`oauth:state:${state}`);
+    return result !== null;
+  } else {
+    const entry = inMemoryStateStore.get(state);
+    if (!entry) return false;
+    inMemoryStateStore.delete(state);
+    return true;
+  }
+}
+
+function generateState(): string {
+  return randomBytes(32).toString('hex');
+}
+
+// Initialize Redis on module load (non-blocking)
+initRedis();
+
+// Periodic cleanup for in-memory fallback
+setInterval(() => {
+  const cutoff = Date.now() - STATE_TTL_SECONDS * 1000;
+  for (const [key, val] of inMemoryStateStore.entries()) {
+    if (val.createdAt < cutoff) inMemoryStateStore.delete(key);
+  }
+}, 60 * 1000).unref();
 
 // ─── IdP configuration ────────────────────────────────────────────────────────
 
@@ -46,32 +109,15 @@ function linkedinConfig(redirectUri: string): OIDCConfig {
   };
 }
 
-// ─── State store (CSRF) ───────────────────────────────────────────────────────
-// ponytail: in-memory Map with TTL. Replace with Redis/session store in prod.
-
-const stateStore = new Map<string, { createdAt: number; provider: string }>();
-
-function cleanExpiredStates() {
-  const cutoff = Date.now() - 10 * 60 * 1000; // 10 minutes
-  for (const [key, val] of stateStore) {
-    if (val.createdAt < cutoff) stateStore.delete(key);
-  }
-}
-
-function generateState(): string {
-  cleanExpiredStates();
-  const state = randomBytes(32).toString('hex');
-  // Auto-cleanup after 10 minutes
-  const timer = setTimeout(() => stateStore.delete(state), 10 * 60 * 1000);
-  timer.unref(); // don't keep process alive
-  return state;
-}
-
-function validateState(state: string): boolean {
-  const entry = stateStore.get(state);
-  if (!entry) return false;
-  stateStore.delete(state);
-  return true;
+function facebookConfig(redirectUri: string): OIDCConfig {
+  return {
+    issuer: 'https://www.facebook.com',
+    authorizationURL: 'https://www.facebook.com/v18.0/dialog/oauth',
+    tokenURL: 'https://graph.facebook.com/v18.0/oauth/access_token',
+    userInfoURL: 'https://graph.facebook.com/v18.0/me?fields=id,name,email,first_name,last_name',
+    scope: 'email,public_profile',
+    grantType: 'authorization_code',
+  };
 }
 
 // ─── Core flow ────────────────────────────────────────────────────────────────
@@ -80,7 +126,7 @@ export interface OAuthUserInfo {
   email: string;
   firstName: string;
   lastName: string;
-  provider: 'google' | 'linkedin';
+  provider: 'google' | 'linkedin' | 'facebook';
   providerId: string; // sub claim from IdP
 }
 
@@ -157,27 +203,40 @@ export interface CallbackResult {
 }
 
 /** Build the Google OAuth authorization URL and store state. */
-export function initiateGoogle(baseUrl: string): InitiateResult {
+export async function initiateGoogle(baseUrl: string): Promise<InitiateResult> {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId) throw new Error('GOOGLE_CLIENT_ID is not configured');
 
   const redirectUri = `${baseUrl}/api/applicants/auth/google/callback`;
   const config = googleConfig(redirectUri);
   const state = generateState();
-  stateStore.set(state, { createdAt: Date.now(), provider: 'google' });
+  await storeState(state, 'google');
 
   return { redirectTo: buildAuthorizationUrl(config, clientId, state, redirectUri) };
 }
 
 /** Build the LinkedIn OAuth authorization URL and store state. */
-export function initiateLinkedIn(baseUrl: string): InitiateResult {
+export async function initiateLinkedIn(baseUrl: string): Promise<InitiateResult> {
   const clientId = process.env.LINKEDIN_CLIENT_ID;
   if (!clientId) throw new Error('LINKEDIN_CLIENT_ID is not configured');
 
   const redirectUri = `${baseUrl}/api/applicants/auth/linkedin/callback`;
   const config = linkedinConfig(redirectUri);
   const state = generateState();
-  stateStore.set(state, { createdAt: Date.now(), provider: 'linkedin' });
+  await storeState(state, 'linkedin');
+
+  return { redirectTo: buildAuthorizationUrl(config, clientId, state, redirectUri) };
+}
+
+/** Build the Facebook OAuth authorization URL and store state. */
+export async function initiateFacebook(baseUrl: string): Promise<InitiateResult> {
+  const clientId = process.env.FACEBOOK_CLIENT_ID;
+  if (!clientId) throw new Error('FACEBOOK_CLIENT_ID is not configured');
+
+  const redirectUri = `${baseUrl}/api/applicants/auth/facebook/callback`;
+  const config = facebookConfig(redirectUri);
+  const state = generateState();
+  await storeState(state, 'facebook');
 
   return { redirectTo: buildAuthorizationUrl(config, clientId, state, redirectUri) };
 }
@@ -188,7 +247,7 @@ export async function handleGoogleCallback(
   state: string,
   baseUrl: string,
 ): Promise<CallbackResult> {
-  if (!validateState(state)) throw new Error('Invalid or expired OAuth state (CSRF check failed)');
+  if (!await validateState(state)) throw new Error('Invalid or expired OAuth state (CSRF check failed)');
 
   const clientId = process.env.GOOGLE_CLIENT_ID!;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
@@ -218,7 +277,7 @@ export async function handleLinkedInCallback(
   state: string,
   baseUrl: string,
 ): Promise<CallbackResult> {
-  if (!validateState(state)) throw new Error('Invalid or expired OAuth state (CSRF check failed)');
+  if (!await validateState(state)) throw new Error('Invalid or expired OAuth state (CSRF check failed)');
 
   const clientId = process.env.LINKEDIN_CLIENT_ID!;
   const clientSecret = process.env.LINKEDIN_CLIENT_SECRET!;
@@ -253,6 +312,56 @@ export async function handleLinkedInCallback(
     lastName,
     provider: 'linkedin',
     providerId: idClaims['sub'] as string,
+  });
+}
+
+/** Handle Facebook OAuth callback: validate state, exchange code, upsert applicant, return JWT. */
+export async function handleFacebookCallback(
+  code: string,
+  state: string,
+  baseUrl: string,
+): Promise<CallbackResult> {
+  if (!await validateState(state)) throw new Error('Invalid or expired OAuth state (CSRF check failed)');
+
+  const clientId = process.env.FACEBOOK_CLIENT_ID!;
+  const clientSecret = process.env.FACEBOOK_CLIENT_SECRET!;
+  if (!clientSecret) throw new Error('FACEBOOK_CLIENT_SECRET is not configured');
+
+  const redirectUri = `${baseUrl}/api/applicants/auth/facebook/callback`;
+  const config = facebookConfig(redirectUri);
+
+  // Facebook doesn't return id_token by default; use access token to get user info
+  const tokenRes = await fetch(config.tokenURL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: config.grantType,
+      code,
+      redirect_uri: redirectUri,
+      client_id: clientId,
+      client_secret: clientSecret,
+    }),
+  });
+
+  if (!tokenRes.ok) {
+    const err = await tokenRes.text();
+    throw new Error(`Token exchange failed: ${tokenRes.status} ${err}`);
+  }
+
+  const tokenData = await tokenRes.json() as { access_token?: string };
+  const accessToken = tokenData.access_token;
+  if (!accessToken) throw new Error('No access_token in Facebook token response');
+
+  const profile = await fetchUserInfo(accessToken, config.userInfoURL);
+  const email = (profile['email'] as string | undefined)?.toLowerCase();
+  if (!email) throw new Error('Facebook did not return an email address');
+
+  return upsertOAuthApplicant({
+    email,
+    firstName: (profile['first_name'] as string | undefined) ?? '',
+    lastName: (profile['last_name'] as string | undefined) ?? '',
+    provider: 'facebook',
+    providerId: profile['id'] as string,
   });
 }
 

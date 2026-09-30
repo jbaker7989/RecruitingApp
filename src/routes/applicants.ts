@@ -6,7 +6,7 @@ import { signApplicantToken, verifyApplicantToken } from '../services/tokenServi
 import { revokeToken, revokeAllForUser } from '../services/revocationService.js';
 import { createResetToken, validateAndConsumeResetToken } from '../services/passwordResetService.js';
 import { createHash } from 'crypto'; // ponytail: bcrypt when prod
-import { initiateGoogle, initiateLinkedIn, handleGoogleCallback, handleLinkedInCallback } from '../services/oauthService.js';
+import { initiateGoogle, initiateLinkedIn, initiateFacebook, handleGoogleCallback, handleLinkedInCallback, handleFacebookCallback } from '../services/oauthService.js';
 
 const router = Router();
 
@@ -505,7 +505,7 @@ router.post('/reset-password', async (req: any, res) => {
 router.get('/auth/google', async (req: any, res) => {
   try {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const { redirectTo } = initiateGoogle(baseUrl);
+    const { redirectTo } = await initiateGoogle(baseUrl);
     res.redirect(302, redirectTo);
   } catch (error) {
     res.status(503).json({ error: 'Google login is not configured' });
@@ -537,7 +537,7 @@ router.get('/auth/google/callback', async (req: any, res) => {
 router.get('/auth/linkedin', async (req: any, res) => {
   try {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const { redirectTo } = initiateLinkedIn(baseUrl);
+    const { redirectTo } = await initiateLinkedIn(baseUrl);
     res.redirect(302, redirectTo);
   } catch (error) {
     res.status(503).json({ error: 'LinkedIn login is not configured' });
@@ -558,6 +558,38 @@ router.get('/auth/linkedin/callback', async (req: any, res) => {
   try {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const result = await handleLinkedInCallback(code, state, baseUrl);
+    return res.json({ token: result.token, expiresIn: result.expiresIn });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'OAuth callback failed';
+    return res.status(401).json({ error: msg });
+  }
+});
+
+// GET /api/applicants/auth/facebook — redirect to Facebook authorization
+router.get('/auth/facebook', async (req: any, res) => {
+  try {
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const { redirectTo } = await initiateFacebook(baseUrl);
+    res.redirect(302, redirectTo);
+  } catch (error) {
+    res.status(503).json({ error: 'Facebook login is not configured' });
+  }
+});
+
+// GET /api/applicants/auth/facebook/callback — handle Facebook OAuth callback
+router.get('/auth/facebook/callback', async (req: any, res) => {
+  const { code, state, error } = req.query as { code?: string; state?: string; error?: string };
+
+  if (error) {
+    return res.status(400).json({ error: `Facebook authorization denied: ${error}` });
+  }
+  if (!code || !state) {
+    return res.status(400).json({ error: 'Missing code or state parameter' });
+  }
+
+  try {
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const result = await handleFacebookCallback(code, state, baseUrl);
     return res.json({ token: result.token, expiresIn: result.expiresIn });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'OAuth callback failed';
