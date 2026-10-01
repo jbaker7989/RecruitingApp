@@ -11,7 +11,7 @@
  */
 
 import { getEmbeddingsClient } from '../llm/index.js';
-import { readStore } from '../../models/store.js';
+import { readStore } from '../../models/unifiedStore.js';
 
 /** Cosine similarity between two equal-length embedding vectors. */
 function cosineSimilarity(a: number[], b: number[]): number {

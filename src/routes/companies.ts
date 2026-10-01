@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { readStore, writeStore, generateId, now, addObservabilityEntry } from '../models/store.js';
+import { readStore, writeStore, generateId, now, addObservabilityEntry } from '../models/unifiedStore.js';
 import { validateJobBody } from '../middleware/validation.js';
 import { requireRole } from '../middleware/auth.js';
 

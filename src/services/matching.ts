@@ -1,5 +1,5 @@
-import { Applicant, JobPosting, Application, EducationEntry, EmploymentEntry, HireRecord, Company } from '../models/store.js';
-import { generateId, now, addObservabilityEntry } from '../models/store.js';
+import { Applicant, JobPosting, Application, EducationEntry, EmploymentEntry, HireRecord, Company } from '../models/unifiedStore.js';
+import { generateId, now, addObservabilityEntry } from '../models/unifiedStore.js';
 
 // Email regex validation
 export const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;

@@ -5,7 +5,7 @@
 
 import { Router } from 'express';
 import { requireRole } from '../../middleware/auth.js';
-import { readStore, writeStore, generateId, now, addObservabilityEntry } from '../../models/store.js';
+import { readStore, writeStore, generateId, now, addObservabilityEntry } from '../../models/unifiedStore.js';
 import type { ScreeningRequest, ScreeningJobResponse, ScreeningResult, CandidateInput } from '../../types/screening.js';
 import { parseResumeFromBuffer, parseResume } from '../../chains/resumeParsing.js';
 import {

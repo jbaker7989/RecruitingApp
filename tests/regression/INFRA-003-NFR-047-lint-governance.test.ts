@@ -33,6 +33,7 @@ test('INFRA-003/NFR-047: CI runs lint after typecheck and before build/test/smok
     'npm run lint',
     'npm run build',
     'npm test',
+    'npm test -- tests/regression/story-db-replace-store.test.ts',
     'npm run smoke',
   ]);
 });

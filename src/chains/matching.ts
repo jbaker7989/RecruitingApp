@@ -11,8 +11,8 @@ import {
   findSimilarJobsForApplicant,
   findSimilarApplicantsForJob,
 } from '../services/vectorStore/index.js';
-import { readStore, writeStore, addObservabilityEntry, generateId, now } from '../models/store.js';
-import type { Applicant, JobPosting, Application } from '../models/store.js';
+import { readStore, writeStore, addObservabilityEntry, generateId, now } from '../models/unifiedStore.js';
+import type { Applicant, JobPosting, Application } from '../models/unifiedStore.js';
 
 export interface MatchingResult {
   applicationId: string;

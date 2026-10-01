@@ -5,10 +5,10 @@
 
 import { Router } from 'express';
 import { z } from 'zod';
-import { readStore, generateId, now } from '../../models/store.js';
+import { readStore, generateId, now } from '../../models/unifiedStore.js';
 import { generateCandidateMessage, generateMessageVariants, calculateInputConfidence } from '../../chains/candidateCommunication.js';
 import { requireRole } from '../../middleware/auth.js';
-import { addObservabilityEntry } from '../../models/store.js';
+import { addObservabilityEntry } from '../../models/unifiedStore.js';
 import type {
   CCInput,
   CCOutput,

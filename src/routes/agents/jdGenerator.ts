@@ -5,10 +5,10 @@
 
 import { Router } from 'express';
 import { z } from 'zod';
-import { readStore, writeStore, generateId, now } from '../../models/store.js';
+import { readStore, writeStore, generateId, now } from '../../models/unifiedStore.js';
 import { generateJobDescription, generateJobDescriptionVariants } from '../../chains/jobDescription.js';
 import { requireRole } from '../../middleware/auth.js';
-import { addObservabilityEntry } from '../../models/store.js';
+import { addObservabilityEntry } from '../../models/unifiedStore.js';
 import type { 
   JDGInput, 
   JDGOutput, 

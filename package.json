@@ -39,6 +39,7 @@
     "jose": "^6.2.12",
     "mammoth": "^1.12.3",
     "papaparse": "^5.7.0",
+    "pg": "^8.23.1",
     "pdf-parse": "^2.4.5",
     "zod": "^3.25.76"
   },
@@ -53,6 +54,7 @@
     "@types/express-fileupload": "^1.5.1",
     "@types/node": "^22.20.2",
     "@types/papaparse": "^5.5.2",
+    "@types/pg": "^8.23.1",
     "eslint": "^10.10.0",
     "globals": "^17.12.0",
     "tsx": "^4.23.13",

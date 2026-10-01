@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { readStore } from '../models/store.js';
+import { readStore } from '../models/unifiedStore.js';
 import { verifyApplicantToken } from '../services/tokenService.js';
 import { revokeToken } from '../services/revocationService.js';
 

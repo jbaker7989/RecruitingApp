@@ -6,7 +6,7 @@
  * Single-use: `usedAt` timestamp marks token consumed after first successful reset.
  */
 import { randomBytes } from 'crypto';
-import { readStore, writeStore, generateId, now } from '../models/store.js';
+import { readStore, writeStore, generateId, now } from '../models/unifiedStore.js';
 
 const RESET_TOKEN_TTL_SECONDS = 3600; // 1 hour
 

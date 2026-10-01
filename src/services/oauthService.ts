@@ -9,8 +9,8 @@
  * or in-memory Map with 10-min TTL as fallback.
  */
 import { randomBytes } from 'crypto';
-import { addObservabilityEntry, generateId, now } from '../models/store.js';
-import { readStore, writeStore } from '../models/store.js';
+import { addObservabilityEntry, generateId, now } from '../models/unifiedStore.js';
+import { readStore, writeStore } from '../models/unifiedStore.js';
 import { signApplicantToken } from './tokenService.js';
 
 // ─── Redis state store (CSRF) ─────────────────────────────────────────────────

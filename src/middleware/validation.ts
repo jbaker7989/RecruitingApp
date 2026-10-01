@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { readStore, writeStore, generateId, now, addObservabilityEntry } from '../models/store.js';
+import { readStore, writeStore, generateId, now, addObservabilityEntry } from '../models/unifiedStore.js';
 
 // Body validation helper
 export function validateEmail(email: string): boolean {

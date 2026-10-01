@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 import { realpathSync } from 'fs';
 import { resolve } from 'path';
 import dashboardRouter from './routes/dashboard.js';
-import { initializeStore, readStore, addObservabilityEntry, generateId, now } from './models/store.js';
+import { initializeStore, readStore, addObservabilityEntry, generateId, now } from './models/unifiedStore.js';
 import { authenticate } from './middleware/auth.js';
 import { errorHandler } from './middleware/auth.js';
 import jobRoutes from './routes/jobs.js';

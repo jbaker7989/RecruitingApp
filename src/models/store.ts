@@ -273,6 +273,11 @@ export function now(): string {
   return new Date().toISOString();
 }
 
+export async function hashPassword(password: string): Promise<string> {
+  const { createHash } = await import('crypto');
+  return createHash('sha256').update(password).digest('hex');
+}
+
 export async function initializeStore(): Promise<DataStore> {
   await ensureDataDir();
   if (!existsSync(storeFile())) {

@@ -15,7 +15,22 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: recruiting_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -40,8 +55,17 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Test
+      - name: Run DB tests (JSON store mode)
         run: npm test
+        env:
+          # No DATABASE_URL = tests use JSON file store (no PostgreSQL service needed for this run)
+          DATABASE_URL: ""
+
+      - name: Run DB tests (PostgreSQL mode)
+        run: npm test -- tests/regression/story-db-replace-store.test.ts
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/recruiting_test
+        # These tests are skipped when DB_URL not set, so we run them separately
 
       - name: Smoke built artifact
         run: npm run smoke

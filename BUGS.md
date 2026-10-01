@@ -413,3 +413,39 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 9. **P2 governance/logic:** NFR-047, then NFR-014 – NFR-019, NFR-045, and remaining specification gaps.
 
 Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, NFR-033, NFR-036, NFR-037, NFR-042, NFR-043, NFR-044.
+
+---
+
+## Bugs introduced during story-commercial-replace-json-store-with-db development
+
+**Date:** 2026-09-11  
+**Story:** `story-commercial-replace-json-store-with-db`  
+**Method:** TDD development + Vercel deployment subagent verification
+
+### NFR-048-B (BLOCKER — release): vercel.json is missing
+**Severity:** P1  
+**Description:** `vercel.json` does not exist in the project root. Without it, Vercel defaults to static hosting and won't route API requests to Express. Every route (including `/api/...`) returns 404.  
+**Fix:** Create `vercel.json` with `@vercel/node` build configuration and catch-all route to `src/index.ts`.
+
+### NFR-034-B (BLOCKER — release): DB init throws fatal error on cold start when DATABASE_URL is absent
+**Severity:** P1  
+**Description:** When `DATABASE_URL` is set in Vercel env vars but the database is unreachable (cold start timeout, wrong credentials), `db.ts` `initializeDatabase()` calls `process.exit(1)`, crashing the function before it can return a 503. The `unifiedStore` graceful fallback (`USE_DATABASE = !!DATABASE_URL`) is bypassed because the env var IS set.  
+**Fix:** Remove `process.exit(1)` from `db.ts`. Instead, set `pool = null` and let callers handle the null pool. `unifiedStore.initializeStore()` should catch the error and fall back to JSON store mode.
+
+### NFR-VPC-001 (moderate): Pool-per-instance connection exhaustion in Vercel serverless
+**Severity:** P2  
+**Description:** `db.ts` creates a module-level `Pool` with `max: 10`. Each Vercel function instance gets its own pool. Under concurrent cold starts this can exceed the database's `max_connections`.  
+**Fix:** Reduce `max` to `2` per instance, or use an external pooler (Neon pooler, PgBouncer) via connection string. Document the limit in `DATABASE_URL` comments.
+
+### NFR-VPC-002 (moderate): Schema init skipped in serverless cold start
+**Severity:** P2  
+**Description:** `initializeSchema()` runs inside `initializeStore()`, which is called from `start()`. The `start()` function is guarded by `isEntrypoint()`. In Vercel serverless mode, the entrypoint handler doesn't call `start()`, so `initializeSchema()` never runs on cold starts. Tables may not exist.  
+**Fix:** Call `initializeSchema()` from within the first request handler that touches the DB, or add a Vercel serverless init hook. Use a `_migrations` table check to skip if already applied.
+
+### NFR-VPC-003 (minor): Node 24 may not be available on all Vercel runtimes
+**Severity:** P3  
+**Description:** `package.json` specifies `"engines": { "node": "24" }` with `engineStrict: true`. Vercel's default runtime may not supply Node 24.  
+**Fix:** Set `NODE_VERSION: 24.x` in `vercel.json` or Vercel project settings.
+
+---
+

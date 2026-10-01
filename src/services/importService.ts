@@ -1,6 +1,6 @@
 import { Readable } from 'stream';
 import Papa from 'papaparse';
-import { readStore, writeStore, generateId, now, addObservabilityEntry, Company, JobPosting } from '../models/store.js';
+import { readStore, writeStore, generateId, now, addObservabilityEntry, Company, JobPosting } from '../models/unifiedStore.js';
 
 export interface ImportResult {
   totalRows: number;

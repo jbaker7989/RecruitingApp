@@ -12,7 +12,7 @@
  * Graceful degradation: all operations return false/empty on error rather than
  * throwing, so the auth middleware never blocks requests due to revocation store issues.
  */
-import { addObservabilityEntry, generateId, now } from '../models/store.js';
+import { addObservabilityEntry, generateId, now } from '../models/unifiedStore.js';
 
 // ─── Storage ─────────────────────────────────────────────────────────────────
 

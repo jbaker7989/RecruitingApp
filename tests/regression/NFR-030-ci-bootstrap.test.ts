@@ -26,12 +26,14 @@ test('NFR-030: GitHub Actions uses the mandated install → typecheck → lint �
   assert.match(yaml, /push:/);
   assert.match(yaml, /runs-on:\s*ubuntu-latest/);
   const commands = [...yaml.matchAll(/^\s+run:\s*(.+)\s*$/gm)].map((match) => match[1].trim());
+  // PostgreSQL tests run as a separate step when DATABASE_URL is available
   assert.deepEqual(commands, [
     'npm ci',
     'npm run typecheck',
     'npm run lint',
     'npm run build',
     'npm test',
+    'npm test -- tests/regression/story-db-replace-store.test.ts',
     'npm run smoke',
   ]);
 });
