@@ -191,62 +191,44 @@ test('NFR-050-edge: token signed with wrong (but valid) secret is rejected', asy
     `Token signed with wrong secret must be rejected with 401, got ${res.status}: ${JSON.stringify(res.body)}`);
 });
 
-// ─── NFR-050-bug6: Migration — nonexistent opaque token ─────────────────────
+// ─── NFR-050-bug6: Migration window closed (story-commercial-auth-hardening) ─
 
-test('NFR-050-edge: migration — opaque token for nonexistent user returns 401', async () => {
+test('NFR-050-edge: opaque token for nonexistent user returns 401', async () => {
   const res = await get('/api/auth/me', 'nonexistent-user-id-12345');
   assert.equal(res.status, 401,
     `Opaque token for nonexistent user must return 401, got ${res.status}: ${JSON.stringify(res.body)}`);
 });
 
-test('NFR-050-edge: migration — opaque token for nonexistent applicant returns 401', async () => {
+test('NFR-050-edge: opaque token for nonexistent applicant returns 401', async () => {
   const res = await get('/api/applicants/me', 'nonexistent-applicant-id-67890');
   assert.equal(res.status, 401,
     `Opaque token for nonexistent applicant must return 401, got ${res.status}: ${JSON.stringify(res.body)}`);
 });
 
-test('NFR-050-edge: migration — opaque token accepted for hiring-manager role', async () => {
-  // Register a hiring-manager user
+test('NFR-050-edge: opaque user id rejected for hiring-manager role (legacy path removed)', async () => {
   await post('/api/auth/register', {
     username: 'edge-hm', password: 'password123',
     email: 'edge-hm@test.com', role: 'hiring-manager', companyId: 'comp-1',
   });
   const login = await post('/api/auth/login', { username: 'edge-hm', password: 'password123' });
   assert.equal(login.status, 200);
-
-  // The login response for users returns { user: { id: ... }, token: '...' }
-  const opaqueId = (login.body as any).user?.id;
-  if (!opaqueId) {
-    // Fallback: extract user id from the JWT
-    const jwtPayload = decodePayload(login.body.token);
-    const { readStore } = await import('../../src/models/store.js');
-    const store = await readStore();
-    const user = store.users.find((u: any) => u.id === jwtPayload.sub);
-    assert.ok(user, 'User must exist in store');
-    const res = await get('/api/auth/me', user.id);
-    assert.equal(res.status, 200,
-      `Opaque token for hiring-manager must work during migration, got ${res.status}`);
-    return;
-  }
-
-  const res = await get('/api/auth/me', opaqueId);
-  assert.equal(res.status, 200,
-    `Opaque token for hiring-manager must work during migration, got ${res.status}`);
+  const userId = (login.body as any).user?.id;
+  assert.ok(userId, 'Login must return user id');
+  const res = await get('/api/auth/me', userId);
+  assert.equal(res.status, 401,
+    `Opaque user id must be rejected (legacy path removed by auth-hardening), got ${res.status}`);
 });
 
-test('NFR-050-edge: migration — opaque token accepted for member-services role', async () => {
+test('NFR-050-edge: opaque user id rejected for member-services role (legacy path removed)', async () => {
   await post('/api/auth/register', {
     username: 'edge-ms', password: 'password123',
     email: 'edge-ms@test.com', role: 'member-services', companyId: 'comp-1',
   });
   const login = await post('/api/auth/login', { username: 'edge-ms', password: 'password123' });
   assert.equal(login.status, 200);
-  const jwtPayload = decodePayload(login.body.token);
-  const { readStore } = await import('../../src/models/store.js');
-  const store = await readStore();
-  const user = store.users.find((u: any) => u.id === jwtPayload.sub);
-  assert.ok(user, 'User must exist in store');
-  const res = await get('/api/auth/me', user.id);
-  assert.equal(res.status, 200,
-    `Opaque token for member-services must work during migration, got ${res.status}`);
+  const userId = (login.body as any).user?.id;
+  assert.ok(userId, 'Login must return user id');
+  const res = await get('/api/auth/me', userId);
+  assert.equal(res.status, 401,
+    `Opaque user id must be rejected (legacy path removed by auth-hardening), got ${res.status}`);
 });

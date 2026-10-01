@@ -1,12 +1,17 @@
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
+import { createHash } from 'crypto'; // ponytail: bcrypt when prod
 import { readStore, writeStore, generateId, now, addObservabilityEntry, JobPosting, Applicant } from '../models/store.js';
 import { validateApplicantProfile, validateApplicationBody } from '../middleware/validation.js';
 import { authenticateApplicant, AuthRequest } from '../middleware/applicantAuth.js';
 import { signApplicantToken, verifyApplicantToken } from '../services/tokenService.js';
 import { revokeToken, revokeAllForUser } from '../services/revocationService.js';
 import { createResetToken, validateAndConsumeResetToken } from '../services/passwordResetService.js';
-import { createHash } from 'crypto'; // ponytail: bcrypt when prod
 import { initiateGoogle, initiateLinkedIn, initiateFacebook, handleGoogleCallback, handleLinkedInCallback, handleFacebookCallback } from '../services/oauthService.js';
+
+const BCRYPT_ROUNDS = 10;
+const hashPassword = (password: string): Promise<string> => bcrypt.hash(password, BCRYPT_ROUNDS);
+const verifyPassword = (password: string, hash: string): Promise<boolean> => bcrypt.compare(password, hash);
 
 const router = Router();
 
@@ -32,9 +37,7 @@ function calculateCompleteness(a: { email: string | null; firstName: string; las
   return score;
 }
 
-function hashPassword(password: string): string {
-  return createHash('sha256').update(password).digest('hex');
-}
+// hashPassword/verifyPassword are defined at top of file using bcrypt.
 
 // ─── Public: Register ─────────────────────────────────────────────────────────
 
@@ -68,7 +71,7 @@ router.post('/register', async (req: any, res) => {
       firstName,
       lastName,
       email: email.toLowerCase(),
-      passwordHash: hashPassword(password),
+      passwordHash: await hashPassword(password),
       phone,
       preferredContactMethod: 'email' as const,
       address: { state: '', zip: '' },
@@ -143,7 +146,18 @@ router.post('/login', async (req: any, res) => {
       a => a.email?.toLowerCase() === email.toLowerCase()
     );
 
-    if (!applicant || !applicant.passwordHash || applicant.passwordHash !== hashPassword(password)) {
+    if (!applicant || !applicant.passwordHash) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+    // Migrate legacy sha256 hashes on first successful login
+    if (/^[a-f0-9]{64}$/.test(applicant.passwordHash)) {
+      const legacySha = createHash('sha256').update(password).digest('hex');
+      if (applicant.passwordHash !== legacySha) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+      applicant.passwordHash = await hashPassword(password);
+      await writeStore(store);
+    } else if (!(await verifyPassword(password, applicant.passwordHash))) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
@@ -210,7 +224,7 @@ router.patch('/me', async (req: AuthRequest, res) => {
       await revokeAllForUser(payload.sub, 'Applicant', payload.jti, 604800);
       store.applicants[index] = {
         ...store.applicants[index],
-        passwordHash: hashPassword(password),
+        passwordHash: await hashPassword(password),
         ...safeUpdates,
         updatedAt: now(),
       };
@@ -490,7 +504,7 @@ router.post('/reset-password', async (req: any, res) => {
 
     store.applicants[index] = {
       ...store.applicants[index],
-      passwordHash: hashPassword(newPassword),
+      passwordHash: await hashPassword(newPassword),
       updatedAt: now(),
     };
     await writeStore(store);

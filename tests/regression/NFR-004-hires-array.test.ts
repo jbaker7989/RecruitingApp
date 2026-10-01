@@ -22,9 +22,10 @@ let dataDir: string;
 let store: typeof import('../../src/models/store.js');
 let server: Server;
 let baseUrl: string;
+let authHeader: string;
 
 const ADMIN = { id: 'u-admin', username: 'admin', passwordHash: 'encrypted_pw', role: 'member-services', email: 'a@b.com', createdAt: '2026-09-11T00:00:00.000Z', oauthProvider: null };
-const AUTH = { Authorization: 'Bearer u-admin', 'Content-Type': 'application/json' };
+let AUTH: Record<string, string>;
 
 before(async () => {
   dataDir = mkdtempSync(join(tmpdir(), 'nfr004-'));
@@ -41,6 +42,11 @@ before(async () => {
   server = app.listen(0);
   const addr = server.address();
   baseUrl = `http://localhost:${typeof addr === 'object' && addr ? addr.port : 0}`;
+
+  // Sign a real JWT for the admin user (story-commercial-auth-hardening: opaque tokens removed)
+  const { signUserToken } = await import('../../src/services/tokenService.js');
+  authHeader = await signUserToken(ADMIN.id, ADMIN.role, undefined);
+  AUTH = { Authorization: `Bearer ${authHeader}`, 'Content-Type': 'application/json' };
 });
 
 after(() => {

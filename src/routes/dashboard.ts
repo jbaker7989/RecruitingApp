@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
 import { readStore } from '../models/store.js';
 import { verifyApplicantToken } from '../services/tokenService.js';
 import { revokeToken } from '../services/revocationService.js';
@@ -118,10 +119,9 @@ router.post('/register', async (req: any, res: any) => {
       });
     }
 
-    const { generateId, now, hashPassword } = await import('../models/store.js');
-    
-    const passwordHash = await hashPassword(password);
-    
+    const { generateId, now } = await import('../models/store.js');
+    const passwordHash = await bcrypt.hash(password, 10);
+
     const applicant = {
       id: generateId(),
       firstName,
@@ -213,10 +213,29 @@ router.post('/login', async (req: any, res: any) => {
       });
     }
 
-    // ponytail: SHA-256 check — matches applicants.ts; swap for bcrypt at scale
-    const { createHash } = await import('crypto');
-    const hash = createHash('sha256').update(password).digest('hex');
-    if (applicant.passwordHash !== hash) {
+    // bcrypt password verification (story-commercial-auth-hardening)
+    if (!applicant.passwordHash) {
+      return res.status(200).render('dashboard/login', {
+        error: 'Incorrect password. Please try again.',
+        email,
+        next,
+      });
+    }
+    if (/^[a-f0-9]{64}$/.test(applicant.passwordHash)) {
+      // Legacy sha256 hash — accept and migrate on the fly (matches applicants.ts)
+      const { createHash } = await import('crypto');
+      const legacyHash = createHash('sha256').update(password).digest('hex');
+      if (applicant.passwordHash !== legacyHash) {
+        return res.status(200).render('dashboard/login', {
+          error: 'Incorrect password. Please try again.',
+          email,
+          next,
+        });
+      }
+      applicant.passwordHash = await bcrypt.hash(password, 10);
+      const { writeStore } = await import('../models/store.js');
+      await writeStore(store);
+    } else if (!(await bcrypt.compare(password, applicant.passwordHash))) {
       return res.status(200).render('dashboard/login', {
         error: 'Incorrect password. Please try again.',
         email,
