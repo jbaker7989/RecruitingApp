@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { readStore, writeStore, generateId, now, addObservabilityEntry, JobPosting } from '../models/store.js';
+import { readStore, writeStore, generateId, now, addObservabilityEntry, JobPosting, Applicant } from '../models/store.js';
 import { validateApplicantProfile, validateApplicationBody } from '../middleware/validation.js';
 import { authenticateApplicant, AuthRequest } from '../middleware/applicantAuth.js';
 import { signApplicantToken, verifyApplicantToken } from '../services/tokenService.js';
@@ -9,6 +9,13 @@ import { createHash } from 'crypto'; // ponytail: bcrypt when prod
 import { initiateGoogle, initiateLinkedIn, initiateFacebook, handleGoogleCallback, handleLinkedInCallback, handleFacebookCallback } from '../services/oauthService.js';
 
 const router = Router();
+
+// Strip credential/identity fields that must never reach a client response.
+// passwordHash and oauthProviderId are secrets/internal-ids — never serialize them.
+function sanitizeApplicant(applicant: Applicant) {
+  const { passwordHash: _passwordHash, oauthProviderId: _oauthProviderId, ...rest } = applicant;
+  return rest;
+}
 
 // ─── Completeness score ────────────────────────────────────────────────────────
 
@@ -176,7 +183,7 @@ router.get('/me', authenticateApplicant, async (req: AuthRequest, res) => {
   try {
     const applicant = req.applicant!;
     res.json({
-      ...applicant,
+      ...sanitizeApplicant(applicant),
       completeness: calculateCompleteness(applicant),
     });
   } catch (error) {
@@ -290,7 +297,7 @@ router.post('/', async (req: any, res) => {
       firstName: req.body.firstName,
       lastName: req.body.lastName,
       email: req.body.email || null,
-      passwordHash: req.body.passwordHash || null,
+      passwordHash: null,
       phone: req.body.phone,
       preferredContactMethod: req.body.preferredContactMethod || 'email',
       address: req.body.address || { state: '', zip: '' },
@@ -335,7 +342,7 @@ router.get('/:id', async (req, res) => {
     if (!applicant) return res.status(404).json({ error: 'Applicant not found' });
 
     const hires = store.hires.filter(h => h.applicantId === applicant.id);
-    res.json({ ...applicant, hires });
+    res.json({ ...sanitizeApplicant(applicant), hires });
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to fetch applicant' });
   }
@@ -347,6 +354,12 @@ router.put('/:id', async (req: any, res) => {
     const store = await readStore();
     const index = store.applicants.findIndex(a => a.id === req.params.id);
     if (index === -1) return res.status(404).json({ error: 'Applicant not found' });
+
+    // Reject credential fields from client input — passwordHash must never be
+    // set through the legacy update path (use the password-reset / register flow).
+    if ('passwordHash' in req.body) {
+      return res.status(400).json({ error: 'passwordHash cannot be set via this endpoint' });
+    }
 
     store.applicants[index] = { ...store.applicants[index], ...req.body, updatedAt: now() };
     await writeStore(store);
