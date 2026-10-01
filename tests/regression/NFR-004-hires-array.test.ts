@@ -92,24 +92,20 @@ test('NFR-004 (integration): accepting an application creates a hire record inst
   assert.equal(jobRes.status, 201);
   const job = await jobRes.json() as any;
 
-  // Applicant
-  const appRes = await fetch(`${baseUrl}/api/applicants`, {
-    method: 'POST', headers: AUTH,
+  // Applicant — create via the credential flow. The legacy POST /api/applicants no
+  // longer accepts a client-supplied passwordHash (see story-bug-applicant-passwordhash-pii-leak),
+  // so register here and log in with the same password to obtain an applicant JWT.
+  const appRes = await fetch(`${baseUrl}/api/applicants/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      firstName: 'John', lastName: 'Roe', email: 'john@x.com', phone: '5559999',
-      address: { state: 'CA', zip: '90001' },
-      educationHistory: [{ institution: 'UCLA', degree: 'BS', fieldOfStudy: 'EE', startDate: '2014', endDate: '2018' }],
-      employmentHistory: [{ company: 'Y', position: 'typescript dev', startDate: '2018-01-01', endDate: '2023-01-01' }],
-      rightToWork: true,
-      // passwordHash is SHA-256 of 'password123' so we can log in for an applicant JWT.
-      // POST /api/applications injects req.user.id as applicantId (NFR-048 auth guard);
-      // a member-services token (req.user.id='u-admin') would produce applicantId='u-admin'
-      // which no applicant record satisfies.
-      passwordHash: 'ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f',
+      firstName: 'John', lastName: 'Roe', email: 'john@x.com',
+      password: 'password123', phone: '5559999',
     }),
   });
-  assert.equal(appRes.status, 201);
-  const applicant = await appRes.json() as any;
+  assert.equal(appRes.status, 201, `applicant register failed: ${await appRes.clone().text()}`);
+  const appJson = await appRes.json() as any;
+  const applicant = { id: appJson.profile.id, ...appJson.profile };
 
   // Login as the applicant to obtain a JWT for POST /api/applications
   const loginRes = await fetch(`${baseUrl}/api/applicants/login`, {
