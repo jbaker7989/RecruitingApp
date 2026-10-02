@@ -413,3 +413,44 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 9. **P2 governance/logic:** NFR-047, then NFR-014 – NFR-019, NFR-045, and remaining specification gaps.
 
 Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, NFR-033, NFR-036, NFR-037, NFR-042, NFR-043, NFR-044.
+## Bugs introduced during story-commercial-auth-hardening development
+
+**Date:** 2026-10-01
+**Story:** `story-commercial-auth-hardening`
+**Method:** TDD red-green (tests/regression/story-commercial-auth-hardening.test.ts) + full suite + Vercel subagent verification
+
+### NFR-055 (P1): bcrypt native binding unavailable — replaced with bcryptjs
+**Severity:** P1 (build/install)
+**Description:** `bcrypt@5.1.1` requires native compilation via `node-gyp rebuild` (or prebuilt binary via `node-pre-gyp`). On developer machines and in Vercel serverless without `--ignore-scripts`, the native binding is missing and the app crashes on first password hash/verify call with `Cannot find module .../bcrypt_lib.node`.
+**Fix:** Replaced with `bcryptjs` (pure JS). `bcryptjs` is slower (~3x) but has no native dependency. For production, set up a build step that compiles bcrypt native or use an external auth service (Auth0/Clerk). The 10-round bcryptjs hash is adequate for the current load; benchmark before scale.
+**Status:** Fixed (workaround).
+
+### NFR-056 (P2): Startup secret validation throws in production — must be paired with Vercel env config
+**Severity:** P2 (deployment)
+**Description:** `src/services/tokenService.ts` now throws synchronously at module load if `NODE_ENV=production` and `JWT_SECRET`/`APPLICANT_JWT_SECRET` are unset/dev-default/<32 chars. In Vercel, this fails the function cold start with a 500 before the request can be served. **Both env vars MUST be set in Vercel project settings** or the app will not start. There is no graceful fallback for production.
+**Fix:** Document the env var requirement prominently. Add a Vercel deployment precheck (e.g., a Vercel "preflight" function or a CI gate that POSTs to a `/health` endpoint and fails if startup secret validation didn't run). Consider emitting a single startup log line confirming secrets validated, so deployment can be verified.
+**Status:** Documented in `.env.example`; preflight not yet built.
+
+### NFR-057 (P3): Legacy `encrypted_<password>` stub users migrate only on first login
+**Severity:** P3 (data migration)
+**Description:** Users registered before this story have `passwordHash = "encrypted_<password>"`. The login flow now detects this and re-hashes to bcrypt on first successful login. **However**, if a user never logs in again, the encrypted stub persists in the data store. This is not a security issue (the stub is checked correctly during migration) but it leaves legacy hashes on disk.
+**Fix:** Run a one-time migration script (`scripts/migrate-passwords.mjs`) that iterates all users, identifies legacy hashes, and either prompts for re-login or forces a password reset. Document the deadline for the migration.
+**Status:** Login-time migration works; bulk migration script not yet written.
+
+### NFR-058 (P3): Legacy sha256 applicant hashes migrate only on first login
+**Severity:** P3 (data migration)
+**Description:** Applicants registered before this story have `passwordHash = sha256(password)`. The login flow (in `applicants.ts` and `dashboard.ts`) detects the 64-char hex pattern and re-hashes to bcrypt on first successful login. Same caveat as NFR-057: never-logged-in accounts keep the sha256 hash.
+**Fix:** Same as NFR-057 — bulk migration script or password reset flow.
+**Status:** Login-time migration works; bulk migration script not yet written.
+
+### NFR-059 (P3): Production secret validation is process-global — no per-tenant secret isolation
+**Severity:** P3 (multi-tenancy)
+**Description:** `USER_SECRET` and `APPLICANT_SECRET` are read once at module load. A single Vercel deployment can only sign tokens with one set of secrets. If the application grows to multi-tenant (per-company or per-region signing), the current design would require either re-deploying or a runtime secret-rotation mechanism.
+**Fix:** Defer until multi-tenancy is a real requirement. When needed, move secret selection into a request-scoped resolver that reads from a header/claim, with a default fallback.
+**Status:** Not yet required.
+
+### NFR-060 (P3): In-memory revocation store is still in-memory (not durable)
+**Severity:** P3 (deferred to dedicated story)
+**Description:** The story mentions durable revocation but this story did not address the revocation store. `src/services/revocationService.ts` still uses an in-memory `Map`. After Vercel cold start (or process restart), all revoked tokens become valid again. This is a known gap tracked in the dedicated revocation story.
+**Fix:** Move revocations to a durable store (DB or Redis). The token service now fail-closes on revocation errors, so the missing durability is a correctness gap (not a security gap) but should be fixed.
+**Status:** Out of scope for this story; tracked separately.

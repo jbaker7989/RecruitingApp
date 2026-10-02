@@ -220,7 +220,7 @@ test('NFR-050: Protected endpoint rejects an expired JWT', async () => {
   assert.equal(res.status, 401, `Non-JWT token should return 401, got ${res.status}: ${JSON.stringify(res.body)}`);
 });
 
-test('NFR-050: Migration — old opaque User tokens are still accepted during dual-acceptance window', async () => {
+test('NFR-050: Migration — old opaque User tokens are REJECTED (auth-hardening removed legacy path)', async () => {
   // Register + login to get both a new JWT and the old opaque token
   await post('/api/auth/register', {
     username: 'migrate-user',
@@ -234,12 +234,12 @@ test('NFR-050: Migration — old opaque User tokens are still accepted during du
   // The user.id is the old opaque token value
   const opaqueToken = login.body.user.id;
 
-  // Should still authenticate with the old opaque token (migration path)
+  // Story-commercial-auth-hardening: opaque tokens are no longer accepted
   const res = await get('/api/auth/me', opaqueToken);
-  assert.equal(res.status, 200, `Old opaque token should still work during migration, got ${res.status}: ${JSON.stringify(res.body)}`);
+  assert.equal(res.status, 401, `Old opaque token must be rejected (legacy path removed), got ${res.status}: ${JSON.stringify(res.body)}`);
 });
 
-test('NFR-050: Migration — old opaque Applicant tokens are still accepted during dual-acceptance window', async () => {
+test('NFR-050: Migration — old opaque Applicant tokens are REJECTED (auth-hardening removed legacy path)', async () => {
   const reg = await post('/api/applicants/register', {
     email: 'migrate-applicant@test.com',
     password: 'password123',
@@ -254,10 +254,9 @@ test('NFR-050: Migration — old opaque Applicant tokens are still accepted duri
   // The applicant.id is the old opaque token value
   const opaqueToken = login.body.profile.id;
 
-  // Should still authenticate with the old opaque token (migration path)
-  // Use /api/applicants/me since /api/auth/me is for user tokens only
+  // Story-commercial-auth-hardening: opaque tokens are no longer accepted
   const res = await get('/api/applicants/me', opaqueToken);
-  assert.equal(res.status, 200, `Old opaque applicant token should still work during migration, got ${res.status}`);
+  assert.equal(res.status, 401, `Old opaque applicant token must be rejected, got ${res.status}`);
 });
 
 test('NFR-050: Token issuance is logged to observability store', async () => {

@@ -1,6 +1,8 @@
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
 import { readStore } from '../models/store.js';
 import { verifyApplicantToken } from '../services/tokenService.js';
+import { revokeToken } from '../services/revocationService.js';
 
 const router = Router();
 
@@ -23,6 +25,146 @@ async function requireApplicant(req: any, res: any, next: any) {
     return res.redirect(`/dashboard/login?next=${encodeURIComponent(req.originalUrl)}`);
   }
 }
+
+// ─── Register (GET) ───────────────────────────────────────────────────────────
+
+router.get('/register', (req: any, res: any) => {
+  const token = req.cookies?.token;
+  if (token) {
+    try {
+      verifyApplicantToken(token);
+      const next = req.query.next || '/dashboard/applications';
+      return res.redirect(next);
+    } catch {
+      res.clearCookie('token');
+    }
+  }
+  res.render('dashboard/register', {
+    error: null,
+    email: '',
+    firstName: '',
+    lastName: '',
+    phone: '',
+    next: req.query.next || '',
+  });
+});
+
+// ─── Register (POST) ──────────────────────────────────────────────────────────
+
+router.post('/register', async (req: any, res: any) => {
+  const { email, password, confirmPassword, firstName, lastName, phone, next } = req.body;
+  const destination = (next && typeof next === 'string') ? next : '/dashboard/applications';
+
+  // Basic validation (phone is optional)
+  if (!email || !password || !confirmPassword || !firstName || !lastName) {
+    return res.status(200).render('dashboard/register', {
+      error: 'All required fields must be filled.',
+      email,
+      firstName,
+      lastName,
+      phone,
+      next,
+    });
+  }
+
+  if (password !== confirmPassword) {
+    return res.status(200).render('dashboard/register', {
+      error: 'Passwords do not match.',
+      email,
+      firstName,
+      lastName,
+      phone,
+      next,
+    });
+  }
+
+  if (password.length < 8) {
+    return res.status(200).render('dashboard/register', {
+      error: 'Password must be at least 8 characters.',
+      email,
+      firstName,
+      lastName,
+      phone,
+      next,
+    });
+  }
+
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(email)) {
+    return res.status(200).render('dashboard/register', {
+      error: 'Invalid email format.',
+      email,
+      firstName,
+      lastName,
+      phone,
+      next,
+    });
+  }
+
+  try {
+    const store = await readStore();
+    
+    // Check for existing applicant with this email
+    const existing = store.applicants.find(
+      (a: any) => a.email?.toLowerCase() === email.toLowerCase(),
+    );
+    if (existing) {
+      return res.status(200).render('dashboard/register', {
+        error: 'An account with this email already exists.',
+        email,
+        firstName,
+        lastName,
+        phone,
+        next,
+      });
+    }
+
+    const { generateId, now } = await import('../models/store.js');
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const applicant = {
+      id: generateId(),
+      firstName,
+      lastName,
+      email: email.toLowerCase(),
+      passwordHash,
+      phone,
+      preferredContactMethod: 'email' as const,
+      address: { state: '', zip: '' },
+      educationHistory: [],
+      employmentHistory: [],
+      rightToWork: false,
+      requiresSponsorship: false,
+      expectedPay: 0,
+      notificationToManager: false,
+      hireRecords: [],
+      oauthProvider: null,
+      oauthProviderId: null,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+
+    store.applicants.push(applicant);
+    const { writeStore } = await import('../models/store.js');
+    await writeStore(store);
+
+    const { signApplicantToken } = await import('../services/tokenService.js');
+    const token = await signApplicantToken(applicant.id, true); // hasCredentials = true
+
+    res.setHeader('Set-Cookie', `token=${token}; ${COOKIE_OPTS}`);
+    res.redirect(destination);
+  } catch (err) {
+    console.error('[dashboard] Register error:', err);
+    res.status(200).render('dashboard/register', {
+      error: 'Something went wrong. Please try again.',
+      email,
+      firstName,
+      lastName,
+      phone,
+      next,
+    });
+  }
+});
 
 // ─── Login (GET) ──────────────────────────────────────────────────────────────
 
@@ -71,10 +213,29 @@ router.post('/login', async (req: any, res: any) => {
       });
     }
 
-    // ponytail: SHA-256 check — matches applicants.ts; swap for bcrypt at scale
-    const { createHash } = await import('crypto');
-    const hash = createHash('sha256').update(password).digest('hex');
-    if (applicant.passwordHash !== hash) {
+    // bcrypt password verification (story-commercial-auth-hardening)
+    if (!applicant.passwordHash) {
+      return res.status(200).render('dashboard/login', {
+        error: 'Incorrect password. Please try again.',
+        email,
+        next,
+      });
+    }
+    if (/^[a-f0-9]{64}$/.test(applicant.passwordHash)) {
+      // Legacy sha256 hash — accept and migrate on the fly (matches applicants.ts)
+      const { createHash } = await import('crypto');
+      const legacyHash = createHash('sha256').update(password).digest('hex');
+      if (applicant.passwordHash !== legacyHash) {
+        return res.status(200).render('dashboard/login', {
+          error: 'Incorrect password. Please try again.',
+          email,
+          next,
+        });
+      }
+      applicant.passwordHash = await bcrypt.hash(password, 10);
+      const { writeStore } = await import('../models/store.js');
+      await writeStore(store);
+    } else if (!(await bcrypt.compare(password, applicant.passwordHash))) {
       return res.status(200).render('dashboard/login', {
         error: 'Incorrect password. Please try again.',
         email,
@@ -99,7 +260,17 @@ router.post('/login', async (req: any, res: any) => {
 
 // ─── Logout ───────────────────────────────────────────────────────────────────
 
-router.get('/logout', (req: any, res: any) => {
+router.get('/logout', async (req: any, res: any) => {
+  const token = req.cookies?.token;
+  if (token) {
+    try {
+      const payload = await verifyApplicantToken(token);
+      // Applicant tokens expire in 7 days (604800s)
+      await revokeToken(payload.jti, 604800, payload.sub, 'Applicant');
+    } catch {
+      // Token invalid/expired — nothing to revoke
+    }
+  }
   res.setHeader('Set-Cookie', `token=; ${COOKIE_OPTS} Max-Age=0`);
   res.redirect('/dashboard/login');
 });

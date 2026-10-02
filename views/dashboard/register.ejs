@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Sign In — New Frontier</title>
+  <title>Create Account — New Frontier</title>
   <link rel="icon" type="image/svg+xml" href="/images/favicon.svg"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -17,8 +17,8 @@
       flex-direction: column;
     }
 
-    /* ── Login wrapper ── */
-    .login-wrap {
+    /* ── Register wrapper ── */
+    .register-wrap {
       flex: 1;
       display: grid;
       grid-template-columns: 1fr 420px;
@@ -26,12 +26,12 @@
     }
 
     @media (max-width: 768px) {
-      .login-wrap { grid-template-columns: 1fr; }
-      .login-graphic-col { display: none; }
+      .register-wrap { grid-template-columns: 1fr; }
+      .register-graphic-col { display: none; }
     }
 
     /* ── Illustration column ── */
-    .login-graphic-col {
+    .register-graphic-col {
       background: linear-gradient(155deg, #0D0F1A 0%, #131628 50%, #1A1D35 100%);
       display: flex;
       align-items: center;
@@ -41,7 +41,7 @@
       overflow: hidden;
     }
 
-    .login-graphic-col::before {
+    .register-graphic-col::before {
       content: '';
       position: absolute;
       inset: 0;
@@ -50,8 +50,8 @@
       pointer-events: none;
     }
 
-    .login-graphic-col svg,
-    .login-graphic-col img {
+    .register-graphic-col svg,
+    .register-graphic-col img {
       max-width: 100%;
       height: auto;
       max-height: 480px;
@@ -60,7 +60,7 @@
     }
 
     /* ── Form column ── */
-    .login-form-col {
+    .register-form-col {
       background: #0D0F1A;
       display: flex;
       align-items: center;
@@ -68,38 +68,38 @@
       padding: 48px 40px;
     }
 
-    .login-card {
+    .register-card {
       width: 100%;
       max-width: 360px;
     }
 
-    .login-card__logo {
+    .register-card__logo {
       display: flex;
       align-items: center;
       gap: 10px;
       margin-bottom: 32px;
     }
 
-    .login-card__logo-mark {
+    .register-card__logo-mark {
       width: 36px;
       height: 36px;
     }
 
-    .login-card__logo-text {
+    .register-card__logo-text {
       font-size: 1.1em;
       font-weight: 700;
       color: #FFFFFF;
       letter-spacing: 0.2em;
     }
 
-    .login-card__heading {
+    .register-card__heading {
       font-size: 1.5em;
       font-weight: 700;
       color: #FFFFFF;
       margin-bottom: 6px;
     }
 
-    .login-card__sub {
+    .register-card__sub {
       font-size: 0.875em;
       color: #6A7A8A;
       margin-bottom: 32px;
@@ -141,6 +141,16 @@
       background: rgba(255, 255, 255, 0.07);
     }
 
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 480px) {
+      .form-row { grid-template-columns: 1fr; }
+    }
+
     /* ── Error message ── */
     .form-error {
       background: rgba(220, 60, 60, 0.1);
@@ -179,22 +189,22 @@
     .btn-primary:active { transform: scale(0.99); }
 
     /* ── Footer links ── */
-    .login-footer {
+    .register-footer {
       margin-top: 24px;
       text-align: center;
       font-size: 0.8em;
       color: #4A5568;
     }
 
-    .login-footer a {
+    .register-footer a {
       color: #3DAA6C;
       text-decoration: none;
       font-weight: 600;
     }
 
-    .login-footer a:hover { text-decoration: underline; }
+    .register-footer a:hover { text-decoration: underline; }
 
-    .login-divider {
+    .register-divider {
       height: 1px;
       background: rgba(255,255,255,0.06);
       margin: 24px 0;
@@ -203,10 +213,10 @@
 </head>
 <body>
 
-<div class="login-wrap">
+<div class="register-wrap">
 
   <!-- ── Left: Brand illustration ── -->
-  <div class="login-graphic-col">
+  <div class="register-graphic-col">
     <img
       src="/images/frontier-illustration.svg"
       alt="New Frontier — guiding your career journey"
@@ -215,21 +225,21 @@
     />
   </div>
 
-  <!-- ── Right: Login form ── -->
-  <div class="login-form-col">
-    <div class="login-card">
+  <!-- ── Right: Register form ── -->
+  <div class="register-form-col">
+    <div class="register-card">
 
       <!-- Logo -->
-      <div class="login-card__logo">
-        <svg class="login-card__logo-mark" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <div class="register-card__logo">
+        <svg class="register-card__logo-mark" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
           <polygon points="18,3 33,12 33,24 18,33 3,24 3,12" stroke="#3DAA6C" stroke-width="2" fill="rgba(61,170,108,0.1)"/>
           <text x="18" y="22" text-anchor="middle" font-size="11" font-weight="800" fill="#3DAA6C" font-family="-apple-system, sans-serif" letter-spacing="0.1em">NF</text>
         </svg>
-        <span class="login-card__logo-text">NEW FRONTIER</span>
+        <span class="register-card__logo-text">NEW FRONTIER</span>
       </div>
 
-      <h1 class="login-card__heading">Welcome back</h1>
-      <p class="login-card__sub">Sign in to track your applications and find new opportunities.</p>
+      <h1 class="register-card__heading">Create your account</h1>
+      <p class="register-card__sub">Track applications, save jobs, and get matched with opportunities.</p>
 
       <!-- Error -->
       <% if (error) { %>
@@ -242,11 +252,38 @@
       </div>
       <% } %>
 
-      <form method="POST" action="/dashboard/login" autocomplete="on">
+      <form method="POST" action="/dashboard/register" autocomplete="on">
         <!-- Preserve redirect target -->
         <% if (next) { %>
         <input type="hidden" name="next" value="<%= next %>"/>
         <% } %>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="firstName">First name</label>
+            <input
+              type="text"
+              id="firstName"
+              name="firstName"
+              placeholder="Ada"
+              value="<%= firstName || '' %>"
+              required
+              autocomplete="given-name"
+            />
+          </div>
+          <div class="form-field">
+            <label for="lastName">Last name</label>
+            <input
+              type="text"
+              id="lastName"
+              name="lastName"
+              placeholder="Lovelace"
+              value="<%= lastName || '' %>"
+              required
+              autocomplete="family-name"
+            />
+          </div>
+        </div>
 
         <div class="form-field">
           <label for="email">Email address</label>
@@ -255,10 +292,22 @@
             id="email"
             name="email"
             placeholder="you@example.com"
-            value="<%= email %>"
+            value="<%= email || '' %>"
             required
             autofocus
             autocomplete="email"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="phone">Phone number</label>
+          <input
+            type="tel"
+            id="phone"
+            name="phone"
+            placeholder="+1 (555) 000-0000"
+            value="<%= phone || '' %>"
+            autocomplete="tel"
           />
         </div>
 
@@ -270,17 +319,29 @@
             name="password"
             placeholder="••••••••"
             required
-            autocomplete="current-password"
+            minlength="8"
+            autocomplete="new-password"
           />
         </div>
 
-        <button type="submit" class="btn-primary">Sign In</button>
+        <div class="form-field">
+          <label for="confirmPassword">Confirm password</label>
+          <input
+            type="password"
+            id="confirmPassword"
+            name="confirmPassword"
+            placeholder="••••••••"
+            required
+            minlength="8"
+            autocomplete="new-password"
+          />
+        </div>
+
+        <button type="submit" class="btn-primary">Create Account</button>
       </form>
 
-      <div class="login-divider"></div>
-
       <div class="oauth-buttons">
-        <a href="/api/applicants/auth/google" class="oauth-btn oauth-btn--google" title="Sign in with Google">
+        <a href="/api/applicants/auth/google" class="oauth-btn oauth-btn--google" title="Sign up with Google">
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
             <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
             <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -289,13 +350,13 @@
           </svg>
           <span>Continue with Google</span>
         </a>
-        <a href="/api/applicants/auth/linkedin" class="oauth-btn oauth-btn--linkedin" title="Sign in with LinkedIn">
+        <a href="/api/applicants/auth/linkedin" class="oauth-btn oauth-btn--linkedin" title="Sign up with LinkedIn">
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
             <path fill="#0A66C2" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
           </svg>
           <span>Continue with LinkedIn</span>
         </a>
-        <a href="/api/applicants/auth/facebook" class="oauth-btn oauth-btn--facebook" title="Sign in with Facebook">
+        <a href="/api/applicants/auth/facebook" class="oauth-btn oauth-btn--facebook" title="Sign up with Facebook">
           <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
             <path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.046V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
           </svg>
@@ -335,8 +396,10 @@
         }
       </style>
 
-      <p class="login-footer">
-        New to New Frontier? <a href="/dashboard/register">Create an account</a>
+      <div class="register-divider"></div>
+
+      <p class="register-footer">
+        Already have an account? <a href="/dashboard/login">Sign In</a>
       </p>
     </div>
   </div>

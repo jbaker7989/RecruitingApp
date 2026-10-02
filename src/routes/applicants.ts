@@ -1,14 +1,26 @@
 import { Router } from 'express';
-import { readStore, writeStore, generateId, now, addObservabilityEntry, JobPosting } from '../models/store.js';
+import bcrypt from 'bcryptjs';
+import { createHash } from 'crypto'; // ponytail: bcrypt when prod
+import { readStore, writeStore, generateId, now, addObservabilityEntry, JobPosting, Applicant } from '../models/store.js';
 import { validateApplicantProfile, validateApplicationBody } from '../middleware/validation.js';
 import { authenticateApplicant, AuthRequest } from '../middleware/applicantAuth.js';
 import { signApplicantToken, verifyApplicantToken } from '../services/tokenService.js';
 import { revokeToken, revokeAllForUser } from '../services/revocationService.js';
 import { createResetToken, validateAndConsumeResetToken } from '../services/passwordResetService.js';
-import { createHash } from 'crypto'; // ponytail: bcrypt when prod
-import { initiateGoogle, initiateLinkedIn, handleGoogleCallback, handleLinkedInCallback } from '../services/oauthService.js';
+import { initiateGoogle, initiateLinkedIn, initiateFacebook, handleGoogleCallback, handleLinkedInCallback, handleFacebookCallback } from '../services/oauthService.js';
+
+const BCRYPT_ROUNDS = 10;
+const hashPassword = (password: string): Promise<string> => bcrypt.hash(password, BCRYPT_ROUNDS);
+const verifyPassword = (password: string, hash: string): Promise<boolean> => bcrypt.compare(password, hash);
 
 const router = Router();
+
+// Strip credential/identity fields that must never reach a client response.
+// passwordHash and oauthProviderId are secrets/internal-ids — never serialize them.
+function sanitizeApplicant(applicant: Applicant) {
+  const { passwordHash: _passwordHash, oauthProviderId: _oauthProviderId, ...rest } = applicant;
+  return rest;
+}
 
 // ─── Completeness score ────────────────────────────────────────────────────────
 
@@ -25,9 +37,7 @@ function calculateCompleteness(a: { email: string | null; firstName: string; las
   return score;
 }
 
-function hashPassword(password: string): string {
-  return createHash('sha256').update(password).digest('hex');
-}
+// hashPassword/verifyPassword are defined at top of file using bcrypt.
 
 // ─── Public: Register ─────────────────────────────────────────────────────────
 
@@ -61,7 +71,7 @@ router.post('/register', async (req: any, res) => {
       firstName,
       lastName,
       email: email.toLowerCase(),
-      passwordHash: hashPassword(password),
+      passwordHash: await hashPassword(password),
       phone,
       preferredContactMethod: 'email' as const,
       address: { state: '', zip: '' },
@@ -136,7 +146,18 @@ router.post('/login', async (req: any, res) => {
       a => a.email?.toLowerCase() === email.toLowerCase()
     );
 
-    if (!applicant || !applicant.passwordHash || applicant.passwordHash !== hashPassword(password)) {
+    if (!applicant || !applicant.passwordHash) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+    // Migrate legacy sha256 hashes on first successful login
+    if (/^[a-f0-9]{64}$/.test(applicant.passwordHash)) {
+      const legacySha = createHash('sha256').update(password).digest('hex');
+      if (applicant.passwordHash !== legacySha) {
+        return res.status(401).json({ error: 'Invalid email or password' });
+      }
+      applicant.passwordHash = await hashPassword(password);
+      await writeStore(store);
+    } else if (!(await verifyPassword(password, applicant.passwordHash))) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
@@ -176,7 +197,7 @@ router.get('/me', authenticateApplicant, async (req: AuthRequest, res) => {
   try {
     const applicant = req.applicant!;
     res.json({
-      ...applicant,
+      ...sanitizeApplicant(applicant),
       completeness: calculateCompleteness(applicant),
     });
   } catch (error) {
@@ -203,7 +224,7 @@ router.patch('/me', async (req: AuthRequest, res) => {
       await revokeAllForUser(payload.sub, 'Applicant', payload.jti, 604800);
       store.applicants[index] = {
         ...store.applicants[index],
-        passwordHash: hashPassword(password),
+        passwordHash: await hashPassword(password),
         ...safeUpdates,
         updatedAt: now(),
       };
@@ -290,7 +311,7 @@ router.post('/', async (req: any, res) => {
       firstName: req.body.firstName,
       lastName: req.body.lastName,
       email: req.body.email || null,
-      passwordHash: req.body.passwordHash || null,
+      passwordHash: null,
       phone: req.body.phone,
       preferredContactMethod: req.body.preferredContactMethod || 'email',
       address: req.body.address || { state: '', zip: '' },
@@ -335,7 +356,7 @@ router.get('/:id', async (req, res) => {
     if (!applicant) return res.status(404).json({ error: 'Applicant not found' });
 
     const hires = store.hires.filter(h => h.applicantId === applicant.id);
-    res.json({ ...applicant, hires });
+    res.json({ ...sanitizeApplicant(applicant), hires });
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to fetch applicant' });
   }
@@ -347,6 +368,12 @@ router.put('/:id', async (req: any, res) => {
     const store = await readStore();
     const index = store.applicants.findIndex(a => a.id === req.params.id);
     if (index === -1) return res.status(404).json({ error: 'Applicant not found' });
+
+    // Reject credential fields from client input — passwordHash must never be
+    // set through the legacy update path (use the password-reset / register flow).
+    if ('passwordHash' in req.body) {
+      return res.status(400).json({ error: 'passwordHash cannot be set via this endpoint' });
+    }
 
     store.applicants[index] = { ...store.applicants[index], ...req.body, updatedAt: now() };
     await writeStore(store);
@@ -477,7 +504,7 @@ router.post('/reset-password', async (req: any, res) => {
 
     store.applicants[index] = {
       ...store.applicants[index],
-      passwordHash: hashPassword(newPassword),
+      passwordHash: await hashPassword(newPassword),
       updatedAt: now(),
     };
     await writeStore(store);
@@ -505,7 +532,7 @@ router.post('/reset-password', async (req: any, res) => {
 router.get('/auth/google', async (req: any, res) => {
   try {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const { redirectTo } = initiateGoogle(baseUrl);
+    const { redirectTo } = await initiateGoogle(baseUrl);
     res.redirect(302, redirectTo);
   } catch (error) {
     res.status(503).json({ error: 'Google login is not configured' });
@@ -537,7 +564,7 @@ router.get('/auth/google/callback', async (req: any, res) => {
 router.get('/auth/linkedin', async (req: any, res) => {
   try {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const { redirectTo } = initiateLinkedIn(baseUrl);
+    const { redirectTo } = await initiateLinkedIn(baseUrl);
     res.redirect(302, redirectTo);
   } catch (error) {
     res.status(503).json({ error: 'LinkedIn login is not configured' });
@@ -558,6 +585,38 @@ router.get('/auth/linkedin/callback', async (req: any, res) => {
   try {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const result = await handleLinkedInCallback(code, state, baseUrl);
+    return res.json({ token: result.token, expiresIn: result.expiresIn });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'OAuth callback failed';
+    return res.status(401).json({ error: msg });
+  }
+});
+
+// GET /api/applicants/auth/facebook — redirect to Facebook authorization
+router.get('/auth/facebook', async (req: any, res) => {
+  try {
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const { redirectTo } = await initiateFacebook(baseUrl);
+    res.redirect(302, redirectTo);
+  } catch (error) {
+    res.status(503).json({ error: 'Facebook login is not configured' });
+  }
+});
+
+// GET /api/applicants/auth/facebook/callback — handle Facebook OAuth callback
+router.get('/auth/facebook/callback', async (req: any, res) => {
+  const { code, state, error } = req.query as { code?: string; state?: string; error?: string };
+
+  if (error) {
+    return res.status(400).json({ error: `Facebook authorization denied: ${error}` });
+  }
+  if (!code || !state) {
+    return res.status(400).json({ error: 'Missing code or state parameter' });
+  }
+
+  try {
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const result = await handleFacebookCallback(code, state, baseUrl);
     return res.json({ token: result.token, expiresIn: result.expiresIn });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'OAuth callback failed';

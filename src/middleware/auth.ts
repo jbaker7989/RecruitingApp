@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyAnyToken } from '../services/tokenService.js';
-import { readStore } from '../models/store.js';
+import { verifyUserToken, verifyApplicantToken, UserTokenPayload, ApplicantTokenPayload } from '../services/tokenService.js';
 import { checkRevocation } from '../services/revocationService.js';
 
 export interface AuthRequest extends Request {
@@ -20,18 +19,31 @@ export function requireRole(allowedRoles: string[]) {
   };
 }
 
-// Authenticate any token — JWT or legacy opaque.
+/**
+ * Extract the bearer token from the Authorization header only.
+ * Query string tokens are explicitly NOT supported (log leakage prevention).
+ */
+function extractBearerToken(req: Request): string | null {
+  const authHeader = req.headers['authorization'];
+  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+    return authHeader.slice(7);
+  }
+  return null;
+}
+
+// Authenticate via JWT only �� legacy opaque tokens are removed.
 // Public paths skip authentication entirely.
 export async function authenticate(req: AuthRequest, res: Response, next: NextFunction) {
-  const token = req.headers['authorization']?.split(' ')[1] || req.query.token as string;
+  const token = extractBearerToken(req);
 
   if (!token) {
     // Public paths that don't require authentication.
-    // Specific public auth routes listed to avoid a separate router/middleware for just these.
     const publicPaths = [
       '/health', '/',
       '/api/auth/login', '/api/auth/register',
       '/api/applicants/register', '/api/applicants/login',
+      '/api/mcp/health',
+      '/dashboard/login', '/dashboard/register', '/dashboard/logout',
     ];
     if (publicPaths.includes(req.path)) {
       return next();
@@ -39,35 +51,43 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
     return res.status(401).json({ error: 'No authentication token provided' });
   }
 
+  // Reject anything that is not a JWT — raw UUIDs, opaque tokens are not credentials.
+  if (token.split('.').length !== 3) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+
   try {
-    const result = await verifyAnyToken(token);
+    // Try User JWT first, then Applicant JWT
+    let id: string;
     let role: string;
-    if (result.type === 'applicant') {
+    let jti: string;
+    let iat: number;
+    let userType: 'User' | 'Applicant';
+
+    try {
+      const payload = await verifyUserToken(token);
+      id = payload.sub;
+      role = payload.role;
+      jti = payload.jti;
+      iat = payload.iat!;
+      userType = 'User';
+    } catch {
+      // Not a User JWT — try Applicant
+      const payload = await verifyApplicantToken(token);
+      id = payload.sub;
       role = 'applicant';
-    } else if (result.jwtPayload && 'role' in result.jwtPayload) {
-      role = (result.jwtPayload as { role: string }).role;
-    } else {
-      // Legacy opaque user token — look up the user's actual role from the store
-      const store = await readStore();
-      const user = store.users.find(u => u.id === result.id);
-      role = user?.role ?? 'user';
+      jti = payload.jti;
+      iat = payload.iat!;
+      userType = 'Applicant';
     }
 
-    // Check password-change bulk revocation for JWT tokens
-    if (result.jwtPayload) {
-      const jwtPayload = result.jwtPayload as { jti: string; iat: number };
-      const revokedReason = await checkRevocation(
-        jwtPayload.jti,
-        result.id,
-        'User',
-        jwtPayload.iat,
-      );
-      if (revokedReason) {
-        return res.status(401).json({ error: revokedReason });
-      }
+    // Check password-change bulk revocation
+    const revokedReason = await checkRevocation(jti, id, userType, iat);
+    if (revokedReason) {
+      return res.status(401).json({ error: revokedReason });
     }
 
-    req.user = { id: result.id, username: result.id, role };
+    req.user = { id, username: id, role };
     next();
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
