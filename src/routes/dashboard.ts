@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { readStore } from '../models/unifiedStore.js';
+import { readStore, saveApplicant, generateId, now, hashPassword } from '../models/unifiedStore.js';
 import { verifyApplicantToken } from '../services/tokenService.js';
 import { revokeToken } from '../services/revocationService.js';
 
@@ -102,7 +102,7 @@ router.post('/register', async (req: any, res: any) => {
 
   try {
     const store = await readStore();
-    
+
     // Check for existing applicant with this email
     const existing = store.applicants.find(
       (a: any) => a.email?.toLowerCase() === email.toLowerCase(),
@@ -118,10 +118,8 @@ router.post('/register', async (req: any, res: any) => {
       });
     }
 
-    const { generateId, now, hashPassword } = await import('../models/store.js');
-    
     const passwordHash = await hashPassword(password);
-    
+
     const applicant = {
       id: generateId(),
       firstName,
@@ -144,9 +142,7 @@ router.post('/register', async (req: any, res: any) => {
       updatedAt: now(),
     };
 
-    store.applicants.push(applicant);
-    const { writeStore } = await import('../models/store.js');
-    await writeStore(store);
+    await saveApplicant(applicant);
 
     const { signApplicantToken } = await import('../services/tokenService.js');
     const token = await signApplicantToken(applicant.id, true); // hasCredentials = true
