@@ -454,3 +454,79 @@ Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, 
 **Description:** The story mentions durable revocation but this story did not address the revocation store. `src/services/revocationService.ts` still uses an in-memory `Map`. After Vercel cold start (or process restart), all revoked tokens become valid again. This is a known gap tracked in the dedicated revocation story.
 **Fix:** Move revocations to a durable store (DB or Redis). The token service now fail-closes on revocation errors, so the missing durability is a correctness gap (not a security gap) but should be fixed.
 **Status:** Out of scope for this story; tracked separately.
+
+---
+
+## Bugs from story-commercial-replace-json-store-with-db follow-up (deferred)
+
+**Date:** 2026-10-02
+**Context:** PR #9 (feat/db-replace-json-store-with-db) was closed unmerged. The DB infrastructure (`db.ts`, `unifiedStore.ts`, `scripts/migrate.mjs`, `vercel.json`, the new tests, the CI service container) is correct and verified at the schema level. But the route handlers still use the in-memory `store.X.push + writeStore(store)` pattern, which is a no-op in DB mode. CI caught ~8 routes failing in PostgreSQL mode. These are tracked as separate bugs so the follow-up work can be split into small, reviewable PRs.
+
+**Status:** DB story is deferred until each route is converted. The auth-hardening story (PR #10) is merged and works in JSON mode.
+
+### NFR-061 (P1) — FIXED in commit 90f9176 (not merged)
+**Route:** `src/routes/dashboard.ts` `POST /dashboard/register`
+**Symptom:** Registered applicants did not persist in DB mode. Test `story-dashboard-login-phone-optional` returned 200 instead of 302 redirect.
+**Root cause:** `store.applicants.push(applicant) + writeStore(store)` — `writeStore` is a no-op in DB mode.
+**Fix (closed PR, not merged):** Branch on `USE_DATABASE` — DB mode calls `db.saveApplicant` (UPSERT), JSON mode keeps the existing `push + writeStore` pattern. Fix is correct and works in JSON mode; DB mode path is verified by code review (no local Postgres to test live).
+
+### NFR-062 (P1) — `src/routes/applicants.ts` does not persist in DB mode
+**Symptom:** Register, PATCH /me, /reset-password all lose changes in DB mode.
+**Root cause:** Same as NFR-061 — `store.X.push + writeStore` pattern.
+**Fix:** Convert to use `db.saveApplicant` in DB mode. Also: bcryptjs migration logic for legacy sha256 hashes works in DB mode only if `saveApplicant` is called (it isn't today).
+**Status:** Not started.
+
+### NFR-063 (P1) — `src/routes/applications.ts` does not persist in DB mode
+**Symptom:** POST /api/applications, PUT /api/applications/:id/status do not write in DB mode.
+**Root cause:** Same.
+**Fix:** Convert to `db.saveApplication`.
+**Status:** Not started.
+
+### NFR-064 (P1) — `src/routes/companies.ts` does not persist in DB mode
+**Symptom:** Company CRUD loses changes in DB mode.
+**Fix:** Convert to `db.saveCompany`.
+**Status:** Not started.
+
+### NFR-065 (P1) — `src/routes/jobs.ts` does not persist in DB mode
+**Symptom:** Job CRUD loses changes in DB mode.
+**Fix:** Convert to `db.saveJobPosting`.
+**Status:** Not started.
+
+### NFR-066 (P1) — `src/routes/dashboard.ts` `POST /login` does not authenticate in DB mode
+**Symptom:** Login fails because `applicant.passwordHash` is the bcrypt value from the DB but the comparison is sha256.
+**Root cause:** Two layers — `dashboard.ts` login uses sha256, but `applicants.ts` (which is the only place new applicants are created from a JSON-store test fixture) is sha256 too. In DB mode the test fixture may store sha256 but a real flow would store bcrypt, causing login to fail. (The auth-hardening branch's bcrypt migration in `applicants.ts` login would normally fix this, but that branch is merged without the DB route conversions.)
+**Fix:** Convert `dashboard.ts` login to call `db.findApplicant` and use bcryptjs `compare`.
+**Status:** Not started. **Must be fixed together with NFR-062 or login will never work in DB mode.**
+
+### NFR-067 (P1) — `src/services/importService.ts` does not persist in DB mode
+**Symptom:** Bulk imports lose data in DB mode.
+**Fix:** Use `db.saveX` in a loop.
+**Status:** Not started.
+
+### NFR-068 (P1) — `src/agents/scheduling/agent.ts` and `src/chains/matching.ts` read paths broken in DB mode
+**Symptom:** Agents reading applicant data may return stale or empty results in DB mode.
+**Root cause:** These services import from `store.js` directly; in DB mode `readStore` is the unifiedStore version but these don't use it.
+**Fix:** Audit and route all reads through `unifiedStore.readStore`.
+**Status:** Not started.
+
+### NFR-069 (P2) — `src/routes/auth.ts` user registration does not persist in DB mode
+**Symptom:** New users (recruiters, hiring-managers) lose registration in DB mode.
+**Root cause:** Same ��� `store.users.push + writeStore`.
+**Fix:** Convert to `db.saveUser`.
+**Status:** Not started.
+
+### NFR-070 (P2) — Dashboard bcrypt verification missing in DB mode without auth branch
+**Symptom:** Without NFR-066's fix, even if NFR-061 ships, dashboard login will compare bcrypt against sha256 and reject valid logins.
+**Root cause:** Auth-hardening branch (PR #10) added bcryptjs to `dashboard.ts`, but the DB branch's `dashboard.ts` is the pre-auth version.
+**Fix:** When re-opening the DB branch, merge the auth branch's `dashboard.ts` changes into the DB branch first. Or fix NFR-066 by re-adding the bcrypt check.
+**Status:** Not started.
+
+### Recovery plan
+The DB story is split into:
+1. **Re-open DB branch with a clean base** (current main, which has auth-hardening)
+2. **Merge NFR-061 (the dashboard register fix) into the new DB branch** — small, atomic, CI-verified in JSON mode
+3. **Convert routes one at a time** (NFR-062, 063, 064, 065, 066, 067, 068, 069) — each as its own PR for review
+4. **Run full PostgreSQL test suite** before merging the final route conversion
+
+Estimated effort: 8 small PRs, ~30min each, plus a final integration PR. ~4-5 hours total.
+
