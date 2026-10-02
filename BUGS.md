@@ -449,3 +449,14 @@ Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, 
 
 ---
 
+## Bugs discovered during PR #9 review (CI failure in PostgreSQL mode)
+
+**Date:** 2026-10-02
+**Story:** `story-commercial-replace-json-store-with-db` follow-up
+**Method:** CI test run in PostgreSQL mode
+
+### NFR-061 (P1): /dashboard/register does not persist in DB mode
+**Severity:** P1
+**Description:** `src/routes/dashboard.ts` `POST /register` was doing `store.applicants.push(applicant)` followed by `await writeStore(store)`. In DB mode `writeStore` is a no-op, so the new applicant is never persisted. CI caught this when `story-dashboard-login-phone-optional.test.ts` registered a new applicant, then tried to log in via `/dashboard/login` and got 200 (re-render of login form) instead of 302 (redirect to dashboard).
+**Fix:** Use `saveApplicant(applicant)` from `unifiedStore.js`, which routes to `db.saveApplicant` (DB upsert) in DB mode and falls back to the JSON file in JSON mode. Also import `generateId`, `now`, `hashPassword` from `unifiedStore.js` at the top of the file rather than via per-request dynamic imports.
+**Status:** Fixed in commit 91c828f.
