@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { readStore, saveApplicant, generateId, now, hashPassword } from '../models/unifiedStore.js';
+import { readStore, generateId, now, hashPassword, USE_DATABASE } from '../models/unifiedStore.js';
+import * as db from '../models/db.js';
 import { verifyApplicantToken } from '../services/tokenService.js';
 import { revokeToken } from '../services/revocationService.js';
 
@@ -142,7 +143,16 @@ router.post('/register', async (req: any, res: any) => {
       updatedAt: now(),
     };
 
-    await saveApplicant(applicant);
+    if (USE_DATABASE) {
+      await db.saveApplicant(applicant);
+    } else {
+      const store = await readStore();
+      const idx = store.applicants.findIndex((a: { id: string }) => a.id === applicant.id);
+      if (idx === -1) store.applicants.push(applicant);
+      else store.applicants[idx] = applicant;
+      const { writeStore } = await import('../models/unifiedStore.js');
+      await writeStore(store);
+    }
 
     const { signApplicantToken } = await import('../services/tokenService.js');
     const token = await signApplicantToken(applicant.id, true); // hasCredentials = true
