@@ -47,7 +47,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-023 | 23 | 🟡 | MCP route inconsistencies |
 | NFR-041 | 41 | 🟡 | Uploads above the raw-parser limit return 500 instead of 413 |
 | NFR-045 | 45 | 🟡 | JD draft update can mark drafts published without creating a job posting |
-| NFR-047 | 47 | 🟡 | No linting gate is enforced in package scripts or CI |
+| NFR-048 | 48 | 🔴 | Missing static file serving — images not displayed on any route |
 | NFR-024 | 24 | 🔵 | Spec mismatch — data files |
 | NFR-025 | 25 | 🔵 | Dead `observability` array in store |
 | NFR-026 | 26 | 🔵 | Empty/duplicate directories |
@@ -174,6 +174,16 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 > - **Files changed:** `src/routes/agents/index.ts`, `src/services/vectorStore/index.ts`, `src/agents/scheduling/agent.ts`, `src/chains/matching.ts`.
 > - **Red → Green:** 4 tests failed (3 NFR-001 regressions + 1 NFR-030 smoke); after fix: all 3 NFR-001 regressions pass ✅, NFR-030 smoke passes ✅, remaining full-suite failures drop from 4 to 1 (NFR-044 Vitest only) ✅.
 > - **Verification:** `npm run build` ✅ · `npm run typecheck` ✅ · `npm test` 22/23 ✅ · `node dist/index.js` boots without `ERR_MODULE_NOT_FOUND` ✅.
+
+### 9. [NFR-048] Missing static file serving — images not displayed on any route
+- **Where:** `src/index.ts` — missing `express.static()` middleware for the `public/` directory.
+- **Symptom:** All dashboard routes (`/dashboard/login`, `/dashboard/applications`, `/dashboard/jobs`, `/dashboard/profile`) render with broken image placeholders. The brand illustration (`/images/frontier-illustration.svg`) and hero SVG (`/images/illustrated-hero.svg`) return 404.
+- **Evidence:** Confirmed live — browser network tab shows 404 for `/images/frontier-illustration.svg` and `/images/favicon.svg`; `curl -I http://localhost:3000/images/frontier-illustration.svg` returns 404 before fix.
+- **Impact:** Dashboard UI is visually broken on every page — users see blank spaces where illustrations should appear.
+> **✅ RESOLUTION — 2026-09-24**
+> - **Fix:** Added `app.use(express.static(resolve(fileURLToPath(import.meta.url), '../../public')))` in `src/index.ts` after cookie-parser and before view engine setup.
+> - **Files changed:** `src/index.ts`
+> - **Verification:** `npm run build` ✅; manual test: `curl -I http://localhost:3000/images/frontier-illustration.svg` returns 200 ✅
 
 ---
 

@@ -354,9 +354,35 @@ public/css/dashboard.css  full dark premium design system
 public/images/frontier-illustration.svg  brand hero SVG
 ```
 
+### Static asset serving (NFR-048)
+
+**Fixed:** `src/index.ts` now includes `express.static()` middleware for the `public/` directory, serving:
+- `/images/frontier-illustration.svg` — brand hero SVG (dashboard login + nav logo)
+- `/images/illustrated-hero.svg` — warm welcome hero illustration
+- `/css/dashboard.css` — full dark premium design system (~700 lines, CSS custom properties)
+
+Without this middleware, all dashboard routes rendered with broken image placeholders. The fix is documented in [BUGS.md](BUGS.md#9-nfr-048-missing-static-file-serving--images-not-displayed-on-any-route).
+
+### Screenshots
+
+| Route | Screenshot | Description |
+|---|---|---|
+| `/dashboard/login` | ![Login page](docs/screenshots/dashboard-login.png) | Dark-themed login with brand hero SVG (`frontier-illustration.svg`), glass-blur nav, emerald/gold accent palette |
+| `/dashboard/applications` | ![Applications](docs/screenshots/dashboard-applications.png) | Timeline cards with 4-step progress (pending→reviewed→interview→accepted/rejected), company-initial avatars, status badges |
+| `/dashboard/jobs` | ![Jobs browse](docs/screenshots/dashboard-jobs.png) | Job card grid with location/type/remote tags, "Apply Now" → "Applied" state transition |
+| `/dashboard/profile` | ![Profile](docs/screenshots/dashboard-profile.png) | Two-column editable form + circular completeness ring (8 sections), save updates via POST |
+
+> **Note:** Screenshots not yet committed. To capture locally:
+> ```bash
+> npm run dev
+> # Open http://localhost:3000/dashboard/login in browser
+> # Use browser devtools or screenshot tool to capture each route
+> # Save to docs/screenshots/
+> ```
+
 ### Status
 
-Implemented: login, logout, applications, jobs browse, apply inline, profile CRUD.
+Implemented: login, logout, applications, jobs browse, apply inline, profile CRUD, static asset serving.
 Open: `/dashboard/register` (self-registration UI), OAuth dashboard login (Google/LinkedIn).
 
 ## 13. Delivery and review services

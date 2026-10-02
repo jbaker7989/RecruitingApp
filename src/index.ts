@@ -28,6 +28,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Static assets from public/ (images, css)
+app.use(express.static(resolve(fileURLToPath(import.meta.url), '../../public')));
+
 // EJS view engine — templates in src/../views
 app.set('view engine', 'ejs');
 app.set('views', resolve(fileURLToPath(import.meta.url), '../../views'));
