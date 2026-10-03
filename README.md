@@ -6,7 +6,7 @@
 
 > A Principal Product Manager portfolio case study in translating an ambiguous recruiting concept into an API-first product, explicit policy decisions, testable acceptance criteria, governed agentic delivery, and a risk-based release plan.
 
-**Live health endpoint:** [https://rec-app-build.vercel.app/health](https://rec-app-build.vercel.app/health)
+**Live health endpoint:** [https://rec-app-build.vercel.app/health](https://rec-app-build.vercel.app/health) — returning HTTP 500 as of 2026-10-03 (`NFR-071`); fix on `fix/NFR-071-vercel-runtime-outage`, pending Vercel secrets (`NFR-056`).
 **Linear workspace:** [recruiting-app](https://linear.app/recruiting-app)
 **Source-of-truth risk register:** [`BUGS.md`](BUGS.md)
 **Agentic workflows epic:** [REC-5](https://linear.app/recruiting-app/issue/REC-5)
@@ -101,7 +101,7 @@ The status column is deliberately specific. “Implemented” does not mean “a
 | Accommodation workflow | **Planned in NFR-FEAT-001** | Requested accommodation—not diagnosis—becomes visible at interview scheduling to assigned hiring managers only. |
 | Durable production persistence | **Blocked** | JSON-file mutation is not safe on Vercel serverless (`NFR-034`, related concurrency defect `NFR-020`). |
 | Production-grade authentication | **Blocked** | Current bearer identity is forgeable and must be replaced before real user or photo traffic (`NFR-008`). |
-| Automatic Git-to-Vercel deployment | **Blocked** | GitHub CI works; Vercel Git-provider project connection remains unresolved (`NFR-035`). |
+| Automatic Git-to-Vercel deployment | **Implemented** | Vercel builds Production from `main` and a Preview per branch push (`NFR-035` resolved). `.github/workflows/deploy-verify.yml` requests `/health` on each successful deployment (`NFR-071`). |
 | Brand-copy migration | **In development** | This README uses "New Frontier Recruiting"; deployed API responses and legacy internal documents still contain "New Fronteir Recruiting." |
 | Applicant Dashboard UI | **Partially implemented on `main`** | Server-rendered EJS pages at `/dashboard/*` (login, applications, jobs, profile); dark premium design; commit `6a84ae2`, NFR-055. Register page and OAuth dashboard login remain open. |
 

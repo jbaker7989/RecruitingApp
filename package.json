@@ -15,6 +15,7 @@
     "pi": "pi",
     "test": "tsx --test \"tests/**/*.test.ts\"",
     "smoke": "node scripts/ci-smoke.mjs",
+    "verify:deploy": "node scripts/verify-deployment.mjs",
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.test.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" \"tests/**/*.test.ts\" --fix"
   },
@@ -55,6 +56,7 @@
     "@types/express-fileupload": "^1.5.1",
     "@types/node": "^22.20.2",
     "@types/papaparse": "^5.5.2",
+    "@vercel/nft": "1.10.0",
     "eslint": "^10.10.0",
     "globals": "^17.12.0",
     "tsx": "^4.23.13",

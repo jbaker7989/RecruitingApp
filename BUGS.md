@@ -22,7 +22,8 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-007 | 7 | 🔴 | Hires routes unreachable — route ordering |
 | NFR-033 | 33 | 🔴 | ✅ Vercel deployment fails — Node type definitions unavailable during build — **RESOLVED** (PR #1) |
 | NFR-034 | 34 | 🔴 | Vercel serverless runtime cannot safely persist the JSON data store |
-| NFR-035 | 35 | 🔴 | Git/Vercel release pipeline is disconnected and deployments are not reproducible |
+| NFR-035 | 35 | 🔴 | ✅ Git/Vercel release pipeline is disconnected and deployments are not reproducible — **RESOLVED** (Git connection verified 2026-10-03) |
+| NFR-071 | 71 | 🔴 | Vercel function crashes at module load — `openai` file missing from bundle; production returns 500 on every route (fix on `fix/NFR-071-vercel-runtime-outage`) |
 | NFR-043 | 43 | 🔴 | ✅ Agent workflow routes emit extensionless ESM imports and crash the built server — **RESOLVED** (chore/NFR-043-esm-imports-fix) |
 | NFR-008 | 8 | 🟠 | Trivially forgeable auth tokens |
 | NFR-009 | 9 | 🟠 | Passwords stored as reversible plaintext stub |
@@ -158,7 +159,11 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Evidence:** GitHub reports the repository is **public** and the active user has `ADMIN`; the GitHub CLI OAuth blocker is resolved (`workflow` scope granted), and PR-hosted CI/review succeeds. Vercel connect still fails, narrowing the cause to Vercel Git-provider installation/identity/project access rather than repository visibility. Production deployment `dpl_13qej7gaT51KRqqP4rsaCwcKRm2T` was manually created from clean reviewed `main` commit `8ac888a` and `/health` returned 200, but Vercel still recommends `vercel git connect`.
 - **Impact:** GitHub changes now pass traceable PR/CI gates and the latest manual production deploy is commit-traceable, but Vercel cannot automatically deploy reviewed `main`.
 - **Required fix:** Verify the GitHub identity attached to Vercel user `jbaker7989-1641`, authorize/install Vercel's Git provider for `jbaker7989/RecruitingApp`, rerun `vercel git connect`, and verify automatic preview deployment from a test commit.
-- **Status:** OPEN — GitHub CI and current production traceability repaired; automatic Vercel Git deployment remains unavailable.
+- **Status:** RESOLVED — see below.
+
+> **✅ RESOLUTION — verified 2026-10-03**
+> - **Evidence:** Vercel build logs for production deployment `dpl_9dSHbVunmbEYvDrDfyQ713gJDwrT` show `Cloning github.com/jbaker7989/RecruitingApp (Branch: main, Commit: f4a7164)`; GitHub records Vercel Production and Preview deployments for each pushed commit, and the `Vercel` commit status is posted on `main`.
+> - **Residual:** a "Ready" deployment was not proof of a working function — see NFR-071.
 
 ### 43. [NFR-043] Agent workflow routes emit extensionless ESM imports and crash the built server
 - **Priority:** P0 runtime and CI blocker introduced by the agentic-workflows route bundle.
@@ -390,7 +395,8 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | Clean `main` production deployment + public `/health` | ✅ `8ac888a` → `dpl_13qej7gaT51KRqqP4rsaCwcKRm2T`, HTTP 200 |
 | Applicant-photo feature preview + protected `/health` | ✅ `a42b128` → `dpl_5RGcXaoRMeP9F2G47wDnTSGAsLef`, HTTP 200 |
 | Git push + PR-hosted CI/review | ✅ PR #1 pushed; `verify` and Greptile Review passed |
-| Connected Vercel Git deployment | 🔴 provider installation/identity access remains blocked by NFR-035 |
+| Connected Vercel Git deployment | ✅ production and preview deployments build from GitHub commits (verified 2026-10-03) |
+| Production runtime health | 🔴 every dynamic route returns 500 until NFR-071 is merged and Vercel secrets are set (NFR-056) |
 | Production mutation persistence | 🔴 unsafe until NFR-034 is resolved |
 | Original live smoke (company → job → applicant → apply → accept → hires) | 🔴 bugs 3–7, 10, 11, 14, 16, 17 confirmed at runtime |
 | Current main review after JD-001 | 🔴 `npm test` fails: NFR-043 built ESM imports and NFR-044 Vitest runner mismatch confirmed 2026-09-15 |
@@ -403,7 +409,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 ## Suggested fix order (for direction, not yet applied)
 
 1. **P0 runtime/CI:** ~~NFR-043~~ ✅, ~~NFR-044~~ ✅ — all CI/test/runtime gates restored.
-2. **P0 owner setup:** NFR-035 — repair Vercel Git-provider installation/identity access and verify automatic deployment from reviewed commits.
+2. **P0 production outage:** NFR-071 — merge the bundle fix, then **owner setup:** add `JWT_SECRET` and `APPLICANT_JWT_SECRET` to the Vercel project (NFR-056) and confirm production `/health` returns 200. ~~NFR-035~~ ✅.
 3. **P0 data integrity:** NFR-034 + NFR-020 — replace JSON persistence with a durable transactional store before production applicant data entry.
 4. **P0 security:** NFR-008 — replace forgeable bearer identities before enabling applicant-photo read or mutation traffic.
 5. **P1 applicant media:** NFR-038, NFR-039, NFR-040, then NFR-041 — protected retrieval, reliable cleanup, full decode validation, and correct size errors.
@@ -530,3 +536,21 @@ The DB story is split into:
 
 Estimated effort: 8 small PRs, ~30min each, plus a final integration PR. ~4-5 hours total.
 
+
+---
+
+## Vercel production outage review (2026-10-03)
+
+**Method:** live probes of `https://rec-app-build.vercel.app`, Vercel runtime and build logs, local `vercel build` reproduction, direct `@vercel/nft` trace.
+
+### 71. [NFR-071] Vercel function crashes at module load — `openai` file missing from bundle
+- **Priority:** P0 production outage.
+- **Where:** Vercel function bundle built by `@vercel/express` → `@vercel/node` → `@vercel/nft` 1.10.0; `node_modules/@langchain/openai/dist/converters/responses.js`.
+- **Symptom:** every dynamic route, including `/health`, returns HTTP 500 `FUNCTION_INVOCATION_FAILED`. Static files under `public/` still serve. Builds finish "Ready" and the GitHub `Vercel` status is green.
+- **Evidence:** runtime log on `dpl_9dSHbVunmbEYvDrDfyQ713gJDwrT` (`f4a7164`): `Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/var/task/node_modules/openai/lib/responses/ResponseInputItems.js' imported from /var/task/node_modules/@langchain/openai/dist/converters/responses.js`. Older production deployments back to 2026-09-24 fail identically. A local `vercel build` produces a bundle whose `openai/lib/responses/` holds only `ResponseStream.*`.
+- **Root cause:** nft 1.10.0 rewrites the `.js` specifier to `.ts` before applying the `openai` package's `./lib/*` export pattern and looks for `ResponseInputItems.ts.mjs`, fails, and silently omits the file. nft 1.11.0 resolves it, but the Vercel builder still pins 1.10.0. CI never caught it because the smoke gate runs `dist/index.js` against the full `node_modules`, not the traced bundle.
+- **Fix:** `src/services/llm/index.ts` adds an extensionless `import 'openai/lib/responses/ResponseInputItems'`, which nft resolves and which pulls both the `.js` and `.mjs` builds into the bundle. A post-deploy gate (`npm run verify:deploy`, `.github/workflows/deploy-verify.yml`) requests `/health` on every successful Vercel deployment.
+- **Tests:** `tests/regression/NFR-071-vercel-bundle-trace.test.ts` — both observed failing before the fix (missing file named exactly; missing `verify:deploy` script), both passing after. Iteration 1 of 3.
+- **Gates:** typecheck ✅ · lint ✅ (0 errors) · build ✅ · tests 149/149 ✅ · smoke ✅ · local `vercel build` bundle imports under `NODE_ENV=production` ✅
+- **Blocked on owner:** production will still crash at load until `JWT_SECRET` and `APPLICANT_JWT_SECRET` (each ≥ 32 chars) are added to the Vercel project (NFR-056). The project currently defines only `BLOB_READ_WRITE_TOKEN`.
+- **Status:** FIX ON BRANCH `fix/NFR-071-vercel-runtime-outage` — open until merged and production `/health` returns 200.
