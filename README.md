@@ -6,7 +6,7 @@
 
 > A Principal Product Manager portfolio case study in translating an ambiguous recruiting concept into an API-first product, explicit policy decisions, testable acceptance criteria, governed agentic delivery, and a risk-based release plan.
 
-**Live health endpoint:** [https://rec-app-build.vercel.app/health](https://rec-app-build.vercel.app/health)
+**Live health endpoint:** [https://rec-app-build.vercel.app/health](https://rec-app-build.vercel.app/health) — returning HTTP 500 as of 2026-10-03 (`NFR-071`); fix on `fix/NFR-071-vercel-runtime-outage`, pending Vercel secrets (`NFR-056`).
 **Linear workspace:** [recruiting-app](https://linear.app/recruiting-app)
 **Source-of-truth risk register:** [`BUGS.md`](BUGS.md)
 **Agentic workflows epic:** [REC-5](https://linear.app/recruiting-app/issue/REC-5)
@@ -101,7 +101,7 @@ The status column is deliberately specific. “Implemented” does not mean “a
 | Accommodation workflow | **Planned in NFR-FEAT-001** | Requested accommodation—not diagnosis—becomes visible at interview scheduling to assigned hiring managers only. |
 | Durable production persistence | **Blocked** | JSON-file mutation is not safe on Vercel serverless (`NFR-034`, related concurrency defect `NFR-020`). |
 | Production-grade authentication | **Blocked** | Current bearer identity is forgeable and must be replaced before real user or photo traffic (`NFR-008`). |
-| Automatic Git-to-Vercel deployment | **Blocked** | GitHub CI works; Vercel Git-provider project connection remains unresolved (`NFR-035`). |
+| Automatic Git-to-Vercel deployment | **Implemented** | Vercel builds Production from `main` and a Preview per branch push (`NFR-035` resolved). `.github/workflows/deploy-verify.yml` requests `/health` on each successful deployment (`NFR-071`). |
 | Brand-copy migration | **In development** | This README uses "New Frontier Recruiting"; deployed API responses and legacy internal documents still contain "New Fronteir Recruiting." |
 | Applicant Dashboard UI | **Partially implemented on `main`** | Server-rendered EJS pages at `/dashboard/*` (login, applications, jobs, profile); dark premium design; commit `6a84ae2`, NFR-055. Register page and OAuth dashboard login remain open. |
 
@@ -115,7 +115,13 @@ The status column is deliberately specific. “Implemented” does not mean “a
 - **Entrypoint:** `src/index.ts`; compiled output is ESM under `dist/`.
 - **Health contract:** `GET /health` returns `status`, product message, and timestamp.
 - **Deployment:** Vercel Express function in `iad1`.
-- **Regression protection:** tests execute `dist/index.js`, import it using Vercel-style ESM semantics, and call `/health`.
+- **Regression protection:** tests execute `dist/index.js`, import it using Vercel-style ESM semantics, and call `/health`. `npm run smoke` checks development and production startup; production smoke uses generated test secrets, not deployment credentials.
+
+**Required before Vercel deployment (NFR-076):** configure independent `JWT_SECRET` and `APPLICANT_JWT_SECRET` values (each >=32 characters, not development defaults) in both Preview and Production. Missing/weak secrets intentionally prevent startup. Generate each separately with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`; never commit or log real credentials.
+
+**Deployment health (NFR-074):** set GitHub repository secret `VERCEL_AUTOMATION_BYPASS_SECRET` from Vercel's Protection Bypass for Automation setting. `DEPLOYMENT_URL=https://<deployment> npm run verify:deploy` must return `deploy-health=ok`; protected/unreachable URLs fail rather than skip. This is a post-deploy detection gate, not automatic promotion prevention or rollback. Owner-approved rollback to a verified known-good deployment remains manual.
+
+**Resume verification:** real PDF/corrupt fixtures and an isolated traced bundle exercise the PDF library (NFR-072/NFR-073). They stub only downstream prompt/LLM work. Actual uploads/text parsing still have open NFR-077/NFR-078 defects; see [the branch review](docs/NFR-072-076-review.md).
 
 ### 2. Authentication and role service
 

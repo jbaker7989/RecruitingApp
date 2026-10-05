@@ -15,6 +15,7 @@
     "pi": "pi",
     "test": "tsx --test \"tests/**/*.test.ts\"",
     "smoke": "node scripts/ci-smoke.mjs",
+    "verify:deploy": "node scripts/verify-deployment.mjs",
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.test.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" \"tests/**/*.test.ts\" --fix"
   },
@@ -40,6 +41,7 @@
     "ioredis": "^5.4.1",
     "jose": "^6.2.12",
     "mammoth": "^1.12.3",
+    "openai": "7.15.0",
     "papaparse": "^5.7.0",
     "pdf-parse": "^2.4.5",
     "zod": "^3.25.76"
@@ -55,6 +57,7 @@
     "@types/express-fileupload": "^1.5.1",
     "@types/node": "^22.20.2",
     "@types/papaparse": "^5.5.2",
+    "@vercel/nft": "1.10.0",
     "eslint": "^10.10.0",
     "globals": "^17.12.0",
     "tsx": "^4.23.13",
