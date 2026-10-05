@@ -7,14 +7,13 @@ if (!baseUrl) {
 }
 
 const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-const allowProtected = process.env.ALLOW_PROTECTED === 'true';
 const headers = bypassSecret ? { 'x-vercel-protection-bypass': bypassSecret } : {};
 const healthUrl = `${baseUrl}/health`;
 
 let lastFailure = '';
 for (let attempt = 1; attempt <= 5; attempt += 1) {
   try {
-    const response = await fetch(healthUrl, { headers, redirect: 'manual' });
+    const response = await fetch(healthUrl, { headers, redirect: 'manual', signal: AbortSignal.timeout(10000) });
     const body = await response.text();
     if (response.status === 200) {
       let payload;
@@ -24,11 +23,11 @@ for (let attempt = 1; attempt <= 5; attempt += 1) {
         process.exit(0);
       }
       lastFailure = `200 with unexpected body: ${body.slice(0, 200)}`;
-    } else if ([401, 302, 307].includes(response.status) && !bypassSecret && allowProtected) {
-      // Preview deployments sit behind Vercel Deployment Protection; without a
-      // bypass secret the function cannot be reached, so the check cannot run.
-      console.log(`deploy-health=skipped ${healthUrl} is protected (HTTP ${response.status}); set VERCEL_AUTOMATION_BYPASS_SECRET to verify it`);
-      process.exit(0);
+    } else if ([401, 403, 302, 303, 307, 308].includes(response.status)) {
+      // NFR-074: unreachable is not healthy. Never follow a redirect with the
+      // bypass header; it could send the secret to a different origin.
+      lastFailure = `HTTP ${response.status}: health is not verified; configure a valid VERCEL_AUTOMATION_BYPASS_SECRET for protected previews`;
+      break;
     } else {
       lastFailure = `HTTP ${response.status}: ${body.slice(0, 200)}`;
     }

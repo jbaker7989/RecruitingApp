@@ -25,6 +25,5 @@ jobs:
       - name: Verify deployed /health
         env:
           DEPLOYMENT_URL: ${{ github.event.deployment_status.environment_url }}
-          ALLOW_PROTECTED: ${{ github.event.deployment.environment != 'Production' }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: npm run verify:deploy
