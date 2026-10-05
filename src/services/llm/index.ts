@@ -13,6 +13,9 @@ import { z } from 'zod';
 // dropped from the function bundle and every request crashed at module load.
 // The extensionless specifier below is one nft does resolve, and it pulls both
 // the .js and .mjs builds of the file into the bundle.
+// NFR-075: openai is explicitly pinned; the trace test resolves LangChain's own
+// imports. Remove this workaround when Vercel's BUILDER ships @vercel/nft >= 1.11.0
+// and the importer-scoped trace + isolated bundle tests pass without it.
 import 'openai/lib/responses/ResponseInputItems';
 
 export type LLMProvider = 'openai' | 'anthropic';
