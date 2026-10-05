@@ -143,6 +143,9 @@ export async function parseResumeFromBuffer(
 // PDF text extraction using pdf-parse
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
+    // NFR-073: the public worker entry statically references the PDF.js worker
+    // and canvas polyfills that Vercel's tracer misses in computed imports.
+    await import('pdf-parse/worker');
     const { PDFParse } = await import('pdf-parse');
     const parser = new PDFParse({ data: new Uint8Array(buffer) });
     try {
