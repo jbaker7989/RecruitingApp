@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { ChatOpenAI } from '@langchain/openai';
+import { PromptTemplate } from '@langchain/core/prompts';
 import { parseResumeFromBuffer } from '../../src/chains/resumeParsing.js';
 
 test('NFR-072: a real PDF produces extracted text for the resume LLM', async (t) => {
@@ -11,7 +12,9 @@ test('NFR-072: a real PDF produces extracted text for the resume LLM', async (t)
     if (oldKey === undefined) delete process.env.OPENAI_API_KEY;
     else process.env.OPENAI_API_KEY = oldKey;
   });
-  // Only the paid external LLM is stubbed; PDF extraction executes the real library.
+  // Stub the downstream LLM boundary, including its prompt formatter (NFR-078).
+  // PDF extraction still executes the real library on real bytes.
+  t.mock.method(PromptTemplate.prototype, 'format', async (values: { resumeText: string }) => values.resumeText);
   t.mock.method(ChatOpenAI.prototype, 'invoke', async (prompt: unknown) => ({
     content: JSON.stringify({
       firstName: 'Ada', lastName: 'Lovelace', email: 'ada@example.test', phone: '5551234',

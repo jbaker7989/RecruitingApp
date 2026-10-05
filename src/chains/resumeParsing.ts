@@ -143,13 +143,15 @@ export async function parseResumeFromBuffer(
 // PDF text extraction using pdf-parse
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
-    // Dynamic import with CJS fallback
-    const pdfModule = await import('pdf-parse');
-    const pdfParse = (pdfModule as any).default || pdfModule;
-    const data = await pdfParse(buffer);
-    return data.text;
+    const { PDFParse } = await import('pdf-parse');
+    const parser = new PDFParse({ data: new Uint8Array(buffer) });
+    try {
+      return (await parser.getText()).text;
+    } finally {
+      await parser.destroy();
+    }
   } catch (error) {
-    throw new Error(`Failed to extract text from PDF: ${error}`);
+    throw new Error(`Failed to extract text from PDF: ${error}`, { cause: error });
   }
 }
 
