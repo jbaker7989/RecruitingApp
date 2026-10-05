@@ -6,11 +6,12 @@ import { resolve, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const root = resolve(process.argv[2]);
+const sourceDir = process.argv[4] ?? 'dist'; // nft traces dist; Vercel transpiles into src.
 const parent = pathToFileURL(join(root, 'package.json')).href;
-const { app } = await import(pathToFileURL(join(root, 'dist/index.js')).href);
+const { app } = await import(pathToFileURL(join(root, sourceDir, 'index.js')).href);
 const { ChatOpenAI } = await import(import.meta.resolve('@langchain/openai', parent));
 const { PromptTemplate } = await import(import.meta.resolve('@langchain/core/prompts', parent));
-const { parseResumeFromBuffer } = await import(pathToFileURL(join(root, 'dist/chains/resumeParsing.js')).href);
+const { parseResumeFromBuffer } = await import(pathToFileURL(join(root, sourceDir, 'chains/resumeParsing.js')).href);
 process.env.OPENAI_API_KEY = 'test-only-no-network';
 // Only downstream prompt/LLM work is stubbed: NFR-078 is separately tracked.
 PromptTemplate.prototype.format = async (values) => values.resumeText;
