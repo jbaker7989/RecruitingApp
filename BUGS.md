@@ -24,6 +24,11 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-034 | 34 | 🔴 | Vercel serverless runtime cannot safely persist the JSON data store |
 | NFR-035 | 35 | 🔴 | ✅ Git/Vercel release pipeline is disconnected and deployments are not reproducible — **RESOLVED** (Git connection verified 2026-10-03) |
 | NFR-071 | 71 | 🔴 | Vercel function crashes at module load — `openai` file missing from bundle; production returns 500 on every route (fix on `fix/NFR-071-vercel-runtime-outage`) |
+| NFR-072 | 72 | 🟠 | PDF resume extraction always fails — `pdf-parse` v2 is called with the v1 API (`pdfParse is not a function`) |
+| NFR-073 | 73 | 🟠 | Vercel bundle omits `pdfjs-dist` worker file — PDF parsing cannot work on Vercel even after NFR-072 |
+| NFR-076 | 76 | 🟠 | Production-only startup path is untested and its required env vars are undocumented (`JWT_SECRET`, `APPLICANT_JWT_SECRET`) |
+| NFR-074 | 74 | 🟡 | Deploy health gate reports a green check when it skipped a protected preview |
+| NFR-075 | 75 | 🔵 | NFR-071 workaround imports an undeclared transitive dependency by internal path |
 | NFR-043 | 43 | 🔴 | ✅ Agent workflow routes emit extensionless ESM imports and crash the built server — **RESOLVED** (chore/NFR-043-esm-imports-fix) |
 | NFR-008 | 8 | 🟠 | Trivially forgeable auth tokens |
 | NFR-009 | 9 | 🟠 | Passwords stored as reversible plaintext stub |
@@ -554,3 +559,46 @@ Estimated effort: 8 small PRs, ~30min each, plus a final integration PR. ~4-5 ho
 - **Gates:** typecheck ✅ · lint ✅ (0 errors) · build ✅ · tests 149/149 ✅ · smoke ✅ · local `vercel build` bundle imports under `NODE_ENV=production` ✅
 - **Blocked on owner:** production will still crash at load until `JWT_SECRET` and `APPLICANT_JWT_SECRET` (each ≥ 32 chars) are added to the Vercel project (NFR-056). The project currently defines only `BLOB_READ_WRITE_TOKEN`.
 - **Status:** FIX ON BRANCH `fix/NFR-071-vercel-runtime-outage` — open until merged and production `/health` returns 200.
+
+## Regression review of the NFR-071 fix (2026-10-04)
+
+**Introducing branch/PR:** `fix/NFR-071-vercel-runtime-outage`, PR #11 (open — review run on the branch because production cannot be verified until the PR is merged and Vercel secrets are set).
+**Method:** full `@vercel/nft` 1.10.0 trace audit of `dist/index.js` (2,709 files, every warning checked); local `vercel build`, then the built function bundle booted under `NODE_ENV=production` and probed over HTTP; preview deployment runtime logs; review of each file changed by the fix.
+**Verified working in the built bundle:** `/health` 200, `/dashboard/login` 200 and `/dashboard/register` 200 (EJS views render), `/api/mcp/health` 200, `/api/jobs` 401 without a token. Preview deployment `kxcxn4wh3` no longer raises `ERR_MODULE_NOT_FOUND`; it now stops at `JWT_SECRET is required` (NFR-056).
+
+### 72. [NFR-072] PDF resume extraction always fails — `pdf-parse` v2 called with the v1 API
+- **Priority:** P1 — resume parsing for PDF uploads is non-functional in every environment. Pre-existing since `3491145`; found by this review, not caused by NFR-071.
+- **Where:** `src/chains/resumeParsing.ts` `extractTextFromPDF` — `const pdfParse = pdfModule.default || pdfModule; await pdfParse(buffer)`.
+- **Evidence:** `pdf-parse@2.4.5` has no default export and no callable export; it exports a `PDFParse` class. Running the app's call pattern gives `TypeError: pdfParse is not a function`, which the handler rewraps as `Failed to extract text from PDF`. No test exercises PDF extraction.
+- **Required fix/tests:** use `new PDFParse({ data }).getText()`; add tests that parse a real PDF buffer (text returned) and a corrupt buffer (clean error).
+- **Status:** OPEN.
+
+### 73. [NFR-073] Vercel bundle omits the `pdfjs-dist` worker file
+- **Priority:** P1 — same defect class as NFR-071; blocks PDF parsing on Vercel. Depends on NFR-072.
+- **Where:** function bundle; `node_modules/pdfjs-dist/legacy/build/pdf.mjs` loads `./pdf.worker.mjs` with a runtime-computed dynamic import.
+- **Evidence:** nft warns `Failed to parse node_modules/pdfjs-dist/legacy/build/pdf.mjs as script` and traces only `pdf.mjs`. In the bundle from `vercel build`, `new PDFParse({ data }).getText()` fails with `Setting up fake worker failed: Cannot find module '.../pdfjs-dist/legacy/build/pdf.worker.mjs'`. The same call succeeds against the full `node_modules`.
+- **Required fix/tests:** make the worker file part of the trace (static reference nft can resolve, or a builder `includeFiles` setting once a working key is confirmed), and extend the NFR-071 trace test to assert it. Verify by parsing a PDF inside a `vercel build` bundle.
+- **Status:** OPEN.
+
+### 74. [NFR-074] Deploy health gate reports a green check when it skipped a protected preview
+- **Priority:** P2 — false assurance. Introduced by NFR-071.
+- **Where:** `scripts/verify-deployment.mjs`, `.github/workflows/deploy-verify.yml`.
+- **Evidence:** on PR #11 the `health` check passed with `deploy-health=skipped ... is protected (HTTP 302)` while the same preview returned HTTP 500 at `/health`. The gate also runs after the deployment is already live, so on production it detects an outage but does not prevent or roll back one.
+- **Required fix/tests:** set a `VERCEL_AUTOMATION_BYPASS_SECRET` repository secret and make the gate fail (not skip) when a preview cannot be reached; decide whether a failed production check should trigger `vercel rollback`.
+- **Status:** OPEN.
+
+### 75. [NFR-075] NFR-071 workaround imports an undeclared transitive dependency by internal path
+- **Priority:** P3 — fragile, not currently failing. Introduced by NFR-071.
+- **Where:** `src/services/llm/index.ts` `import 'openai/lib/responses/ResponseInputItems'`; `tests/regression/NFR-071-vercel-bundle-trace.test.ts`.
+- **Evidence:** `openai` is not in `package.json`; `npm ls openai` shows 7.15.0 hoisted for `@langchain/openai` and 6.40.0 nested under `@earendil-works/pi-coding-agent`. If hoisting changes, the app-level import would resolve a different copy than the one `@langchain/openai` loads, and the regression test resolves specifiers from the repository root, so it would not notice. TypeScript does not check side-effect import paths here (`noUncheckedSideEffectImports` is unset); only the smoke gate would catch a removed path.
+- **Required fix/tests:** resolve specifiers from `@langchain/openai`'s own location in the test; remove the workaround once Vercel ships `@vercel/nft` ≥ 1.11.0 (the test will keep passing without it).
+- **Status:** OPEN.
+
+### 76. [NFR-076] Production-only startup path is untested and its env vars are undocumented
+- **Priority:** P1 — this is why a missing secret becomes a total outage with every gate green. Extends NFR-056.
+- **Where:** `src/services/tokenService.ts` (throws at import when `NODE_ENV=production` and a secret is missing), `.env.example`, `scripts/ci-smoke.mjs`, Vercel project settings.
+- **Evidence:** `.env.example` does not list `JWT_SECRET` or `APPLICANT_JWT_SECRET`, although NFR-056 records them as documented there. CI smoke and every test run without `NODE_ENV=production`, so the production branch of the startup code never executes before deployment. The Vercel project defines only `BLOB_READ_WRITE_TOKEN`.
+- **Required fix/tests:** document both secrets in `.env.example`; run the smoke gate a second time with `NODE_ENV=production` and generated secrets; add a test that every env var the code requires in production is listed in `.env.example`.
+- **Status:** OPEN.
+
+**Priority position:** NFR-076 and NFR-074 next (they are what let an outage ship unnoticed), then NFR-072 → NFR-073 (dependency order), then NFR-075.
