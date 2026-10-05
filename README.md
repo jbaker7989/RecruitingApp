@@ -115,7 +115,13 @@ The status column is deliberately specific. “Implemented” does not mean “a
 - **Entrypoint:** `src/index.ts`; compiled output is ESM under `dist/`.
 - **Health contract:** `GET /health` returns `status`, product message, and timestamp.
 - **Deployment:** Vercel Express function in `iad1`.
-- **Regression protection:** tests execute `dist/index.js`, import it using Vercel-style ESM semantics, and call `/health`.
+- **Regression protection:** tests execute `dist/index.js`, import it using Vercel-style ESM semantics, and call `/health`. `npm run smoke` checks development and production startup; production smoke uses generated test secrets, not deployment credentials.
+
+**Required before Vercel deployment (NFR-076):** configure independent `JWT_SECRET` and `APPLICANT_JWT_SECRET` values (each >=32 characters, not development defaults) in both Preview and Production. Missing/weak secrets intentionally prevent startup. Generate each separately with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`; never commit or log real credentials.
+
+**Deployment health (NFR-074):** set GitHub repository secret `VERCEL_AUTOMATION_BYPASS_SECRET` from Vercel's Protection Bypass for Automation setting. `DEPLOYMENT_URL=https://<deployment> npm run verify:deploy` must return `deploy-health=ok`; protected/unreachable URLs fail rather than skip. This is a post-deploy detection gate, not automatic promotion prevention or rollback. Owner-approved rollback to a verified known-good deployment remains manual.
+
+**Resume verification:** real PDF/corrupt fixtures and an isolated traced bundle exercise the PDF library (NFR-072/NFR-073). They stub only downstream prompt/LLM work. Actual uploads/text parsing still have open NFR-077/NFR-078 defects; see [the branch review](docs/NFR-072-076-review.md).
 
 ### 2. Authentication and role service
 

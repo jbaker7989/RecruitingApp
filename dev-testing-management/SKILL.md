@@ -130,7 +130,7 @@ Every push and PR to `main` runs the pipeline (GitHub Actions, `.github/workflow
 | 8. Deploy verify | `npm run verify:deploy` (`.github/workflows/deploy-verify.yml`, on `deployment_status`) | Proves the deployed URL answers `/health`; a "Ready" build is not evidence of a working function |
 
 - **CD:** Vercel builds Production from `main` and a Preview for every pushed branch. Gates 1–7 run in `ci.yml` before merge; gate 8 runs after each successful Vercel deployment
-- **Known gate gaps (do not treat as covered until the bug is closed):** smoke does not yet run with `NODE_ENV=production` (`NFR-076`); gate 8 skips protected previews and reports green (`NFR-074`); the bundle trace does not yet cover the `pdfjs-dist` worker (`NFR-073`)
+- **NFR-072–076 branch coverage (2026-10-05, unmerged):** smoke runs development and production with generated test secrets (`NFR-076`); gate 8 fails protected/unreachable URLs instead of reporting a skipped pass (`NFR-074`); NFR-073 checks the PDF worker and exercises real parsing in an isolated traced artifact. The NFR-071 trace audit resolves each OpenAI subpath from its actual LangChain importer (`NFR-075`). These local checks do not prove hosted health: owner-only signing/bypass secrets, reviewed merge, deployment runtime logs and affected-feature checks remain required. NFR-077/NFR-078 separately block real upload/prompt workflows.
 - Pipeline status is reported on the PR; a red pipeline is never overridden by hand
 
 ### Deployment Standards (Vercel)

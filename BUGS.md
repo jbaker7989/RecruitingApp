@@ -29,6 +29,8 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-076 | 76 | 🟠 | Production-only startup path is untested and its required env vars are undocumented (`JWT_SECRET`, `APPLICANT_JWT_SECRET`) |
 | NFR-074 | 74 | 🟡 | Deploy health gate reports a green check when it skipped a protected preview |
 | NFR-075 | 75 | 🔵 | NFR-071 workaround imports an undeclared transitive dependency by internal path |
+| NFR-077 | 77 | 🟠 | Resume upload temp-file mode supplies an empty in-memory buffer |
+| NFR-078 | 78 | 🟠 | Resume prompt interprets literal schema braces as template variables |
 | NFR-043 | 43 | 🔴 | ✅ Agent workflow routes emit extensionless ESM imports and crash the built server — **RESOLVED** (chore/NFR-043-esm-imports-fix) |
 | NFR-008 | 8 | 🟠 | Trivially forgeable auth tokens |
 | NFR-009 | 9 | 🟠 | Passwords stored as reversible plaintext stub |
@@ -571,34 +573,82 @@ Estimated effort: 8 small PRs, ~30min each, plus a final integration PR. ~4-5 ho
 - **Where:** `src/chains/resumeParsing.ts` `extractTextFromPDF` — `const pdfParse = pdfModule.default || pdfModule; await pdfParse(buffer)`.
 - **Evidence:** `pdf-parse@2.4.5` has no default export and no callable export; it exports a `PDFParse` class. Running the app's call pattern gives `TypeError: pdfParse is not a function`, which the handler rewraps as `Failed to extract text from PDF`. No test exercises PDF extraction.
 - **Required fix/tests:** use `new PDFParse({ data }).getText()`; add tests that parse a real PDF buffer (text returned) and a corrupt buffer (clean error).
-- **Status:** OPEN.
+- **Status:** FIX ON STACKED BRANCH `fix/NFR-072-pdf-v2` — OPEN until reviewed merge and deployed verification.
+
+> **BRANCH FIX — 2026-10-05 (pre-merge review)**
+> - **Root cause/fix:** replaced the v1 callable import with `PDFParse({ data: new Uint8Array(buffer) }).getText()`; destroy in `finally` and preserve error cause. Caller-owned bytes are copied, not detached. File: `src/chains/resumeParsing.ts`.
+> - **TDD:** both tests in `tests/regression/NFR-072-pdf-extraction.test.ts` failed with `pdfParse is not a function`; final isolated tests were also rerun against the original implementation and failed 0/2, then passed 2/2. First fix attempt exposed downstream NFR-078; the prompt/LLM boundary is explicitly stubbed, NOT the PDF parser. Green on attempt 2/3. Real PDF fixture and corrupt bytes exercise the installed library.
+> - **Gates/review:** local full suite 158/158 at this slice; final stack 163/163 plus install/typecheck/lint/build/development+production smoke. NFR-073 adds artifact coverage. This fixes extraction, not the complete upload workflow: NFR-077/NFR-078 remain.
+> - **Artifact:** `resolutions/RESOLUTON-OF-ISSUE-NFR-072.docx`. No merge commit yet; repeat production checks after owner setup.
 
 ### 73. [NFR-073] Vercel bundle omits the `pdfjs-dist` worker file
 - **Priority:** P1 — same defect class as NFR-071; blocks PDF parsing on Vercel. Depends on NFR-072.
 - **Where:** function bundle; `node_modules/pdfjs-dist/legacy/build/pdf.mjs` loads `./pdf.worker.mjs` with a runtime-computed dynamic import.
 - **Evidence:** nft warns `Failed to parse node_modules/pdfjs-dist/legacy/build/pdf.mjs as script` and traces only `pdf.mjs`. In the bundle from `vercel build`, `new PDFParse({ data }).getText()` fails with `Setting up fake worker failed: Cannot find module '.../pdfjs-dist/legacy/build/pdf.worker.mjs'`. The same call succeeds against the full `node_modules`.
 - **Required fix/tests:** make the worker file part of the trace (static reference nft can resolve, or a builder `includeFiles` setting once a working key is confirmed), and extend the NFR-071 trace test to assert it. Verify by parsing a PDF inside a `vercel build` bundle.
-- **Status:** OPEN.
+- **Status:** FIX ON STACKED BRANCH `fix/NFR-073-pdf-worker-bundle` — OPEN until reviewed merge and deployed verification.
+
+> **BRANCH FIX — 2026-10-05 (pre-merge review)**
+> - **Root cause/fix:** computed PDF.js loads hide the worker and canvas/polyfills from nft. Import the installed package's public `pdf-parse/worker` entry before `pdf-parse`; its static references include both without an undeclared PDF.js import or CDN. File: `src/chains/resumeParsing.ts`.
+> - **TDD:** `tests/regression/NFR-073-pdf-worker-bundle.test.ts` failed 0/2: worker absent; isolated traced artifact failed earlier with missing canvas / `DOMMatrix is not defined`. Both pass on attempt 1/3. The artifact contains ONLY traced files and runs under production with generated secrets; real PDF and corrupt parsing execute while downstream prompt/LLM work is stubbed for NFR-078.
+> - **Gates/review:** 160/160 at this slice, final stack 163/163; actual Vercel build evidence is recorded in `docs/NFR-072-076-review.md`. Native canvas inclusion is exercised on the local platform; hosted Linux deployment verification remains required.
+> - **Artifact:** `resolutions/RESOLUTON-OF-ISSUE-NFR-073.docx`. No merge commit yet; owner setup and hosted checks still block closure.
 
 ### 74. [NFR-074] Deploy health gate reports a green check when it skipped a protected preview
 - **Priority:** P2 — false assurance. Introduced by NFR-071.
 - **Where:** `scripts/verify-deployment.mjs`, `.github/workflows/deploy-verify.yml`.
 - **Evidence:** on PR #11 the `health` check passed with `deploy-health=skipped ... is protected (HTTP 302)` while the same preview returned HTTP 500 at `/health`. The gate also runs after the deployment is already live, so on production it detects an outage but does not prevent or roll back one.
 - **Required fix/tests:** set a `VERCEL_AUTOMATION_BYPASS_SECRET` repository secret and make the gate fail (not skip) when a preview cannot be reached; decide whether a failed production check should trigger `vercel rollback`.
-- **Status:** OPEN.
+- **Status:** FIX ON STACKED BRANCH `fix/NFR-074-deploy-gate` — OPEN; repository bypass secret and hosted verification are blocked on owner.
+
+> **BRANCH FIX — 2026-10-05 (pre-merge review)**
+> - **Root cause/fix:** removed `ALLOW_PROTECTED` and the success-on-skip path in `scripts/verify-deployment.mjs` and `.github/workflows/deploy-verify.yml`. Unreachable/protected health fails; redirects are never followed with the bypass header; requests have a 10-second timeout. Documented bypass setup in `.env.example`.
+> - **TDD:** three initial tests failed (302/401 exited 0 as skipped; workflow allowed skips), then all five tests pass, including 307 and authorized header success without secret logging. Attempt 1/3; 156/156 full-suite at this slice, final 163/163.
+> - **Rollback decision:** detection-only, no automatic `vercel rollback`. The known previous deployments were unhealthy, and no approved known-good target/rollback policy exists; a red gate must prompt operator investigation, not blindly roll back. It does not prevent deployment promotion.
+> - **Blocked on owner:** configure GitHub `VERCEL_AUTOMATION_BYPASS_SECRET` from the Vercel project's automation bypass secret; verify an actual protected preview and production after merge. No bypass secret was configured by this fix.
+> - **Artifact:** `resolutions/RESOLUTON-OF-ISSUE-NFR-074.docx`.
 
 ### 75. [NFR-075] NFR-071 workaround imports an undeclared transitive dependency by internal path
 - **Priority:** P3 — fragile, not currently failing. Introduced by NFR-071.
 - **Where:** `src/services/llm/index.ts` `import 'openai/lib/responses/ResponseInputItems'`; `tests/regression/NFR-071-vercel-bundle-trace.test.ts`.
 - **Evidence:** `openai` is not in `package.json`; `npm ls openai` shows 7.15.0 hoisted for `@langchain/openai` and 6.40.0 nested under `@earendil-works/pi-coding-agent`. If hoisting changes, the app-level import would resolve a different copy than the one `@langchain/openai` loads, and the regression test resolves specifiers from the repository root, so it would not notice. TypeScript does not check side-effect import paths here (`noUncheckedSideEffectImports` is unset); only the smoke gate would catch a removed path.
 - **Required fix/tests:** resolve specifiers from `@langchain/openai`'s own location in the test; remove the workaround once Vercel ships `@vercel/nft` ≥ 1.11.0 (the test will keep passing without it).
-- **Status:** OPEN.
+- **Status:** FIX ON STACKED BRANCH `fix/NFR-075-openai-trace-contract` — OPEN until reviewed merge and deployed verification.
+
+> **BRANCH FIX — 2026-10-05 (pre-merge review)**
+> - **Root cause/fix:** app-level workaround now owns its dependency (`openai` pinned to existing 7.15.0 in package/lock); no dependency versions changed. The NFR-071 trace audit retains each actual LangChain importer and uses Node's parent-URL ESM resolution, including import export conditions, instead of root hoisting or CJS resolution.
+> - **TDD:** two required tests failed (undeclared dependency; root-scoped audit), then pass on attempt 1/3; supplemental invalid-side-effect-import control passes as well. **Evidence correction:** installed TypeScript 7 already rejects invalid side-effect imports by default, despite the option being unset; this was verified, not weakened or redundantly configured.
+> - **Removal condition:** source comment explicitly requires Vercel's BUILDER nft >=1.11.0 and passing importer-scoped trace/isolated artifact tests WITHOUT the workaround. Current pinned nft remains 1.10.0, so retain the workaround.
+> - **Gates:** clean `npm ci`, typecheck, lint (0 errors, 119 existing warnings), build, 163/163 tests and both smoke modes pass. Changes: `package.json`, `package-lock.json`, `src/services/llm/index.ts`, NFR-071/NFR-075 regressions.
+> - **Artifact:** `resolutions/RESOLUTON-OF-ISSUE-NFR-075.docx`. Actual deployment checks remain pending owner setup/review.
 
 ### 76. [NFR-076] Production-only startup path is untested and its env vars are undocumented
 - **Priority:** P1 — this is why a missing secret becomes a total outage with every gate green. Extends NFR-056.
 - **Where:** `src/services/tokenService.ts` (throws at import when `NODE_ENV=production` and a secret is missing), `.env.example`, `scripts/ci-smoke.mjs`, Vercel project settings.
 - **Evidence:** `.env.example` does not list `JWT_SECRET` or `APPLICANT_JWT_SECRET`, although NFR-056 records them as documented there. CI smoke and every test run without `NODE_ENV=production`, so the production branch of the startup code never executes before deployment. The Vercel project defines only `BLOB_READ_WRITE_TOKEN`.
 - **Required fix/tests:** document both secrets in `.env.example`; run the smoke gate a second time with `NODE_ENV=production` and generated secrets; add a test that every env var the code requires in production is listed in `.env.example`.
-- **Status:** OPEN.
+- **Status:** FIX ON STACKED BRANCH `fix/NFR-076-production-smoke` — OPEN; required Vercel secrets and hosted verification are blocked on owner.
 
-**Priority position:** NFR-076 and NFR-074 next (they are what let an outage ship unnoticed), then NFR-072 → NFR-073 (dependency order), then NFR-075.
+> **BRANCH FIX — 2026-10-05 (pre-merge review)**
+> - **Root cause/fix:** document both signing secrets (independent, >=32 chars, no defaults) in `.env.example`; `scripts/ci-smoke.mjs` boots both development and production, generating independent temporary secrets for the production child. Existing fail-closed secret validation is unchanged; children exit before isolated data cleanup.
+> - **TDD:** two regressions failed (missing env documentation; no production smoke), then pass on attempt 1/3. Full suite 151/151 at this slice, final stack 163/163. Existing negative/default-secret production tests also remain green.
+> - **Blocked on owner:** `vercel env ls` still listed only `BLOB_READ_WRITE_TOKEN`; set `JWT_SECRET` and `APPLICANT_JWT_SECRET` in Preview and Production, redeploy, then verify deployed `/health` and runtime logs. Generated smoke secrets do NOT verify project configuration.
+> - **Artifact:** `resolutions/RESOLUTON-OF-ISSUE-NFR-076.docx`. NFR-056 remains open for the same owner setup.
+
+### 77. [NFR-077] Resume uploads read an empty buffer when temp-file upload mode is enabled
+- **Severity / priority:** 🟠 High, P1 — blocks real PDF/DOCX resume uploads even after NFR-072/NFR-073.
+- **Where:** `src/middleware/fileUpload.ts` (`useTempFiles: true`) → `src/routes/agents/index.ts:61` (`parseResumeFromBuffer(file.data, file.mimetype)`).
+- **Evidence:** real local multipart upload of the checked-in 607-byte PDF through `handleFileUpload` reports a nonzero uploaded size but `file.data.length === 0`; passing that buffer through the route's parser call fails `InvalidPDFException: The PDF file is empty, i.e. its size is zero bytes.` The upload library explicitly documents this behavior. The route also never removes its temporary file.
+- **Origin:** pre-existing, uncovered during pre-merge review of `fix/NFR-072-pdf-v2` / the NFR-072–076 stack; NOT introduced by these fixes.
+- **Required fix/tests:** read validated `tempFilePath` bytes and remove the temp file in `finally`, or deliberately use bounded in-memory uploads; two Red multipart route tests (PDF and DOCX) plus cleanup/error/oversize coverage. Do not weaken upload limits.
+- **Status:** OPEN — separate follow-up; no production input or committed data was used during reproduction.
+
+### 78. [NFR-078] Resume prompt treats literal schema braces as template variables
+- **Severity / priority:** 🟠 High, P1 — blocks `/resume/parse-text` and the LLM stage after successful file extraction.
+- **Where:** `src/chains/resumeParsing.ts`, `RESUME_PARSING_PROMPT` passed to `PromptTemplate.fromTemplate()`; literals such as `{ state, zip }` are unescaped f-string placeholders.
+- **Evidence:** NFR-072's first Green run successfully extracted PDF text but failed `(f-string) Missing value for input state, zip`; direct `parseResume('Ada Lovelace - Software Engineer')` reproduces the error before `model.invoke`. No paid external request is needed.
+- **Origin:** pre-existing, uncovered during pre-merge review of `fix/NFR-072-pdf-v2`; NOT introduced by these fixes. Extraction tests explicitly isolate downstream prompt/LLM work and do not claim this workflow is fixed.
+- **Required fix/tests:** two Red tests for real prompt formatting on text and extracted resume paths; escape literal braces or use a prompt composition API that does not interpret the schema examples. Assert only `resumeText` is required and reaches the model.
+- **Status:** OPEN — separate follow-up.
+
+**Priority position:** complete owner setup and hosted verification for NFR-076/NFR-074 plus NFR-071; reviewed merge/deploy of NFR-072 → NFR-073 and NFR-075. Then NFR-077 and NFR-078 (both P1) to restore actual resume-upload/text workflows. Existing P0 data-integrity/security blockers still take precedence. See `docs/NFR-072-076-review.md` for branch stack and verification boundaries.
