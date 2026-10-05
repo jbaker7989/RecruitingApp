@@ -32,6 +32,41 @@
   --radius-lg:   16px;
 
   --font:        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  /* ── Semantic status (Phase 1) ───────────────────────────────────────────────
+     Values mirror the previously inlined badge colors exactly, so repointing the
+     rules below renders identically. Unifying auth's #E07070 error into --danger
+     (and any midpoint retune) is a Phase 2 decision. */
+  --success:     #3DAA6C;  --success-bg:  rgba(61, 170, 108, 0.15);
+  --info:        #6B90D4;  --info-bg:     rgba(74, 118, 212, 0.15);
+  --warning:     #D4875A;  --warning-bg:  rgba(212, 135, 90, 0.15);
+  --danger:      #C94040;  --danger-bg:   rgba(201, 64, 64, 0.15);
+
+  /* ── Spacing scale (Phase 1) ─────────────────────────────────────────────── */
+  --space-1:     4px;
+  --space-2:     8px;
+  --space-3:     12px;
+  --space-4:     16px;
+  --space-5:     20px;
+  --space-6:     24px;
+  --space-7:     32px;
+  --space-8:     40px;
+  --space-9:     64px;
+  --space-10:    80px;
+
+  /* ── Type scale (Phase 1) — fixed rem steps replace ad-hoc em sizing ──────── */
+  --text-xs:     0.75rem;    /* 12px — eyebrow, badge, caption */
+  --text-sm:     0.8125rem;  /* 13px — labels, meta */
+  --text-base:   0.9375rem;  /* 15px — body, card copy */
+  --text-lg:     1.125rem;   /* 18px — subheads */
+  --text-xl:     1.5rem;     /* 24px */
+  --text-2xl:    1.75rem;    /* 28px — page title */
+
+  /* ── Motion (Phase 1) ────────────────────────────────────────────────────── */
+  --duration-fast:   120ms;  /* :active press */
+  --duration-base:   180ms;  /* hover, border */
+  --duration-slow:   300ms;  /* flash slide-in */
+  --duration-slower: 600ms;  /* progress ring */
 }
 
 /* ── Reset & base ───────────────────────────────────────────────────────────── */
@@ -335,10 +370,10 @@ a:hover { text-decoration: underline; }
   letter-spacing: 0.03em;
 }
 
-.badge--pending   { background: rgba(74, 118, 212, 0.15); color: #6B90D4; }
-.badge--reviewed  { background: rgba(212, 135, 90, 0.15);  color: #D4875A; }
-.badge--interview, .badge--accepted { background: rgba(61, 170, 108, 0.15); color: #3DAA6C; }
-.badge--rejected  { background: rgba(201, 64, 64, 0.15);   color: #C94040; }
+.badge--pending   { background: var(--info-bg);    color: var(--info); }
+.badge--reviewed  { background: var(--warning-bg);  color: var(--warning); }
+.badge--interview, .badge--accepted { background: var(--success-bg); color: var(--success); }
+.badge--rejected  { background: var(--danger-bg);   color: var(--danger); }
 
 /* ── Job cards ──────────────────────────────────────────────────────────────── */
 .jobs-grid {
