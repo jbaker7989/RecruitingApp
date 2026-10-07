@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Sign In — New Frontier</title>
   <link rel="icon" type="image/svg+xml" href="/images/favicon.svg"/>
+  <link rel="stylesheet" href="/css/tokens.css"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      background: #0D0F1A;
-      color: #E0E4EE;
+      background: var(--bg);
+      color: var(--text-2);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -32,7 +33,7 @@
 
     /* ── Illustration column ── */
     .login-graphic-col {
-      background: linear-gradient(155deg, #0D0F1A 0%, #131628 50%, #1A1D35 100%);
+      background: linear-gradient(155deg, var(--bg) 0%, var(--surface) 50%, var(--elevated) 100%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -61,7 +62,7 @@
 
     /* ── Form column ── */
     .login-form-col {
-      background: #0D0F1A;
+      background: var(--bg);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -88,20 +89,20 @@
     .login-card__logo-text {
       font-size: 1.1em;
       font-weight: 700;
-      color: #FFFFFF;
+      color: var(--text-1);
       letter-spacing: 0.2em;
     }
 
     .login-card__heading {
       font-size: 1.5em;
       font-weight: 700;
-      color: #FFFFFF;
+      color: var(--text-1);
       margin-bottom: 6px;
     }
 
     .login-card__sub {
       font-size: 0.875em;
-      color: #6A7A8A;
+      color: var(--text-3);
       margin-bottom: 32px;
     }
 
@@ -114,7 +115,7 @@
       display: block;
       font-size: 0.8em;
       font-weight: 600;
-      color: #8A9AAA;
+      color: var(--text-3);
       margin-bottom: 7px;
       letter-spacing: 0.03em;
     }
@@ -125,7 +126,7 @@
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 8px;
-      color: #FFFFFF;
+      color: var(--text-1);
       font-size: 0.9em;
       font-family: inherit;
       transition: border-color 0.2s, background 0.2s;
@@ -137,18 +138,18 @@
 
     .form-field input:focus {
       outline: none;
-      border-color: #3DAA6C;
+      border-color: var(--emerald);
       background: rgba(255, 255, 255, 0.07);
     }
 
     /* ── Error message ── */
     .form-error {
-      background: rgba(220, 60, 60, 0.1);
-      border: 1px solid rgba(220, 60, 60, 0.3);
+      background: var(--danger-bg);
+      border: 1px solid rgba(201, 64, 64, 0.3);
       border-radius: 8px;
       padding: 10px 14px;
       font-size: 0.85em;
-      color: #E07070;
+      color: var(--danger);
       margin-bottom: 20px;
       display: flex;
       align-items: center;
@@ -163,8 +164,8 @@
     .btn-primary {
       width: 100%;
       padding: 13px;
-      background: #3DAA6C;
-      color: #FFFFFF;
+      background: var(--emerald);
+      color: var(--text-1);
       border: none;
       border-radius: 8px;
       font-size: 0.95em;
@@ -175,7 +176,7 @@
       letter-spacing: 0.02em;
     }
 
-    .btn-primary:hover { background: #2D8A52; }
+    .btn-primary:hover { background: var(--emerald-dk); }
     .btn-primary:active { transform: scale(0.99); }
 
     /* ── Footer links ── */
@@ -183,11 +184,11 @@
       margin-top: 24px;
       text-align: center;
       font-size: 0.8em;
-      color: #4A5568;
+      color: var(--text-4);
     }
 
     .login-footer a {
-      color: #3DAA6C;
+      color: var(--emerald);
       text-decoration: none;
       font-weight: 600;
     }
@@ -222,8 +223,8 @@
       <!-- Logo -->
       <div class="login-card__logo">
         <svg class="login-card__logo-mark" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <polygon points="18,3 33,12 33,24 18,33 3,24 3,12" stroke="#3DAA6C" stroke-width="2" fill="rgba(61,170,108,0.1)"/>
-          <text x="18" y="22" text-anchor="middle" font-size="11" font-weight="800" fill="#3DAA6C" font-family="-apple-system, sans-serif" letter-spacing="0.1em">NF</text>
+          <polygon points="18,3 33,12 33,24 18,33 3,24 3,12" style="stroke:var(--emerald)" stroke-width="2" fill="rgba(61,170,108,0.1)"/>
+          <text x="18" y="22" text-anchor="middle" font-size="11" font-weight="800" style="fill:var(--emerald)" font-family="-apple-system, sans-serif" letter-spacing="0.1em">NF</text>
         </svg>
         <span class="login-card__logo-text">NEW FRONTIER</span>
       </div>
@@ -235,8 +236,8 @@
       <% if (error) { %>
       <div class="form-error" role="alert">
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-          <circle cx="7" cy="7" r="6" stroke="#E07070" stroke-width="1.5"/>
-          <path d="M7 4v3.5M7 9.5v.5" stroke="#E07070" stroke-width="1.5" stroke-linecap="round"/>
+          <circle cx="7" cy="7" r="6" style="stroke:var(--danger)" stroke-width="1.5"/>
+          <path d="M7 4v3.5M7 9.5v.5" style="stroke:var(--danger)" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
         <%= error %>
       </div>
@@ -319,7 +320,7 @@
           background: rgba(255, 255, 255, 0.05);
           border: 1px solid rgba(255, 255, 255, 0.1);
           border-radius: 8px;
-          color: #E0E4EE;
+          color: var(--text-2);
           font-size: 0.9em;
           font-weight: 600;
           font-family: inherit;
