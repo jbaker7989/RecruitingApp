@@ -153,7 +153,8 @@ Routes under `/api/applicants/auth`:
 6. Backend extracts claims (`email`, `given_name`, `family_name`, `sub`) from `id_token` or UserInfo endpoint
 7. Upserts applicant by email (creates new or links to existing)
 8. Issues applicant JWT with `hasCredentials: false` (OAuth-only, no password)
-9. Returns `{ token, expiresIn: 604800, applicantId, isNewApplicant }`
+9. Browser callbacks set the HttpOnly `token` cookie and redirect to the requested dashboard page.
+   API clients can request `Accept: application/json` to receive `{ token, expiresIn: 604800 }`.
 
 **Security features:**
 - `state` parameter validated on callback (CSRF protection)
@@ -170,7 +171,13 @@ LINKEDIN_CLIENT_ID=...
 LINKEDIN_CLIENT_SECRET=...
 FACEBOOK_CLIENT_ID=...
 FACEBOOK_CLIENT_SECRET=...
+APP_BASE_URL=https://careers.example.com
 ```
+
+`APP_BASE_URL` is required in production and must be the exact public HTTPS origin.
+Register `${APP_BASE_URL}/api/applicants/auth/google/callback` (and the equivalent
+LinkedIn/Facebook callbacks for enabled providers) in each provider console. A provider
+button is shown only when both its client ID and secret are configured.
 
 **Production Redis (horizontal scaling):**
 ```bash

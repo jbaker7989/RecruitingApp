@@ -81,12 +81,12 @@ after(async () => {
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
 async function get(path: string) {
-  const res = await fetch(`${baseUrl}${path}`, { redirect: 'manual' });
+  const res = await fetch(`${baseUrl}${path}`, { redirect: 'manual', headers: { Accept: 'application/json' } });
   return { status: res.status, location: res.headers.get('location'), body: await res.text() };
 }
 
 async function getQuery(path: string) {
-  const res = await fetch(`${baseUrl}${path}`, { redirect: 'manual' });
+  const res = await fetch(`${baseUrl}${path}`, { redirect: 'manual', headers: { Accept: 'application/json' } });
   return { status: res.status, location: res.headers.get('location'), body: await res.json().catch(() => ({})) };
 }
 
@@ -288,7 +288,7 @@ test('NFR-053: Google OAuth callback returns 401 when Google does not return an 
   const stateParam = new URL(redirectTo).searchParams.get('state')!;
 
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url: URL | RequestInfo) => {
+  globalThis.fetch = async (url: URL | RequestInfo, init?: RequestInit) => {
     const urlStr = url instanceof URL ? url.toString() : String(url);
     if (urlStr.includes('oauth2.googleapis.com/token')) {
       const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
@@ -307,7 +307,7 @@ test('NFR-053: Google OAuth callback returns 401 when Google does not return an 
         headers: { 'Content-Type': 'application/json' },
       });
     }
-    return originalFetch(url);
+    return originalFetch(url, init);
   };
 
   try {
@@ -329,7 +329,7 @@ test('NFR-053: Google OAuth callback returns existing applicant on second login 
   const state1 = new URL(redirect1).searchParams.get('state')!;
 
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url: URL | RequestInfo) => {
+  globalThis.fetch = async (url: URL | RequestInfo, init?: RequestInit) => {
     const urlStr = url instanceof URL ? url.toString() : String(url);
     if (urlStr.includes('oauth2.googleapis.com/token')) {
       const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
@@ -348,7 +348,7 @@ test('NFR-053: Google OAuth callback returns existing applicant on second login 
         headers: { 'Content-Type': 'application/json' },
       });
     }
-    return originalFetch(url);
+    return originalFetch(url, init);
   };
 
   let firstApplicantId: string;
@@ -382,7 +382,7 @@ test('NFR-053: OAuth-registered applicant has hasCredentials=false in JWT', asyn
   const stateParam = new URL(redirectTo).searchParams.get('state')!;
 
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url: URL | RequestInfo) => {
+  globalThis.fetch = async (url: URL | RequestInfo, init?: RequestInit) => {
     const urlStr = url instanceof URL ? url.toString() : String(url);
     if (urlStr.includes('oauth2.googleapis.com/token')) {
       const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
@@ -401,7 +401,7 @@ test('NFR-053: OAuth-registered applicant has hasCredentials=false in JWT', asyn
         headers: { 'Content-Type': 'application/json' },
       });
     }
-    return originalFetch(url);
+    return originalFetch(url, init);
   };
 
   try {
@@ -429,7 +429,7 @@ test('NFR-053: OAuth login logs an oauth_login observability event', async () =>
   const stateParam = new URL(redirectTo).searchParams.get('state')!;
 
   const originalFetch = globalThis.fetch;
-  globalThis.fetch = async (url: URL | RequestInfo) => {
+  globalThis.fetch = async (url: URL | RequestInfo, init?: RequestInit) => {
     const urlStr = url instanceof URL ? url.toString() : String(url);
     if (urlStr.includes('oauth2.googleapis.com/token')) {
       const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
@@ -448,7 +448,7 @@ test('NFR-053: OAuth login logs an oauth_login observability event', async () =>
         headers: { 'Content-Type': 'application/json' },
       });
     }
-    return originalFetch(url);
+    return originalFetch(url, init);
   };
 
   try {

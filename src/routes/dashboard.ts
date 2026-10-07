@@ -3,10 +3,10 @@ import bcrypt from 'bcryptjs';
 import { readStore } from '../models/store.js';
 import { verifyApplicantToken } from '../services/tokenService.js';
 import { revokeToken } from '../services/revocationService.js';
+import { clearApplicantSessionCookie, safeApplicantDestination, setApplicantSessionCookie } from '../services/applicantSession.js';
+import { isOAuthProviderConfigured } from '../services/oauthService.js';
 
 const router = Router();
-
-const COOKIE_OPTS = 'HttpOnly; SameSite=Lax; Path=/';
 
 // ─── Auth middleware ─────────────────────────────────────────────────────────
 
@@ -33,8 +33,7 @@ router.get('/register', (req: any, res: any) => {
   if (token) {
     try {
       verifyApplicantToken(token);
-      const next = req.query.next || '/dashboard/applications';
-      return res.redirect(next);
+      return res.redirect(safeApplicantDestination(req.query.next));
     } catch {
       res.clearCookie('token');
     }
@@ -45,7 +44,8 @@ router.get('/register', (req: any, res: any) => {
     firstName: '',
     lastName: '',
     phone: '',
-    next: req.query.next || '',
+    next: safeApplicantDestination(req.query.next) === '/dashboard/applications' ? '' : safeApplicantDestination(req.query.next),
+    oauthProviders: { google: isOAuthProviderConfigured('google'), linkedin: isOAuthProviderConfigured('linkedin'), facebook: isOAuthProviderConfigured('facebook') },
   });
 });
 
@@ -53,7 +53,7 @@ router.get('/register', (req: any, res: any) => {
 
 router.post('/register', async (req: any, res: any) => {
   const { email, password, confirmPassword, firstName, lastName, phone, next } = req.body;
-  const destination = (next && typeof next === 'string') ? next : '/dashboard/applications';
+  const destination = safeApplicantDestination(next);
 
   // Basic validation (phone is optional)
   if (!email || !password || !confirmPassword || !firstName || !lastName) {
@@ -151,7 +151,7 @@ router.post('/register', async (req: any, res: any) => {
     const { signApplicantToken } = await import('../services/tokenService.js');
     const token = await signApplicantToken(applicant.id, true); // hasCredentials = true
 
-    res.setHeader('Set-Cookie', `token=${token}; ${COOKIE_OPTS}`);
+    setApplicantSessionCookie(res, token);
     res.redirect(destination);
   } catch (err) {
     console.error('[dashboard] Register error:', err);
@@ -173,16 +173,16 @@ router.get('/login', (req: any, res: any) => {
   if (token) {
     try {
       verifyApplicantToken(token);
-      const next = req.query.next || '/dashboard/applications';
-      return res.redirect(next);
+      return res.redirect(safeApplicantDestination(req.query.next));
     } catch {
       res.clearCookie('token');
     }
   }
   res.render('dashboard/login', {
-    error: null,
+    error: typeof req.query.error === 'string' ? req.query.error : null,
     email: '',
-    next: req.query.next || '',
+    next: safeApplicantDestination(req.query.next) === '/dashboard/applications' ? '' : safeApplicantDestination(req.query.next),
+    oauthProviders: { google: isOAuthProviderConfigured('google'), linkedin: isOAuthProviderConfigured('linkedin'), facebook: isOAuthProviderConfigured('facebook') },
   });
 });
 
@@ -190,7 +190,7 @@ router.get('/login', (req: any, res: any) => {
 
 router.post('/login', async (req: any, res: any) => {
   const { email, password, next } = req.body;
-  const destination = (next && typeof next === 'string') ? next : '/dashboard/applications';
+  const destination = safeApplicantDestination(next);
 
   if (!email || !password) {
     return res.status(200).render('dashboard/login', {
@@ -246,7 +246,7 @@ router.post('/login', async (req: any, res: any) => {
     const { signApplicantToken } = await import('../services/tokenService.js');
     const token = await signApplicantToken(applicant.id, false);
 
-    res.setHeader('Set-Cookie', `token=${token}; ${COOKIE_OPTS}`);
+    setApplicantSessionCookie(res, token);
     res.redirect(destination);
   } catch (err) {
     console.error('[dashboard] Login error:', err);
@@ -271,7 +271,7 @@ router.get('/logout', async (req: any, res: any) => {
       // Token invalid/expired — nothing to revoke
     }
   }
-  res.setHeader('Set-Cookie', `token=; ${COOKIE_OPTS} Max-Age=0`);
+  clearApplicantSessionCookie(res);
   res.redirect('/dashboard/login');
 });
 
