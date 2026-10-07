@@ -60,6 +60,11 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-036 | 36 | 🔵 | ✅ NFR-030 missing formal dated resolution block — **RESOLVED** (fix/NFR-036-NFR-037-post-merge-docs) |
 | NFR-037 | 37 | 🔵 | ✅ Suggested fix order still listed merged PR #1 — **RESOLVED** (fix/NFR-036-NFR-037-post-merge-docs) |
 | NFR-042 | 42 | 🔵 | ✅ README priority order diverged from BUGS.md — **RESOLVED** (fix/NFR-042-readme-priority-order) |
+| NFR-071 | 71 | 🔴 | OAuth login never signs the applicant in — callback returns raw JSON (no cookie/redirect) — [story](./docs/stories/story-bug-oauth-callback-no-session.md) |
+| NFR-072 | 72 | 🟠 | OAuth providers not configured — every social login returns 503 — [story](./docs/stories/story-bug-oauth-not-configured.md) |
+| NFR-073 | 73 | 🟡 | OAuth `redirect_uri` from `req.protocol` with no trust-proxy — breaks behind TLS — [story](./docs/stories/story-bug-oauth-redirect-uri-scheme.md) |
+| NFR-074 | 74 | 🟡 | OAuth flow hardening — provider-specific params, state→provider binding, `next` preservation — [story](./docs/stories/story-bug-oauth-flow-hardening.md) |
+| NFR-075 | 75 | 🟡 | In-memory OAuth state fallback does not enforce TTL during validation — [story](./docs/stories/story-bug-oauth-in-memory-state-ttl.md) |
 
 ---
 
@@ -529,4 +534,3 @@ The DB story is split into:
 4. **Run full PostgreSQL test suite** before merging the final route conversion
 
 Estimated effort: 8 small PRs, ~30min each, plus a final integration PR. ~4-5 hours total.
-

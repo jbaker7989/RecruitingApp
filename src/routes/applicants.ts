@@ -7,7 +7,8 @@ import { authenticateApplicant, AuthRequest } from '../middleware/applicantAuth.
 import { signApplicantToken, verifyApplicantToken } from '../services/tokenService.js';
 import { revokeToken, revokeAllForUser } from '../services/revocationService.js';
 import { createResetToken, validateAndConsumeResetToken } from '../services/passwordResetService.js';
-import { initiateGoogle, initiateLinkedIn, initiateFacebook, handleGoogleCallback, handleLinkedInCallback, handleFacebookCallback } from '../services/oauthService.js';
+import { initiateGoogle, initiateLinkedIn, initiateFacebook, handleGoogleCallback, handleLinkedInCallback, handleFacebookCallback, resolveOAuthBaseUrl } from '../services/oauthService.js';
+import { safeApplicantDestination, setApplicantSessionCookie } from '../services/applicantSession.js';
 
 const BCRYPT_ROUNDS = 10;
 const hashPassword = (password: string): Promise<string> => bcrypt.hash(password, BCRYPT_ROUNDS);
@@ -528,14 +529,25 @@ router.post('/reset-password', async (req: any, res) => {
 
 // ─── OAuth / Social Login ───────────────────────────────────────────────────────
 
+function redirectToLoginError(res: any, message: string) {
+  return res.redirect(`/dashboard/login?error=${encodeURIComponent(message)}`);
+}
+
+function wantsJson(req: any): boolean {
+  return req.get('accept')?.includes('application/json') ?? false;
+}
+
+function oauthFailure(req: any, res: any, status: number, message: string) {
+  return wantsJson(req) ? res.status(status).json({ error: message }) : redirectToLoginError(res, message);
+}
+
 // GET /api/applicants/auth/google — redirect to Google authorization
 router.get('/auth/google', async (req: any, res) => {
   try {
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const { redirectTo } = await initiateGoogle(baseUrl);
+    const { redirectTo } = await initiateGoogle(resolveOAuthBaseUrl(req), safeApplicantDestination(req.query.next));
     res.redirect(302, redirectTo);
   } catch (error) {
-    res.status(503).json({ error: 'Google login is not configured' });
+    return oauthFailure(req, res, 503, 'Google login is not configured');
   }
 });
 
@@ -544,30 +556,29 @@ router.get('/auth/google/callback', async (req: any, res) => {
   const { code, state, error } = req.query as { code?: string; state?: string; error?: string };
 
   if (error) {
-    return res.status(400).json({ error: `Google authorization denied: ${error}` });
+    return oauthFailure(req, res, 400, `Google authorization denied: ${error}`);
   }
   if (!code || !state) {
-    return res.status(400).json({ error: 'Missing code or state parameter' });
+    return oauthFailure(req, res, 400, 'Missing code or state parameter');
   }
 
   try {
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const result = await handleGoogleCallback(code, state, baseUrl);
-    return res.json({ token: result.token, expiresIn: result.expiresIn });
+    const result = await handleGoogleCallback(code, state, resolveOAuthBaseUrl(req));
+    if (wantsJson(req)) return res.json({ token: result.token, expiresIn: result.expiresIn });
+    setApplicantSessionCookie(res, result.token);
+    return res.redirect(result.next);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'OAuth callback failed';
-    return res.status(401).json({ error: msg });
+    return oauthFailure(req, res, 401, err instanceof Error ? err.message : 'OAuth callback failed');
   }
 });
 
 // GET /api/applicants/auth/linkedin — redirect to LinkedIn authorization
 router.get('/auth/linkedin', async (req: any, res) => {
   try {
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const { redirectTo } = await initiateLinkedIn(baseUrl);
+    const { redirectTo } = await initiateLinkedIn(resolveOAuthBaseUrl(req), safeApplicantDestination(req.query.next));
     res.redirect(302, redirectTo);
   } catch (error) {
-    res.status(503).json({ error: 'LinkedIn login is not configured' });
+    return oauthFailure(req, res, 503, 'LinkedIn login is not configured');
   }
 });
 
@@ -576,30 +587,29 @@ router.get('/auth/linkedin/callback', async (req: any, res) => {
   const { code, state, error } = req.query as { code?: string; state?: string; error?: string };
 
   if (error) {
-    return res.status(400).json({ error: `LinkedIn authorization denied: ${error}` });
+    return oauthFailure(req, res, 400, `LinkedIn authorization denied: ${error}`);
   }
   if (!code || !state) {
-    return res.status(400).json({ error: 'Missing code or state parameter' });
+    return oauthFailure(req, res, 400, 'Missing code or state parameter');
   }
 
   try {
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const result = await handleLinkedInCallback(code, state, baseUrl);
-    return res.json({ token: result.token, expiresIn: result.expiresIn });
+    const result = await handleLinkedInCallback(code, state, resolveOAuthBaseUrl(req));
+    if (wantsJson(req)) return res.json({ token: result.token, expiresIn: result.expiresIn });
+    setApplicantSessionCookie(res, result.token);
+    return res.redirect(result.next);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'OAuth callback failed';
-    return res.status(401).json({ error: msg });
+    return oauthFailure(req, res, 401, err instanceof Error ? err.message : 'OAuth callback failed');
   }
 });
 
 // GET /api/applicants/auth/facebook — redirect to Facebook authorization
 router.get('/auth/facebook', async (req: any, res) => {
   try {
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const { redirectTo } = await initiateFacebook(baseUrl);
+    const { redirectTo } = await initiateFacebook(resolveOAuthBaseUrl(req), safeApplicantDestination(req.query.next));
     res.redirect(302, redirectTo);
   } catch (error) {
-    res.status(503).json({ error: 'Facebook login is not configured' });
+    return oauthFailure(req, res, 503, 'Facebook login is not configured');
   }
 });
 
@@ -608,19 +618,19 @@ router.get('/auth/facebook/callback', async (req: any, res) => {
   const { code, state, error } = req.query as { code?: string; state?: string; error?: string };
 
   if (error) {
-    return res.status(400).json({ error: `Facebook authorization denied: ${error}` });
+    return oauthFailure(req, res, 400, `Facebook authorization denied: ${error}`);
   }
   if (!code || !state) {
-    return res.status(400).json({ error: 'Missing code or state parameter' });
+    return oauthFailure(req, res, 400, 'Missing code or state parameter');
   }
 
   try {
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const result = await handleFacebookCallback(code, state, baseUrl);
-    return res.json({ token: result.token, expiresIn: result.expiresIn });
+    const result = await handleFacebookCallback(code, state, resolveOAuthBaseUrl(req));
+    if (wantsJson(req)) return res.json({ token: result.token, expiresIn: result.expiresIn });
+    setApplicantSessionCookie(res, result.token);
+    return res.redirect(result.next);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : 'OAuth callback failed';
-    return res.status(401).json({ error: msg });
+    return oauthFailure(req, res, 401, err instanceof Error ? err.message : 'OAuth callback failed');
   }
 });
 

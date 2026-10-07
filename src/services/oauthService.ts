@@ -39,25 +39,31 @@ async function initRedis(): Promise<void> {
 }
 
 const STATE_TTL_SECONDS = 600; // 10 minutes
-const inMemoryStateStore = new Map<string, { createdAt: number; provider: string }>();
+type OAuthProvider = 'google' | 'linkedin' | 'facebook';
+type OAuthState = { createdAt: number; provider: OAuthProvider; next: string };
+const inMemoryStateStore = new Map<string, OAuthState>();
 
-async function storeState(state: string, provider: string): Promise<void> {
+async function storeState(state: string, provider: OAuthProvider, next: string): Promise<void> {
   if (useRedis && redisClient) {
-    await (redisClient as any).setex(`oauth:state:${state}`, STATE_TTL_SECONDS, provider);
+    await (redisClient as any).setex(`oauth:state:${state}`, STATE_TTL_SECONDS, JSON.stringify({ provider, next }));
   } else {
-    inMemoryStateStore.set(state, { createdAt: Date.now(), provider });
+    inMemoryStateStore.set(state, { createdAt: Date.now(), provider, next });
   }
 }
 
-async function validateState(state: string): Promise<boolean> {
+async function validateState(state: string, provider: OAuthProvider): Promise<string | null> {
   if (useRedis && redisClient) {
     const result = await (redisClient as any).getdel(`oauth:state:${state}`);
-    return result !== null;
+    if (!result) return null;
+    try {
+      const stored = JSON.parse(result) as { provider?: OAuthProvider; next?: string };
+      return stored.provider === provider && typeof stored.next === 'string' ? stored.next : null;
+    } catch { return null; }
   } else {
     const entry = inMemoryStateStore.get(state);
-    if (!entry) return false;
+    if (!entry) return null;
     inMemoryStateStore.delete(state);
-    return true;
+    return entry.provider === provider ? entry.next : null;
   }
 }
 
@@ -85,6 +91,7 @@ interface OIDCConfig {
   userInfoURL: string;
   scope: string;
   grantType: string;
+  authorizationParams?: Record<string, string>;
 }
 
 function googleConfig(redirectUri: string): OIDCConfig {
@@ -95,6 +102,7 @@ function googleConfig(redirectUri: string): OIDCConfig {
     userInfoURL: 'https://www.googleapis.com/oauth2/v3/userinfo',
     scope: 'openid email profile',
     grantType: 'authorization_code',
+    authorizationParams: { access_type: 'offline', prompt: 'consent' },
   };
 }
 
@@ -137,8 +145,7 @@ function buildAuthorizationUrl(config: OIDCConfig, clientId: string, state: stri
     response_type: 'code',
     scope: config.scope,
     state,
-    access_type: 'offline',
-    prompt: 'consent',
+    ...config.authorizationParams,
   });
   return `${config.authorizationURL}?${params.toString()}`;
 }
@@ -200,43 +207,68 @@ export interface CallbackResult {
   expiresIn: number;
   applicantId: string;
   isNewApplicant: boolean;
+  next: string;
+}
+
+export function isOAuthProviderConfigured(provider: OAuthProvider): boolean {
+  const names: Record<OAuthProvider, [string, string]> = {
+    google: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'], linkedin: ['LINKEDIN_CLIENT_ID', 'LINKEDIN_CLIENT_SECRET'], facebook: ['FACEBOOK_CLIENT_ID', 'FACEBOOK_CLIENT_SECRET'],
+  };
+  const [id, secret] = names[provider];
+  return Boolean(process.env[id] && process.env[secret]);
+}
+
+export function resolveOAuthBaseUrl(req: { protocol: string; get(name: string): string | undefined }): string {
+  const configured = process.env.APP_BASE_URL;
+  if (configured) {
+    const url = new URL(configured);
+    if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw new Error('APP_BASE_URL must be an absolute origin');
+    if (process.env.NODE_ENV === 'production' && url.protocol !== 'https:') throw new Error('APP_BASE_URL must use HTTPS in production');
+    return url.origin;
+  }
+  if (process.env.NODE_ENV === 'production') throw new Error('APP_BASE_URL is required in production for OAuth');
+  const host = req.get('host');
+  if (!host) throw new Error('Missing request host');
+  const url = new URL(`${req.protocol}://${host}`);
+  if (!['localhost', '127.0.0.1', '::1'].includes(url.hostname)) throw new Error('APP_BASE_URL is required for non-local OAuth requests');
+  return url.origin;
 }
 
 /** Build the Google OAuth authorization URL and store state. */
-export async function initiateGoogle(baseUrl: string): Promise<InitiateResult> {
+export async function initiateGoogle(baseUrl: string, next = '/dashboard/applications'): Promise<InitiateResult> {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   if (!clientId) throw new Error('GOOGLE_CLIENT_ID is not configured');
 
   const redirectUri = `${baseUrl}/api/applicants/auth/google/callback`;
   const config = googleConfig(redirectUri);
   const state = generateState();
-  await storeState(state, 'google');
+  await storeState(state, 'google', next);
 
   return { redirectTo: buildAuthorizationUrl(config, clientId, state, redirectUri) };
 }
 
 /** Build the LinkedIn OAuth authorization URL and store state. */
-export async function initiateLinkedIn(baseUrl: string): Promise<InitiateResult> {
+export async function initiateLinkedIn(baseUrl: string, next = '/dashboard/applications'): Promise<InitiateResult> {
   const clientId = process.env.LINKEDIN_CLIENT_ID;
   if (!clientId) throw new Error('LINKEDIN_CLIENT_ID is not configured');
 
   const redirectUri = `${baseUrl}/api/applicants/auth/linkedin/callback`;
   const config = linkedinConfig(redirectUri);
   const state = generateState();
-  await storeState(state, 'linkedin');
+  await storeState(state, 'linkedin', next);
 
   return { redirectTo: buildAuthorizationUrl(config, clientId, state, redirectUri) };
 }
 
 /** Build the Facebook OAuth authorization URL and store state. */
-export async function initiateFacebook(baseUrl: string): Promise<InitiateResult> {
+export async function initiateFacebook(baseUrl: string, next = '/dashboard/applications'): Promise<InitiateResult> {
   const clientId = process.env.FACEBOOK_CLIENT_ID;
   if (!clientId) throw new Error('FACEBOOK_CLIENT_ID is not configured');
 
   const redirectUri = `${baseUrl}/api/applicants/auth/facebook/callback`;
   const config = facebookConfig(redirectUri);
   const state = generateState();
-  await storeState(state, 'facebook');
+  await storeState(state, 'facebook', next);
 
   return { redirectTo: buildAuthorizationUrl(config, clientId, state, redirectUri) };
 }
@@ -247,7 +279,8 @@ export async function handleGoogleCallback(
   state: string,
   baseUrl: string,
 ): Promise<CallbackResult> {
-  if (!await validateState(state)) throw new Error('Invalid or expired OAuth state (CSRF check failed)');
+  const next = await validateState(state, 'google');
+  if (!next) throw new Error('Invalid or expired OAuth state (CSRF check failed)');
 
   const clientId = process.env.GOOGLE_CLIENT_ID!;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
@@ -262,13 +295,13 @@ export async function handleGoogleCallback(
   const email = (claims['email'] as string | undefined)?.toLowerCase();
   if (!email) throw new Error('Google did not return an email address');
 
-  return upsertOAuthApplicant({
+  return { ...await upsertOAuthApplicant({
     email,
     firstName: (claims['given_name'] as string | undefined) ?? '',
     lastName: (claims['family_name'] as string | undefined) ?? '',
     provider: 'google',
     providerId: claims['sub'] as string,
-  });
+  }), next };
 }
 
 /** Handle LinkedIn OAuth callback: validate state, exchange code, upsert applicant, return JWT. */
@@ -277,7 +310,8 @@ export async function handleLinkedInCallback(
   state: string,
   baseUrl: string,
 ): Promise<CallbackResult> {
-  if (!await validateState(state)) throw new Error('Invalid or expired OAuth state (CSRF check failed)');
+  const next = await validateState(state, 'linkedin');
+  if (!next) throw new Error('Invalid or expired OAuth state (CSRF check failed)');
 
   const clientId = process.env.LINKEDIN_CLIENT_ID!;
   const clientSecret = process.env.LINKEDIN_CLIENT_SECRET!;
@@ -306,13 +340,13 @@ export async function handleLinkedInCallback(
     }
   }
 
-  return upsertOAuthApplicant({
+  return { ...await upsertOAuthApplicant({
     email,
     firstName,
     lastName,
     provider: 'linkedin',
     providerId: idClaims['sub'] as string,
-  });
+  }), next };
 }
 
 /** Handle Facebook OAuth callback: validate state, exchange code, upsert applicant, return JWT. */
@@ -321,7 +355,8 @@ export async function handleFacebookCallback(
   state: string,
   baseUrl: string,
 ): Promise<CallbackResult> {
-  if (!await validateState(state)) throw new Error('Invalid or expired OAuth state (CSRF check failed)');
+  const next = await validateState(state, 'facebook');
+  if (!next) throw new Error('Invalid or expired OAuth state (CSRF check failed)');
 
   const clientId = process.env.FACEBOOK_CLIENT_ID!;
   const clientSecret = process.env.FACEBOOK_CLIENT_SECRET!;
@@ -356,19 +391,19 @@ export async function handleFacebookCallback(
   const email = (profile['email'] as string | undefined)?.toLowerCase();
   if (!email) throw new Error('Facebook did not return an email address');
 
-  return upsertOAuthApplicant({
+  return { ...await upsertOAuthApplicant({
     email,
     firstName: (profile['first_name'] as string | undefined) ?? '',
     lastName: (profile['last_name'] as string | undefined) ?? '',
     provider: 'facebook',
     providerId: profile['id'] as string,
-  });
+  }), next };
 }
 
 // ─── Upsert applicant ──────────────────────────────────────────────────────────
 
 /** Find existing applicant by email, or create a new one. */
-async function upsertOAuthApplicant(info: OAuthUserInfo): Promise<CallbackResult> {
+async function upsertOAuthApplicant(info: OAuthUserInfo): Promise<Omit<CallbackResult, 'next'>> {
   const store = await readStore();
 
   const existingApplicant = store.applicants.find(a => a.email?.toLowerCase() === info.email.toLowerCase());
