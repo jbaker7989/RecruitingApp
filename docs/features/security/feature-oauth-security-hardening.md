@@ -1,6 +1,6 @@
 # SEC-OAUTH-001: OAuth Security Hardening
 
-**Status:** Proposed | **Story:** REC-TBD | **Type:** Security Hardening
+**Status:** Partially complete (SEC-001 QA passed) | **Story:** REC-TBD | **Type:** Security Hardening
 **Created:** 2026-10-15 | **Source:** Security review of `bugs/oauth-login-fixes` (NFR-071–075)
 
 Close the security gaps surfaced by the review of the applicant social-login
@@ -27,7 +27,7 @@ hardening and spec-compliance gaps worth tracking, prioritized.
 
 | Order | ID | Severity | Story | Size | Status |
 |---|---|---|---|---|---|
-| P1 | SEC-001 (NFR-076) | 🟠 High | Verify OAuth `id_token` signature + claims instead of unverified decode | **M** | Proposed — [story](../../stories/story-sec-oauth-idtoken-verification.md) |
+| P1 | SEC-001 (NFR-076) | 🟠 High | Verify OAuth `id_token` signature + claims instead of unverified decode | **M** | Complete; QA passed — [story](../../stories/story-sec-oauth-idtoken-verification.md) |
 | P2 | SEC-002 (NFR-075) | 🟡 Medium | Enforce in-memory OAuth state TTL at validation (parity with Redis) | **S** | Open — [story](../../stories/story-bug-oauth-in-memory-state-ttl.md) |
 | P3 | SEC-003 (NFR-077) | 🔵 Low | Lock in XSS-safe error rendering + open-redirect `next` validation with regression tests | **S** | Proposed — [story](../../stories/story-sec-xss-open-redirect-regression-guardrails.md) |
 
@@ -37,6 +37,10 @@ despite not being trivially exploitable today. SEC-002 is a concrete correctness
 gap in a security control (CSRF state) that is quick to close. SEC-003 is a
 guardrail that converts the review's "verified safe today" conclusion into a
 durable invariant; lowest risk, so last.
+
+**Current delivery scope:** SEC-001 and its CI regression coverage only. SEC-002
+and SEC-003 remain open/proposed. No merge or production deployment is authorized.
+See the SEC-001 story for exact issuer, claim-validation, and QA requirements.
 
 **Total feature size:** ~M + S + S ≈ 1 working day.
 
@@ -59,7 +63,9 @@ hardcoded HTTPS `config.tokenURL`), so an attacker cannot trivially substitute a
 forged token without breaking that TLS channel or the token-endpoint URL. It is
 therefore a hardening / OIDC-compliance gap rather than a confirmed remote
 exploit — but identity is derived from unverified claims, which is exactly the
-control OIDC requires.
+application hardening control. OIDC Core §3.1.3.7 permits TLS server validation
+in place of signature checking for direct token-endpoint responses; the missing
+claim validation remains a compliance gap.
 
 **Acceptance criteria.**
 1. Google and LinkedIn `id_token`s are verified against the provider JWKS
