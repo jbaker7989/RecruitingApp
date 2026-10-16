@@ -50,3 +50,6 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Local demo credentials
+demo-credentials.json
