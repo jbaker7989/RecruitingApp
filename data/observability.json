@@ -538,6 +538,743 @@
         "version": "1.0.0"
       },
       "outcome": "success"
+    },
+    {
+      "id": "7940d319-3308-45af-b609-6261ab19c160",
+      "timestamp": "2026-10-06T19:27:04.480Z",
+      "action": "startup",
+      "entityType": "System",
+      "entityId": "server",
+      "userId": "system",
+      "details": {
+        "message": "Server started",
+        "version": "1.0.0"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "b3fc26c6-9ad6-4d59-8554-76ac06ce5f25",
+      "timestamp": "2026-10-06T22:52:16.683Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u1",
+      "userId": "u1",
+      "details": {
+        "username": "demo-applicant",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "5d702884-c266-4718-9139-97dd267c1fb8",
+      "timestamp": "2026-10-06T22:52:16.832Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u2",
+      "userId": "u2",
+      "details": {
+        "username": "demo-recruiter",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "0fdecb29-3462-407a-ab17-f815f6328d93",
+      "timestamp": "2026-10-06T22:52:16.898Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u3",
+      "userId": "u3",
+      "details": {
+        "username": "demo-hiring-manager",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "4b0549fc-3e6c-4b3f-bcdf-da25dd60f1ea",
+      "timestamp": "2026-10-06T22:52:16.961Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u4",
+      "userId": "u4",
+      "details": {
+        "username": "demo-member-services",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "0036575d-4b46-4610-9c89-69aa0e18f959",
+      "timestamp": "2026-10-06T22:52:33.580Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u1",
+      "userId": "u1",
+      "details": {
+        "username": "demo-applicant",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "6b94e2b6-3559-40de-8a5f-9af882a3e358",
+      "timestamp": "2026-10-06T22:52:33.640Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u2",
+      "userId": "u2",
+      "details": {
+        "username": "demo-recruiter",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "8f32410a-cbed-4475-a123-0ad5ea41c506",
+      "timestamp": "2026-10-06T22:52:33.703Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u3",
+      "userId": "u3",
+      "details": {
+        "username": "demo-hiring-manager",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "689cbdb0-822b-49ac-80f6-aa82a85b26de",
+      "timestamp": "2026-10-06T22:52:33.762Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u4",
+      "userId": "u4",
+      "details": {
+        "username": "demo-member-services",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "bc11fb66-4e5b-4a3b-9e5f-4a2b29a871cd",
+      "timestamp": "2026-10-06T22:52:47.016Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u1",
+      "userId": "u1",
+      "details": {
+        "username": "demo-applicant",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "bf8f812e-5a50-49cb-a7ab-d8afa10b7840",
+      "timestamp": "2026-10-06T22:52:47.078Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u2",
+      "userId": "u2",
+      "details": {
+        "username": "demo-recruiter",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "6cba53de-d217-472a-8e58-d485ad8c98f7",
+      "timestamp": "2026-10-06T22:52:47.140Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u3",
+      "userId": "u3",
+      "details": {
+        "username": "demo-hiring-manager",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "bd443d66-6b49-4eab-9d54-4ff459e259e6",
+      "timestamp": "2026-10-06T22:52:47.201Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u4",
+      "userId": "u4",
+      "details": {
+        "username": "demo-member-services",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "8761a37d-fd8d-4f32-adbe-833025a16d69",
+      "timestamp": "2026-10-06T22:53:09.279Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u1",
+      "userId": "u1",
+      "details": {
+        "username": "demo-applicant",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "e369faa7-eb62-467d-b356-542e4fd2ae4d",
+      "timestamp": "2026-10-06T22:53:09.331Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u4",
+      "userId": "u4",
+      "details": {
+        "username": "demo-member-services",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "360d271b-989d-4e93-9973-d31bafb95663",
+      "timestamp": "2026-10-06T22:53:15.171Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u1",
+      "userId": "u1",
+      "details": {
+        "username": "demo-applicant",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "1ef354ae-552e-44af-8931-903751a24195",
+      "timestamp": "2026-10-06T22:53:23.522Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u1",
+      "userId": "u1",
+      "details": {
+        "username": "demo-applicant",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "f2724546-f9bc-4002-88f0-b101f31f47fd",
+      "timestamp": "2026-10-06T22:53:23.593Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u2",
+      "userId": "u2",
+      "details": {
+        "username": "demo-recruiter",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "23dd93b6-4fab-46d6-99b7-ad0fb860e63d",
+      "timestamp": "2026-10-06T22:53:23.666Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u3",
+      "userId": "u3",
+      "details": {
+        "username": "demo-hiring-manager",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "fefdd752-725d-46a6-b718-9f8fb33cce82",
+      "timestamp": "2026-10-06T22:53:23.736Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u4",
+      "userId": "u4",
+      "details": {
+        "username": "demo-member-services",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "fecdaeb5-1286-4d81-809b-57bbb7fc4463",
+      "timestamp": "2026-10-06T22:53:34.418Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u1",
+      "userId": "u1",
+      "details": {
+        "username": "demo-applicant",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "163ee13d-d872-4ab9-b8ee-6eb1621fb3db",
+      "timestamp": "2026-10-06T22:53:39.839Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u1",
+      "userId": "u1",
+      "details": {
+        "username": "demo-applicant",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "44e96ea1-ebe2-48f4-b655-dae39f5de4cc",
+      "timestamp": "2026-10-06T22:53:44.264Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u4",
+      "userId": "u4",
+      "details": {
+        "username": "demo-member-services",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "bd8ab186-ccd6-4c6d-9ab4-9704eddff145",
+      "timestamp": "2026-10-06T22:53:49.974Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u4",
+      "userId": "u4",
+      "details": {
+        "username": "demo-member-services",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "5f94e99f-af48-4d14-b464-75b9612585e0",
+      "timestamp": "2026-10-06T23:42:46.421Z",
+      "action": "startup",
+      "entityType": "System",
+      "entityId": "server",
+      "userId": "system",
+      "details": {
+        "message": "Server started",
+        "version": "1.0.0"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "1a1fafd7-9f74-4701-aca2-7669177d684b",
+      "timestamp": "2026-10-06T23:42:54.016Z",
+      "action": "startup",
+      "entityType": "System",
+      "entityId": "server",
+      "userId": "system",
+      "details": {
+        "message": "Server started",
+        "version": "1.0.0"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "8e60049f-e024-4932-b57b-51836d2945ab",
+      "timestamp": "2026-10-06T23:43:00.920Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u1",
+      "userId": "u1",
+      "details": {
+        "username": "demo-applicant",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "9ba7788e-a609-4000-887a-3257bc702f6e",
+      "timestamp": "2026-10-06T23:43:00.973Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u2",
+      "userId": "u2",
+      "details": {
+        "username": "demo-recruiter",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "9fe2913f-e636-48f1-b6e1-61cc1c6f70c8",
+      "timestamp": "2026-10-06T23:43:01.026Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u3",
+      "userId": "u3",
+      "details": {
+        "username": "demo-hiring-manager",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "57a4dce9-c168-4db3-9867-bd7b237c6e29",
+      "timestamp": "2026-10-06T23:43:01.078Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u4",
+      "userId": "u4",
+      "details": {
+        "username": "demo-member-services",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "9f30229f-32ef-4ed7-a03e-3dd25e7bc1d4",
+      "timestamp": "2026-10-06T23:53:22.262Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u1",
+      "userId": "u1",
+      "details": {
+        "username": "demo-applicant",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "56f1c9b9-c989-4785-bf77-3588613a448b",
+      "timestamp": "2026-10-06T23:53:48.688Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u3",
+      "userId": "u3",
+      "details": {
+        "username": "demo-hiring-manager",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "00e7b75f-8398-422c-933b-16fc32e6cdba",
+      "timestamp": "2026-10-06T23:53:48.783Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u4",
+      "userId": "u4",
+      "details": {
+        "username": "demo-member-services",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "e8f8264e-c1c3-4665-be63-00c570e93be4",
+      "timestamp": "2026-10-06T23:54:03.529Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u1",
+      "userId": "u1",
+      "details": {
+        "username": "demo-applicant",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "d400c9a7-9de1-4306-8a7f-c9d9cea3098d",
+      "timestamp": "2026-10-06T23:54:03.596Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u2",
+      "userId": "u2",
+      "details": {
+        "username": "demo-recruiter",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "88e7bf7f-5b20-4174-8e9f-56711960a363",
+      "timestamp": "2026-10-06T23:54:03.665Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u4",
+      "userId": "u4",
+      "details": {
+        "username": "demo-member-services",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "42976efc-dc7d-4d9b-82da-1d55c5b5a8fd",
+      "timestamp": "2026-10-06T23:54:08.835Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u1",
+      "userId": "u1",
+      "details": {
+        "username": "demo-applicant",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "2f436687-3052-4b9c-ac76-c35d773d1a05",
+      "timestamp": "2026-10-06T23:54:18.493Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u1",
+      "userId": "u1",
+      "details": {
+        "username": "demo-applicant",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "200437ae-9143-407a-aa7f-1f93714809ba",
+      "timestamp": "2026-10-06T23:54:18.548Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u2",
+      "userId": "u2",
+      "details": {
+        "username": "demo-recruiter",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "d5d69e74-1357-4448-b7bf-fc1fad160996",
+      "timestamp": "2026-10-06T23:54:18.600Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u3",
+      "userId": "u3",
+      "details": {
+        "username": "demo-hiring-manager",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "4def5e19-f6ee-485c-9e86-4c945f19ff81",
+      "timestamp": "2026-10-06T23:54:18.653Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u4",
+      "userId": "u4",
+      "details": {
+        "username": "demo-member-services",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "702a2a0b-79b7-4aca-8693-979c2aae6f59",
+      "timestamp": "2026-10-06T23:54:56.770Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u1",
+      "userId": "u1",
+      "details": {
+        "username": "demo-applicant",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "8d5e1722-4743-45fb-915f-eb0dc7ae0393",
+      "timestamp": "2026-10-06T23:54:56.824Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u2",
+      "userId": "u2",
+      "details": {
+        "username": "demo-recruiter",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "48ccca1c-5ea9-4bb7-b9dd-71ee01cad292",
+      "timestamp": "2026-10-06T23:54:56.875Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u3",
+      "userId": "u3",
+      "details": {
+        "username": "demo-hiring-manager",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "f3f666ed-97b8-46f6-9cd7-1bf00e1d9fec",
+      "timestamp": "2026-10-06T23:54:56.926Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "u4",
+      "userId": "u4",
+      "details": {
+        "username": "demo-member-services",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "828b42a6-c598-49f1-b593-d2d1d0e433cd",
+      "timestamp": "2026-10-06T23:54:56.931Z",
+      "action": "create",
+      "entityType": "Company",
+      "entityId": "6164e118-d9e0-4d79-9def-168573dcc432",
+      "userId": "u4",
+      "details": {
+        "companyName": "Demo Co"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "020060a2-b9c6-44c4-b2f9-48f2bc7495fd",
+      "timestamp": "2026-10-07T00:04:52.927Z",
+      "action": "token_revoked",
+      "entityType": "Applicant",
+      "entityId": "app-1",
+      "userId": "app-1",
+      "details": {
+        "jti": "64083a23-50ca-4a03-a125-50f70431dbde",
+        "reason": "logout",
+        "expiresAt": 604800000
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "d3ecd912-f3ec-4f4b-af6a-5d65719fbfbe",
+      "timestamp": "2026-10-07T00:09:13.056Z",
+      "action": "startup",
+      "entityType": "System",
+      "entityId": "server",
+      "userId": "system",
+      "details": {
+        "message": "Server started",
+        "version": "1.0.0"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "cf002d80-2e9b-4e29-89ff-ab48e2e5c8de",
+      "timestamp": "2026-10-07T01:26:34.089Z",
+      "action": "token_issued",
+      "entityType": "User",
+      "entityId": "f1134d92-19ff-463e-8cc7-167387bf4636",
+      "userId": "f1134d92-19ff-463e-8cc7-167387bf4636",
+      "details": {
+        "username": "hm1",
+        "tokenType": "jwt"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "c7acb08c-2bcc-4cda-98f8-cb495f6b234d",
+      "timestamp": "2026-10-07T01:27:10.676Z",
+      "action": "create",
+      "entityType": "Job",
+      "entityId": "eab216d5-b8bc-41c0-92c4-330ae25a7ce0",
+      "userId": "f1134d92-19ff-463e-8cc7-167387bf4636",
+      "details": {
+        "jobTitle": "Senior Software Engineer"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "f3f90372-7024-4c5b-93e4-662cfc596668",
+      "timestamp": "2026-10-07T01:27:10.712Z",
+      "action": "create",
+      "entityType": "Job",
+      "entityId": "2e52db6c-6c57-477f-b2e4-261b405fc125",
+      "userId": "f1134d92-19ff-463e-8cc7-167387bf4636",
+      "details": {
+        "jobTitle": "Frontend Developer"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "1af611d2-1055-4f53-983f-7d395aa966c7",
+      "timestamp": "2026-10-07T01:27:10.731Z",
+      "action": "create",
+      "entityType": "Job",
+      "entityId": "1c92925f-11e0-4e56-8552-e8b85e4ab4bf",
+      "userId": "f1134d92-19ff-463e-8cc7-167387bf4636",
+      "details": {
+        "jobTitle": "HR & Recruitment Specialist"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "31f7d5d7-c4d3-4053-b545-3fcbb1d86938",
+      "timestamp": "2026-10-07T01:27:10.749Z",
+      "action": "create",
+      "entityType": "Job",
+      "entityId": "8ba5088e-8b84-4c41-a450-534b8a3fadd5",
+      "userId": "f1134d92-19ff-463e-8cc7-167387bf4636",
+      "details": {
+        "jobTitle": "Data Analyst"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "a685b1cd-5159-4845-a0bf-b3846fd04122",
+      "timestamp": "2026-10-07T15:48:19.161Z",
+      "action": "startup",
+      "entityType": "System",
+      "entityId": "server",
+      "userId": "system",
+      "details": {
+        "message": "Server started",
+        "version": "1.0.0"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "bc5ca314-050d-47d5-ac2b-c8e9b76af423",
+      "timestamp": "2026-10-07T15:48:32.055Z",
+      "action": "startup",
+      "entityType": "System",
+      "entityId": "server",
+      "userId": "system",
+      "details": {
+        "message": "Server started",
+        "version": "1.0.0"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "ef96c6d6-5933-4978-b783-e11f9086c957",
+      "timestamp": "2026-10-07T17:39:24.015Z",
+      "action": "startup",
+      "entityType": "System",
+      "entityId": "server",
+      "userId": "system",
+      "details": {
+        "message": "Server started",
+        "version": "1.0.0"
+      },
+      "outcome": "success"
+    },
+    {
+      "id": "dd5440d5-865b-43de-84a0-f27490945318",
+      "timestamp": "2026-10-07T17:39:50.374Z",
+      "action": "startup",
+      "entityType": "System",
+      "entityId": "server",
+      "userId": "system",
+      "details": {
+        "message": "Server started",
+        "version": "1.0.0"
+      },
+      "outcome": "success"
     }
   ]
 }

@@ -1,3 +1,4 @@
+import { oauthJwksResponse, signOAuthToken } from '../helpers/oauthTokens.js';
 /**
  * NFR-053: Applicant OAuth 2.0 / OIDC Social Login
  *
@@ -194,11 +195,12 @@ test('NFR-053: Google OAuth callback creates new applicant and returns JWT (firs
   // Mock fetch to simulate Google's token endpoint
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url: URL | RequestInfo, init?: RequestInit) => {
+    const jwks = oauthJwksResponse(url);
+    if (jwks) return jwks;
     const urlStr = url instanceof URL ? url.toString() : String(url);
     if (urlStr.includes('oauth2.googleapis.com/token')) {
       // Return a mock Google id_token: header.payload.signature
-      const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-      const payload = Buffer.from(JSON.stringify({
+      const payload = {
         iss: 'https://accounts.google.com',
         sub: 'google-user-123',
         email: 'oauth.test@gmail.com',
@@ -207,8 +209,8 @@ test('NFR-053: Google OAuth callback creates new applicant and returns JWT (firs
         aud: 'test-google-client-id',
         exp: Math.floor(Date.now() / 1000) + 3600,
         iat: Math.floor(Date.now() / 1000),
-      })).toString('base64url');
-      return new Response(JSON.stringify({ id_token: `${header}.${payload}.sig` }), {
+      };
+      return new Response(JSON.stringify({ id_token: await signOAuthToken(payload) }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -237,11 +239,12 @@ test('NFR-053: LinkedIn OAuth callback creates new applicant and returns JWT (fi
 
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url: URL | RequestInfo, init?: RequestInit) => {
+    const jwks = oauthJwksResponse(url);
+    if (jwks) return jwks;
     const urlStr = url instanceof URL ? url.toString() : String(url);
     if (urlStr.includes('linkedin.com/oauth/v2/accessToken')) {
-      const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-      const payload = Buffer.from(JSON.stringify({
-        iss: 'https://linkedin.com',
+      const payload = {
+        iss: 'https://www.linkedin.com',
         sub: 'linkedin-user-456',
         email: 'oauth.linkedin@gmail.com',
         given_name: 'LinkedIn',
@@ -249,8 +252,8 @@ test('NFR-053: LinkedIn OAuth callback creates new applicant and returns JWT (fi
         aud: 'test-linkedin-client-id',
         exp: Math.floor(Date.now() / 1000) + 3600,
         iat: Math.floor(Date.now() / 1000),
-      })).toString('base64url');
-      return new Response(JSON.stringify({ id_token: `${header}.${payload}.sig`, access_token: 'mock-access-token' }), {
+      };
+      return new Response(JSON.stringify({ id_token: await signOAuthToken(payload), access_token: 'mock-access-token' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -289,11 +292,12 @@ test('NFR-053: Google OAuth callback returns 401 when Google does not return an 
 
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url: URL | RequestInfo, init?: RequestInit) => {
+    const jwks = oauthJwksResponse(url);
+    if (jwks) return jwks;
     const urlStr = url instanceof URL ? url.toString() : String(url);
     if (urlStr.includes('oauth2.googleapis.com/token')) {
-      const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
       // No 'email' claim
-      const payload = Buffer.from(JSON.stringify({
+      const payload = {
         iss: 'https://accounts.google.com',
         sub: 'google-noemail-123',
         given_name: 'NoEmail',
@@ -301,8 +305,8 @@ test('NFR-053: Google OAuth callback returns 401 when Google does not return an 
         aud: 'test-google-client-id',
         exp: Math.floor(Date.now() / 1000) + 3600,
         iat: Math.floor(Date.now() / 1000),
-      })).toString('base64url');
-      return new Response(JSON.stringify({ id_token: `${header}.${payload}.sig` }), {
+      };
+      return new Response(JSON.stringify({ id_token: await signOAuthToken(payload) }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -330,10 +334,11 @@ test('NFR-053: Google OAuth callback returns existing applicant on second login 
 
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url: URL | RequestInfo, init?: RequestInit) => {
+    const jwks = oauthJwksResponse(url);
+    if (jwks) return jwks;
     const urlStr = url instanceof URL ? url.toString() : String(url);
     if (urlStr.includes('oauth2.googleapis.com/token')) {
-      const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-      const payload = Buffer.from(JSON.stringify({
+      const payload = {
         iss: 'https://accounts.google.com',
         sub: 'google-user-existing',
         email: 'existing.google@gmail.com',
@@ -342,8 +347,8 @@ test('NFR-053: Google OAuth callback returns existing applicant on second login 
         aud: 'test-google-client-id',
         exp: Math.floor(Date.now() / 1000) + 3600,
         iat: Math.floor(Date.now() / 1000),
-      })).toString('base64url');
-      return new Response(JSON.stringify({ id_token: `${header}.${payload}.sig` }), {
+      };
+      return new Response(JSON.stringify({ id_token: await signOAuthToken(payload) }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -383,10 +388,11 @@ test('NFR-053: OAuth-registered applicant has hasCredentials=false in JWT', asyn
 
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url: URL | RequestInfo, init?: RequestInit) => {
+    const jwks = oauthJwksResponse(url);
+    if (jwks) return jwks;
     const urlStr = url instanceof URL ? url.toString() : String(url);
     if (urlStr.includes('oauth2.googleapis.com/token')) {
-      const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-      const payload = Buffer.from(JSON.stringify({
+      const payload = {
         iss: 'https://accounts.google.com',
         sub: 'google-no-creds-test',
         email: 'nocreds@gmail.com',
@@ -395,8 +401,8 @@ test('NFR-053: OAuth-registered applicant has hasCredentials=false in JWT', asyn
         aud: 'test-google-client-id',
         exp: Math.floor(Date.now() / 1000) + 3600,
         iat: Math.floor(Date.now() / 1000),
-      })).toString('base64url');
-      return new Response(JSON.stringify({ id_token: `${header}.${payload}.sig` }), {
+      };
+      return new Response(JSON.stringify({ id_token: await signOAuthToken(payload) }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });
@@ -430,10 +436,11 @@ test('NFR-053: OAuth login logs an oauth_login observability event', async () =>
 
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url: URL | RequestInfo, init?: RequestInit) => {
+    const jwks = oauthJwksResponse(url);
+    if (jwks) return jwks;
     const urlStr = url instanceof URL ? url.toString() : String(url);
     if (urlStr.includes('oauth2.googleapis.com/token')) {
-      const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-      const payload = Buffer.from(JSON.stringify({
+      const payload = {
         iss: 'https://accounts.google.com',
         sub: 'google-obs-test',
         email: 'oauth.obs@gmail.com',
@@ -442,8 +449,8 @@ test('NFR-053: OAuth login logs an oauth_login observability event', async () =>
         aud: 'test-google-client-id',
         exp: Math.floor(Date.now() / 1000) + 3600,
         iat: Math.floor(Date.now() / 1000),
-      })).toString('base64url');
-      return new Response(JSON.stringify({ id_token: `${header}.${payload}.sig` }), {
+      };
+      return new Response(JSON.stringify({ id_token: await signOAuthToken(payload) }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       });

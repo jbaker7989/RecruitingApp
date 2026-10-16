@@ -1,3 +1,4 @@
+import { oauthJwksResponse, signOAuthToken } from '../helpers/oauthTokens.js';
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -44,14 +45,13 @@ async function get(path: string, headers?: Record<string, string>) {
   return fetch(`${baseUrl}${path}`, { redirect: 'manual', headers });
 }
 
-function googleIdToken(email = 'oauth.dashboard@example.com') {
-  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-  const payload = Buffer.from(JSON.stringify({
+async function googleIdToken(email = 'oauth.dashboard@example.com') {
+  const payload = {
     iss: 'https://accounts.google.com', sub: 'google-dashboard-user', email,
     given_name: 'OAuth', family_name: 'Dashboard', aud: process.env.GOOGLE_CLIENT_ID,
     exp: Math.floor(Date.now() / 1000) + 3600, iat: Math.floor(Date.now() / 1000),
-  })).toString('base64url');
-  return `${header}.${payload}.signature`;
+  };
+  return signOAuthToken(payload);
 }
 
 test('NFR-072: unconfigured providers are hidden and direct browser initiation returns to the login page', async () => {
@@ -108,10 +108,12 @@ test('NFR-071/074: a successful browser callback creates a seven-day session and
   const state = new URL(start.headers.get('location')!).searchParams.get('state')!;
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (url: URL | RequestInfo, init?: RequestInit) => {
+    const jwks = oauthJwksResponse(url);
+    if (jwks) return jwks;
     if (String(url).includes('oauth2.googleapis.com/token')) {
       const body = String(init?.body);
       assert.match(body, /redirect_uri=https%3A%2F%2Fcareers.example.test%2Fapi%2Fapplicants%2Fauth%2Fgoogle%2Fcallback/);
-      return new Response(JSON.stringify({ id_token: googleIdToken() }), { status: 200 });
+      return new Response(JSON.stringify({ id_token: await googleIdToken() }), { status: 200 });
     }
     return originalFetch(url, init);
   };

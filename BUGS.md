@@ -64,7 +64,9 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-072 | 72 | 🟠 | OAuth providers not configured — every social login returns 503 — [story](./docs/stories/story-bug-oauth-not-configured.md) |
 | NFR-073 | 73 | 🟡 | OAuth `redirect_uri` from `req.protocol` with no trust-proxy — breaks behind TLS — [story](./docs/stories/story-bug-oauth-redirect-uri-scheme.md) |
 | NFR-074 | 74 | 🟡 | OAuth flow hardening — provider-specific params, state→provider binding, `next` preservation — [story](./docs/stories/story-bug-oauth-flow-hardening.md) |
-| NFR-075 | 75 | 🟡 | In-memory OAuth state fallback does not enforce TTL during validation — [story](./docs/stories/story-bug-oauth-in-memory-state-ttl.md) |
+| NFR-075 | 75 | 🟡 | In-memory OAuth state fallback does not enforce TTL during validation — [story](./docs/stories/story-bug-oauth-in-memory-state-ttl.md) · [SEC-OAUTH-001 P2](./docs/features/security/feature-oauth-security-hardening.md) |
+| NFR-076 | 76 | 🟠 | OAuth `id_token` claims trusted without signature/`iss`/`aud`/`exp` verification — [story](./docs/stories/story-sec-oauth-idtoken-verification.md) · [SEC-OAUTH-001 P1](./docs/features/security/feature-oauth-security-hardening.md) |
+| NFR-077 | 77 | 🔵 | Regression guardrails for reflected-error XSS and open-redirect `next` (safe today, untested) — [story](./docs/stories/story-sec-xss-open-redirect-regression-guardrails.md) · [SEC-OAUTH-001 P3](./docs/features/security/feature-oauth-security-hardening.md) |
 
 ---
 

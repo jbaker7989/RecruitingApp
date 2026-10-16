@@ -8,7 +8,8 @@
  * State parameter (CSRF protection): stored in Redis (if REDIS_URL configured)
  * or in-memory Map with 10-min TTL as fallback.
  */
-import { randomBytes } from 'crypto';
+import { createHmac, randomBytes } from 'crypto';
+import { createRemoteJWKSet, customFetch, jwtVerify } from 'jose';
 import { addObservabilityEntry, generateId, now } from '../models/store.js';
 import { readStore, writeStore } from '../models/store.js';
 import { signApplicantToken } from './tokenService.js';
@@ -85,7 +86,8 @@ setInterval(() => {
 // ─── IdP configuration ────────────────────────────────────────────────────────
 
 interface OIDCConfig {
-  issuer: string;
+  issuer: string | string[];
+  jwksURL?: string;
   authorizationURL: string;
   tokenURL: string;
   userInfoURL: string;
@@ -96,7 +98,8 @@ interface OIDCConfig {
 
 function googleConfig(redirectUri: string): OIDCConfig {
   return {
-    issuer: 'https://accounts.google.com',
+    issuer: ['https://accounts.google.com', 'accounts.google.com'],
+    jwksURL: 'https://www.googleapis.com/oauth2/v3/certs',
     authorizationURL: 'https://accounts.google.com/o/oauth2/v2/auth',
     tokenURL: 'https://oauth2.googleapis.com/token',
     userInfoURL: 'https://www.googleapis.com/oauth2/v3/userinfo',
@@ -108,7 +111,9 @@ function googleConfig(redirectUri: string): OIDCConfig {
 
 function linkedinConfig(redirectUri: string): OIDCConfig {
   return {
-    issuer: 'https://linkedin.com',
+    // LinkedIn's integration guide and live discovery publish these issuers.
+    issuer: ['https://www.linkedin.com', 'https://www.linkedin.com/oauth'],
+    jwksURL: 'https://www.linkedin.com/oauth/openid/jwks',
     authorizationURL: 'https://www.linkedin.com/oauth/v2/authorization',
     tokenURL: 'https://www.linkedin.com/oauth/v2/accessToken',
     userInfoURL: 'https://api.linkedin.com/v2/userinfo',
@@ -180,12 +185,43 @@ async function exchangeCodeForTokens(
   return { idToken: data.id_token, accessToken: data.access_token ?? null };
 }
 
-// Decode a base64url JWT payload without verification (for extracting claims only)
-function decodeJwtPayload(token: string): Record<string, unknown> {
-  const parts = token.split('.');
-  if (parts.length !== 3) throw new Error('Invalid JWT format');
-  const payload = Buffer.from(parts[1], 'base64url').toString('utf-8');
-  return JSON.parse(payload);
+// Reuse resolvers across callbacks so jose can cache keys and handle rotation.
+// URLs come only from the provider configuration, never token headers or requests.
+const providerKeySets = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
+const OIDC_CLOCK_TOLERANCE_SECONDS = 30;
+
+async function verifyIdToken(config: OIDCConfig, token: string, clientId: string) {
+  try {
+    if (!clientId || !config.jwksURL) throw new Error('Missing verification configuration');
+    let keySet = providerKeySets.get(config.jwksURL);
+    if (!keySet) {
+      keySet = createRemoteJWKSet(new URL(config.jwksURL), {
+        // Resolve fetch at request time, including in offline regression tests.
+        [customFetch]: (url, options) => fetch(url, options),
+        timeoutDuration: 5000,
+      });
+      providerKeySets.set(config.jwksURL, keySet);
+    }
+    const { payload } = await jwtVerify(token, keySet, {
+      issuer: config.issuer,
+      audience: clientId,
+      algorithms: ['RS256'],
+      requiredClaims: ['iss', 'aud', 'sub', 'exp', 'iat'],
+      clockTolerance: OIDC_CLOCK_TOLERANCE_SECONDS,
+    });
+    if (typeof payload.sub !== 'string' || !payload.sub.trim() ||
+        typeof payload.iat !== 'number' || !Number.isFinite(payload.iat) ||
+        typeof payload.exp !== 'number' || !Number.isFinite(payload.exp) ||
+        payload.iat > Date.now() / 1000 + OIDC_CLOCK_TOLERANCE_SECONDS ||
+        payload.exp <= payload.iat) throw new Error('Invalid identity or timestamps');
+    // Multiple audiences require an authorized party identifying this client.
+    if ((Array.isArray(payload.aud) && payload.aud.length > 1 && payload.azp !== clientId) ||
+        (payload.azp !== undefined && payload.azp !== clientId)) throw new Error('Invalid authorized party');
+    return payload;
+  } catch {
+    // Do not reflect provider responses, token contents, or JWKS diagnostics.
+    throw new Error('OAuth identity verification failed');
+  }
 }
 
 async function fetchUserInfo(token: string, userInfoUrl: string): Promise<Record<string, unknown>> {
@@ -290,7 +326,7 @@ export async function handleGoogleCallback(
   const config = googleConfig(redirectUri);
 
   const { idToken } = await exchangeCodeForTokens(config, code, clientId, clientSecret, redirectUri);
-  const claims = decodeJwtPayload(idToken);
+  const claims = await verifyIdToken(config, idToken, clientId);
 
   const email = (claims['email'] as string | undefined)?.toLowerCase();
   if (!email) throw new Error('Google did not return an email address');
@@ -322,7 +358,7 @@ export async function handleLinkedInCallback(
 
   // LinkedIn returns id_token with openid scope
   const { idToken, accessToken } = await exchangeCodeForTokens(config, code, clientId, clientSecret, redirectUri);
-  const idClaims = decodeJwtPayload(idToken);
+  const idClaims = await verifyIdToken(config, idToken, clientId);
 
   const email = (idClaims['email'] as string | undefined)?.toLowerCase();
   if (!email) throw new Error('LinkedIn did not return an email address');
@@ -333,6 +369,7 @@ export async function handleLinkedInCallback(
   if (accessToken) {
     try {
       const profile = await fetchUserInfo(accessToken, config.userInfoURL);
+      if (profile['sub'] !== idClaims.sub) throw new Error('UserInfo subject mismatch');
       firstName = (profile['given_name'] as string | undefined) ?? firstName;
       lastName = (profile['family_name'] as string | undefined) ?? lastName;
     } catch {
@@ -387,7 +424,16 @@ export async function handleFacebookCallback(
   const accessToken = tokenData.access_token;
   if (!accessToken) throw new Error('No access_token in Facebook token response');
 
-  const profile = await fetchUserInfo(accessToken, config.userInfoURL);
+  // Meta validates this HMAC using the app secret before returning profile data.
+  const profileUrl = new URL(config.userInfoURL);
+  profileUrl.searchParams.set('appsecret_proof', createHmac('sha256', clientSecret).update(accessToken).digest('hex'));
+  let profile: Record<string, unknown>;
+  try {
+    profile = await fetchUserInfo(accessToken, profileUrl.toString());
+    if (typeof profile.id !== 'string' || !profile.id.trim()) throw new Error('Missing subject');
+  } catch {
+    throw new Error('OAuth identity verification failed');
+  }
   const email = (profile['email'] as string | undefined)?.toLowerCase();
   if (!email) throw new Error('Facebook did not return an email address');
 
