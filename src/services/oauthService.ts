@@ -64,6 +64,7 @@ async function validateState(state: string, provider: OAuthProvider): Promise<st
     const entry = inMemoryStateStore.get(state);
     if (!entry) return null;
     inMemoryStateStore.delete(state);
+    if (Date.now() - entry.createdAt >= STATE_TTL_SECONDS * 1000) return null;
     return entry.provider === provider ? entry.next : null;
   }
 }
@@ -79,7 +80,7 @@ initRedis();
 setInterval(() => {
   const cutoff = Date.now() - STATE_TTL_SECONDS * 1000;
   for (const [key, val] of inMemoryStateStore.entries()) {
-    if (val.createdAt < cutoff) inMemoryStateStore.delete(key);
+    if (val.createdAt <= cutoff) inMemoryStateStore.delete(key);
   }
 }, 60 * 1000).unref();
 

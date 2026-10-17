@@ -1,6 +1,6 @@
 # SEC-OAUTH-001: OAuth Security Hardening
 
-**Status:** Partially complete (SEC-001 QA passed) | **Story:** REC-TBD | **Type:** Security Hardening
+**Status:** Partially complete (SEC-001 and SEC-002 QA passed; SEC-003 proposed) | **Story:** REC-TBD | **Type:** Security Hardening
 **Created:** 2026-10-15 | **Source:** Security review of `bugs/oauth-login-fixes` (NFR-071–075)
 
 Close the security gaps surfaced by the review of the applicant social-login
@@ -28,7 +28,7 @@ hardening and spec-compliance gaps worth tracking, prioritized.
 | Order | ID | Severity | Story | Size | Status |
 |---|---|---|---|---|---|
 | P1 | SEC-001 (NFR-076) | 🟠 High | Verify OAuth `id_token` signature + claims instead of unverified decode | **M** | Complete; QA passed — [story](../../stories/story-sec-oauth-idtoken-verification.md) |
-| P2 | SEC-002 (NFR-075) | 🟡 Medium | Enforce in-memory OAuth state TTL at validation (parity with Redis) | **S** | Open — [story](../../stories/story-bug-oauth-in-memory-state-ttl.md) |
+| P2 | SEC-002 (NFR-075) | 🟡 Medium | Enforce in-memory OAuth state TTL at validation (parity with Redis) | **S** | Complete; QA passed; local only — [story](../../stories/story-bug-oauth-in-memory-state-ttl.md) |
 | P3 | SEC-003 (NFR-077) | 🔵 Low | Lock in XSS-safe error rendering + open-redirect `next` validation with regression tests | **S** | Proposed — [story](../../stories/story-sec-xss-open-redirect-regression-guardrails.md) |
 
 **Why this order:** SEC-001 is the only item touching an authentication trust
@@ -38,9 +38,10 @@ gap in a security control (CSRF state) that is quick to close. SEC-003 is a
 guardrail that converts the review's "verified safe today" conclusion into a
 durable invariant; lowest risk, so last.
 
-**Current delivery scope:** SEC-001 and its CI regression coverage only. SEC-002
-and SEC-003 remain open/proposed. No merge or production deployment is authorized.
-See the SEC-001 story for exact issuer, claim-validation, and QA requirements.
+**Current delivery scope:** SEC-002 and its CI regression coverage are implemented
+and have passed independent Claude QA. SEC-001 previously passed QA; SEC-003 remains proposed.
+SEC-002 permits a local commit only after independent QA; no push, merge, or
+production deployment is authorized. See each story for validation evidence.
 
 **Total feature size:** ~M + S + S ≈ 1 working day.
 
@@ -93,7 +94,7 @@ for the trusted-claims path.
 - **Severity:** 🟡 Medium
 - **Size:** **S** (1–3h)
 - **Where:** `src/services/oauthService.ts` — in-memory branch of `validateState`.
-- **Story:** [story-bug-oauth-in-memory-state-ttl.md](../../stories/story-bug-oauth-in-memory-state-ttl.md) (already exists, status Open).
+- **Story:** [story-bug-oauth-in-memory-state-ttl.md](../../stories/story-bug-oauth-in-memory-state-ttl.md) (complete; QA passed; local only).
 
 **Finding.** When Redis is unavailable, `validateState` accepts an in-memory state
 entry on existence + provider match but does not reject entries older than
@@ -103,11 +104,20 @@ equivalent. Below the exploit threshold (state is unguessable and single-use) bu
 a real parity/correctness gap in a security control.
 
 **Acceptance criteria** (carried from existing story):
-1. In-memory validation rejects and deletes records older than 600s.
-2. A time-controlled regression test proves an expired state is rejected before
-   the cleanup interval runs.
-3. Redis and in-memory semantics are equivalent for expiry, provider binding, and
-   one-time consumption.
+1. In-memory validation accepts a matching unused state at age < 600s and rejects
+   and deletes it at age >= 600s, independent of cleanup scheduling.
+2. Time-controlled regression tests prove acceptance at 599,999ms and rejection
+   at 600,000ms and 600,001ms without running cleanup.
+3. Provider binding and one-time consumption are preserved, including deletion
+   after expiry or provider mismatch. Offline Redis SETEX/GETDEL contract tests
+   cover the same semantics; real Redis integration is not claimed.
+
+**Implementation evidence (2026-10-16):** 31 new public-callback regression cases
+pass across all three providers; the former code fails 10 of those cases. Node
+24.20.0 typecheck, lint (0 errors; 124 existing warnings), build, full suite
+(221/221), and smoke pass. CI already includes the test through `npm test`.
+Independent Claude Sonnet 5.5 QA passed; see the [QA report](../../qa/sec-002-claude-qa.md).
+SEC-002 remains local only; the feature remains partially complete.
 
 ---
 
