@@ -49,4 +49,3 @@ All entries are Proposed. Use linked stories as the canonical AC and evidence so
 - [ ] **P1** [OBS-P3-S13: Prove incident response and close acceptance](../docs/stories/observability/story-obs-p3-s13-operational-game-day.md)
 
 - [ ] Checkpoint: all [P3 feature criteria](../docs/features/observability/feature-observability-p3-operational-readiness.md) have accepted evidence and required decisions are closed.
-

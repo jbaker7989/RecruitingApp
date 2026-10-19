@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { SpanKind } from '@opentelemetry/api';
 import { createTestTelemetry, getTracer } from '../src/telemetry/index.js';
 import { setLogSink } from '../src/telemetry/logger.js';
+import { oauthJwksResponse, signOAuthToken } from './helpers/oauthTokens.js';
 
 let telemetry: Awaited<ReturnType<typeof createTestTelemetry>>;
 let server: import('node:http').Server;
@@ -58,7 +59,7 @@ after(async () => {
 
 function request(path: string): Promise<{ status: number; body: Record<string, unknown> }> {
   return new Promise((resolve, reject) => {
-    get(base + path, response => {
+    get(base + path, { headers: { Accept: 'application/json' } }, response => {
       let body = ''; response.setEncoding('utf8'); response.on('data', chunk => { body += chunk; });
       response.on('end', () => resolve({ status: response.statusCode!, body: JSON.parse(body) }));
     }).on('error', reject);
@@ -109,6 +110,22 @@ test('S06: invalid callback state records one failed login and no outbound attem
   assert.equal(providerCalls, callsBefore);
 });
 
+test('S06: state issued for another provider records invalid state before token exchange', async () => {
+  const state = new URL((await oauth.initiateGoogle(base)).redirectTo).searchParams.get('state');
+  assert.ok(state);
+  await telemetry.flush();
+  const before = count('app.oauth.login.outcomes', { 'oauth.provider': 'linkedin', 'oauth.outcome': 'invalid_state' });
+  const attemptsBefore = count('app.oauth.client.attempts');
+  const callsBefore = providerCalls;
+  const response = await request(`/api/applicants/auth/linkedin/callback?code=SYNTHETIC_CODE_93812&state=${state}`);
+  assert.equal(response.status, 401);
+  await telemetry.flush();
+  assert.equal(count('app.oauth.login.outcomes', { 'oauth.provider': 'linkedin', 'oauth.outcome': 'invalid_state' }) - before, 1);
+  assert.equal(count('app.oauth.client.attempts'), attemptsBefore);
+  assert.equal(providerCalls, callsBefore);
+  assert.ok(!telemetry.payloadJson().includes(state));
+});
+
 test('S06: default-off redirect correlation emits no callback span link', async () => {
   assert.equal(process.env.OBS_OAUTH_SPAN_LINKS, undefined);
   const redirect = await getTracer('oauth-fixture').startActiveSpan('GET /api/applicants/auth/linkedin', { kind: SpanKind.SERVER }, async span => {
@@ -139,14 +156,28 @@ test('S06: actual LinkedIn callback recovers from userinfo failure with opted-in
     state = new URL(result.redirectTo).searchParams.get('state')!;
     span.end();
   });
-  const claims = Buffer.from(JSON.stringify({ email: 'synthetic93812@example.invalid', sub: 'synthetic-provider-id', given_name: 'Synthetic', family_name: 'Fixture' })).toString('base64url');
+  const now = Math.floor(Date.now() / 1000);
+  const idToken = await signOAuthToken({
+    iss: 'https://www.linkedin.com/oauth', aud: process.env.LINKEDIN_CLIENT_ID,
+    sub: 'synthetic-provider-id', iat: now, exp: now + 3600,
+    email: 'synthetic93812@example.invalid', given_name: 'Synthetic', family_name: 'Fixture',
+  });
   const originalBoundary = globalThis.fetch;
-  let attempts = 0;
+  let tokenCalls = 0;
+  let jwksCalls = 0;
+  let userinfoCalls = 0;
   globalThis.fetch = async (input) => {
-    attempts++;
     const url = String(input);
-    if (url === 'https://www.linkedin.com/oauth/v2/accessToken') return Response.json({ id_token: `synthetic.${claims}.synthetic`, access_token: 'synthetic-access-token-93812' });
-    if (url === 'https://api.linkedin.com/v2/userinfo') return new Response('SYNTHETIC_MODEL_OUTPUT_93812', { status: 503 });
+    if (url === 'https://www.linkedin.com/oauth/v2/accessToken') {
+      tokenCalls++;
+      return Response.json({ id_token: idToken, access_token: 'synthetic-access-token-93812' });
+    }
+    const jwks = oauthJwksResponse(url);
+    if (jwks) { jwksCalls++; return jwks; }
+    if (url === 'https://api.linkedin.com/v2/userinfo') {
+      userinfoCalls++;
+      return new Response('SYNTHETIC_MODEL_OUTPUT_93812', { status: 503 });
+    }
     throw new Error('Unexpected URL in synthetic boundary');
   };
   await telemetry.flush();
@@ -156,7 +187,9 @@ test('S06: actual LinkedIn callback recovers from userinfo failure with opted-in
     const response = await request(`/api/applicants/auth/linkedin/callback?code=SYNTHETIC_CODE_93812&state=${state}`);
     assert.equal(response.status, 200);
     assert.equal(typeof response.body.token, 'string');
-    assert.equal(attempts, 2);
+    assert.equal(tokenCalls, 1);
+    assert.equal(jwksCalls, 1);
+    assert.equal(userinfoCalls, 1);
     await telemetry.flush();
     assert.equal(count('app.oauth.client.attempts') - startAttempts, 2);
     assert.equal(count('app.oauth.login.outcomes', { 'oauth.outcome': 'success', 'oauth.recovered': true }) - startLogin, 1);

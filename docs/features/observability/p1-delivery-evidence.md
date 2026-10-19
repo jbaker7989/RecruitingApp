@@ -7,7 +7,7 @@ Date: 2026-10-19. Scope: local synthetic telemetry implementation; production de
 - `npm run typecheck`: pass.
 - `npm run lint`: pass (warnings do not fail the repository's lint gate).
 - `npm run build`: pass.
-- `npm test`: **220 passed, 0 failed, 0 skipped**.
+- `npm test`: **295 passed, 0 failed, 0 skipped**.
 - `npm run smoke`: `smoke-health=ok`.
 - `npm run telemetry:verify`: pass against local Collector, Jaeger, Prometheus and Loki. A unique synthetic service/release produced six fresh traces, exactly six histogram observations, a finite p95 result and one searchable structured startup log. Queries cannot pass using an earlier run's service identity.
 - Two pre-aggregation metric regressions pass: forbidden keys and invalid values collapse to one correct metric series without losing counts. Export sanitization remains defense in depth.
@@ -36,3 +36,5 @@ Implementation is reviewable; **P1 is not accepted for production**. S01/S02 pro
 The restart test agent independently audited all 44 story criteria. Its recorded RED results are historical and were resolved before the integrated 220-test run. Feature acceptance must not be inferred solely from green CI.
 
 Preview configuration is tracked as [OBS-P1-S11 (P0 — Critical)](../../stories/observability/story-obs-p1-s11-vercel-preview-configuration.md). The user authorized proceeding with a draft PR while this gate remains blocked.
+
+Latest integration includes origin/main OAuth identity verification, provider-bound state TTL, and dashboard redirects. All 295 tests pass after merge resolution, including the signed-JWT/JWKS observability fixture and provider-mismatch regression; typecheck, lint, build and smoke also pass. Local backend/load and hosted-preview evidence above predates this merge and is not a claim of hosted verification for the final revision.

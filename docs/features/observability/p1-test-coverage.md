@@ -2,9 +2,9 @@
 
 **Status:** Verification in progress; no production or hosted acceptance is implied.
 **Scope:** Synthetic localhost fixtures only, no paid services. Root owns integrated checks, CI, deployment and final acceptance.
-**Latest integrated result (2026-10-19):** 220 tests pass, 0 fail/skip; typecheck, lint, build and built-artifact smoke pass. Both forbidden metric keys and invalid values are sanitized BEFORE SDK aggregation. Historical RED evidence below is retained as regression provenance, not current failure status. Local Jaeger/Prometheus/Loki queries passed for a unique synthetic run. See [integration evidence](p1-delivery-evidence.md) for remaining gates.
+**Latest integrated result (2026-10-19):** 295 tests pass, 0 fail/skip; typecheck, lint, build and built-artifact smoke pass. Both forbidden metric keys and invalid values are sanitized BEFORE SDK aggregation. Historical RED evidence below is retained as regression provenance, not current failure status. Local Jaeger/Prometheus/Loki queries passed for a unique synthetic run. See [integration evidence](p1-delivery-evidence.md) for remaining gates.
 
-**Traceability:** All 44 acceptance criteria from the ten active P1 stories appear below. A row states required verification, not an assertion that it passed.
+**Traceability:** All 44 acceptance criteria from the original ten P1 stories appear below. A row states required verification, not an assertion that it passed.
 
 ## Prioritized verification stories
 
@@ -56,7 +56,7 @@
 | OBS-P1-S09-AC4 | Automated + manual hosted | T04 required failure/optional degradation/stale exporter; no durability claim | Local failure/degradation/stale fixtures pass; hosted proof pending |
 | OBS-P1-S10-AC1 | Manual review | Enumerate every route/outbound client, actual integration and remediation links | Inventory documented; independent review pending |
 | OBS-P1-S10-AC2 | Manual hosted | Backend request/provider/Redis, histogram/error queries, logs, health and release filter | Approval/hosted gate pending |
-| OBS-P1-S10-AC3 | Automated + manual hosted | T01–T04 local checks plus actual preview overhead/revision/counts/query/reviewer | Local full suite passes 220/220; preview load/reviewer pending |
+| OBS-P1-S10-AC3 | Automated + manual hosted | T01–T04 local checks plus actual preview overhead/revision/counts/query/reviewer | Local full suite passes 295/295; preview load/reviewer pending |
 | OBS-P1-S10-AC4 | Manual + decision | Feature AC links and mandatory open gates; never mark P1 Complete while blocked | Ledger maintained; mandatory gates remain open |
 
 ## Fixture and assertion contract
@@ -103,3 +103,16 @@ S01/S02 destination, cost, data policy, retention, residency and access decision
 - OAuth correlation links are locally verified both default-off and synthetic opt-in. Policy approval remains required before enabling links beyond isolated fixtures.
 - Real Redis outage/TTL, provider exchange, Vercel short-invocation delivery, and hosted same-load overhead require separate evidence; localhost stubs cannot close them.
 - S01/S02 policy and budget rows remain unresolved until named approval. Root's local backend query proof still needs an independent artifact/reviewer to close S01-AC2.
+
+## Critical Preview configuration follow-up
+
+OBS-P1-S11 adds six hosted configuration criteria beyond the original 44-AC implementation ledger. All remain pending.
+
+| Criterion | Verification | Status |
+|---|---|---|
+| OBS-P1-S11-AC1 | Administrator confirms distinct strong Preview secrets and branch scope without values | Blocked |
+| OBS-P1-S11-AC2 | Redeploy revision, validate startup and HTTPS APP_BASE_URL | Blocked |
+| OBS-P1-S11-AC3 | Hosted health, synthetic session and unauthorized-route checks | Blocked |
+| OBS-P1-S11-AC4 | Hosted readiness, authorized diagnostics and unavailable-collector behavior | Blocked |
+| OBS-P1-S11-AC5 | Named owner, replacement/rollback and environment isolation review | Pending |
+| OBS-P1-S11-AC6 | Sanitized evidence linked; independent acceptance gates retained | Pending |
