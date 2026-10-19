@@ -1,8 +1,15 @@
 # OBS-001: Adding OpenTelemetry to the Recruiting Application
 
-**Status:** Proposed | **Story:** REC-TBD | **Type:** Observability / Platform
+**Status:** Proposed — expanded into three delivery features | **Initiative:** OBS-001 | **Type:** Observability / Platform
 **Created:** 2026-10-18 | **Audience:** Engineering, Product, Leadership (no prior telemetry knowledge assumed)
 
+> **Review update (2026-10-18):** The [detailed review](review-opentelemetry-proposal.md),
+> [three-feature backlog and decision register](README.md), and [prioritized stories](../../stories/observability/README.md)
+> are the delivery specification. The user confirmed all three external-visibility categories:
+> provider calls, independent uptime/browser monitoring, and customer-facing status.
+> Platform, budgets, retention/residency, SLO targets and named owners remain gated decisions.
+> This proposal is not evidence of implementation.
+>
 > **How to read this document.** Start with the **Executive Summary** (one page, no
 > jargon). If a term is unfamiliar, jump to the **Dictionary of Terms**. The
 > **Current State** and **The Gap** sections explain what we have and what hurts.
@@ -35,15 +42,17 @@ in place of it.
 | "When this request failed, what was the exact chain of calls behind it?" | ❌ No — events aren't linked together. |
 
 ### Why it matters for *this* product
-This is an AI-heavy application: a single user action can trigger a LangChain/LangGraph
-agent, one or more OpenAI/Anthropic LLM calls, a Pinecone vector search, a Redis lookup,
+This is an AI-heavy application: a single user action can trigger a LangChain chain or scheduling
+state machine, one or more OpenAI/Anthropic LLM calls, a Pinecone vector search, a Redis lookup,
 and external OAuth provider calls. These are the hardest things to debug and the most
 expensive to run. OpenTelemetry makes each of those steps visible and measurable.
 
 ### The ask
-Adopt OpenTelemetry in three phases (see §9). Phase 1 is roughly **half a day** of work
-and delivers automatic request tracing with almost no code changes. Total effort to full
-value is approximately **2–3 engineering days**, plus choosing a backend to view the data.
+Adopt OpenTelemetry in three phases (see §9), with explicit request metrics, safe
+logging and export validation as well as traces. The original half-day-per-phase /
+2–3 day estimate is withdrawn for the expanded scope. Size the prioritized stories after
+backend/runtime spikes, separating engineering effort from approvals, provisioning,
+baseline collection and operational validation.
 
 ### What this is *not*
 - It is **not** a replacement for the audit log (we keep that for compliance/history).
@@ -117,7 +126,7 @@ modules (routes, middleware, agents, services).
                                                      └─────────────┬───────────┘
                                                                    ▼
                                                      data/observability.json
-                                                     (a growing JSON array)
+                                                     (JSON object with logs array)
 ```
 
 **What this is good at:** a human-readable business/audit trail — "applicant 123 logged
@@ -142,7 +151,7 @@ in via Google at 10:04, success."
 ```mermaid
 flowchart LR
     U[User action] --> R[Express route]
-    R --> A[LangChain / LangGraph agent]
+    R --> A[LangChain / scheduling state machine]
     A --> L[OpenAI / Anthropic LLM]
     A --> P[Pinecone vector search]
     R --> D[JSON store / Redis]
@@ -192,8 +201,9 @@ flowchart TB
 - **Logs** (optionally routed through OTel) carry the **trace ID** so a log line links to
   the exact trace it came from.
 
-The key promise: **one standard format (OTLP), many interchangeable backends.** We
-instrument once and can change where the data goes with configuration, never a rewrite.
+The key promise: **standard instrumentation and export reduce backend coupling.**
+Signal support and backend-specific dashboards, alerting and policies still require
+validation and migration work.
 
 ---
 
@@ -213,21 +223,22 @@ flowchart TB
     SP --> SDK[OTel SDK / @vercel/otel]
     SDK -->|OTLP| BK[(Observability backend)]
 
-    AUD -->|now also stores<br/>trace_id in details| STORE[(durable audit store)]
+    AUD -->|now also stores<br/>trace_id in details| STORE[(audit store: durability blocked by NFR-034)]
 
     BK <-. correlate by trace_id .-> STORE
 ```
 
 **Design principles**
-1. **Additive & non-breaking.** The 45 existing `addObservabilityEntry` call sites keep
+1. **Additive & non-breaking.** The existing `addObservabilityEntry` call sites keep
    working. We only enrich `details` with the active `trace_id`.
-2. **Auto first, manual where it pays.** Auto-instrument Express, outgoing HTTP/`fetch`,
-   and `ioredis` for free coverage; add a few **manual spans/metrics** for the things
+2. **Auto first, manual where it pays.** Verify compatible instrumentation for Express, outgoing HTTP/`fetch`,
+   and `ioredis` against the actual runtime; add a few **manual spans/metrics** for the things
    auto-instrumentation can't know — LLM token counts, Pinecone query shape, agent steps.
-3. **Vendor-neutral.** Export via OTLP; the backend choice is a deployment decision, not a
-   code decision.
-4. **Serverless-correct.** On Vercel, use `@vercel/otel` so spans are flushed before the
-   function suspends (a naïve SDK setup drops spans on serverless).
+3. **Vendor-neutral.** Prefer OTLP for portability. Signal support, queries, dashboards, alerts,
+   retention and access controls still require backend-specific configuration and validation.
+4. **Serverless-correct.** Evaluate `@vercel/otel` against the actual Express/ESM deployment entrypoint;
+   prove cold/warm delivery, bounded flushing and failure behavior. Package selection alone
+   is not a guarantee against span or metric loss.
 
 ### Mapping to this codebase
 
@@ -238,7 +249,7 @@ flowchart TB
 | LLM calls | `@langchain/openai`, `@langchain/anthropic` (`src/chains/*`, `src/routes/agents/*`) | **Manual** span per call + **metric** for token usage/cost, tagged by feature. |
 | Vector search | `@pinecone-database/pinecone` (`src/services/vectorStore/pinecone.ts`) | **Manual** span: index, top-k, duration. |
 | Cache/session | `ioredis` (OAuth state store) | **Auto** (ioredis instrumentation). |
-| Agents | LangGraph scheduling agent (`src/agents/scheduling/agent.ts`) | **Manual** spans per graph node/step. |
+| Agents | Custom scheduling state machine (`src/agents/scheduling/agent.ts`) | **Manual** spans per actual state-machine step; label simulated integrations. |
 | Audit events | `addObservabilityEntry` (45 sites) | **Unchanged** + inject `trace_id` into `details` for correlation. |
 | Health | `/health` (`src/index.ts:41`) | Optional: expose readiness; keep out of latency SLOs. |
 
@@ -254,8 +265,8 @@ flowchart TB
   rate < 1%") and get paged before users complain.
 - **Deploy safety.** Compare latency/error metrics before and after a release (directly
   relevant to the kind of Vercel runtime regressions seen in PR #11 / NFR-071).
-- **No lock-in.** Standard format; switch or add backends without re-instrumenting.
-- **Low ongoing cost to maintain.** Auto-instrumentation tracks framework upgrades.
+- **No lock-in.** Standard APIs reduce instrumentation coupling; backend queries, access, alerts and retention still need migration validation.
+- **Low ongoing cost to maintain.** Instrumentation compatibility is revalidated when framework/SDK versions change.
 
 ---
 
@@ -269,40 +280,50 @@ flowchart TB
 **Risks & mitigations**
 | Risk | Mitigation |
 |---|---|
-| Spans lost on Vercel serverless (function suspends before flush) | Use `@vercel/otel`, which handles flushing; verify in a preview deploy. |
+| Spans lost on Vercel serverless (function suspends before flush) | Validate the chosen SDK/runtime lifecycle with cold/warm and exporter-failure tests in preview. |
 | Telemetry cost / volume growth | Sampling (e.g. 10–20% of traces), keep high-cardinality values off metrics. |
-| Leaking PII/secrets into span attributes | Attribute allow-list; never attach tokens, passwords, raw résumé text, or full emails. Mirrors existing security posture (see security feature SEC-OAUTH-001). |
+| Leaking PII/secrets into span attributes | P1 attribute allow-list before any export; sanitize automatic spans, exceptions and diagnostics, including model output embedded in parsing errors. The originally cited security feature path is absent in this checkout. |
 | "We have data but no destination" | Phase 1 includes selecting and wiring exactly one backend before declaring value. |
 | Performance overhead | Minimal with batching + sampling; validate with a before/after latency check. |
 
 **Dependencies**
 - A chosen observability backend / OTLP endpoint (decision needed — see Appendix B).
-- Deploy target: Vercel (Node runtime on Fluid Compute) → `@vercel/otel`.
+- Intended deploy target: Vercel; actual runtime/entrypoint and SDK compatibility must be verified by OBS-P1-S03.
 - Env vars for the exporter endpoint + headers (managed like other secrets).
 
 ---
 
-## 9. Phased Implementation Roadmap (with sizing)
+## 9. Phased implementation roadmap and acceptance
 
-Sizing legend (shared with `docs/features/security/`): **XS** <1h · **S** 1–3h ·
-**M** 3–6h (½ day) · **L** 1–2 days.
+The phases retain the original intent. Privacy controls move to P1 because export
+must be safe from the first signal. P3 hardens governance and adds the user-confirmed
+external and customer-facing operational scope. Every linked feature maps its ACs to
+prioritized stories with verification evidence and explicit release gates.
 
-| Phase | Deliverable | Size | Outcome |
-|---|---|---|---|
-| **P1 — Baseline tracing** | Add `@vercel/otel` + Node auto-instrumentations (Express, fetch, ioredis); pick one backend; verify traces appear from a preview deploy. | **M** | Every request traced automatically, incl. OAuth provider calls — near-zero code. |
-| **P2 — AI & custom spans/metrics** | Manual spans for LLM calls, Pinecone queries, and LangGraph agent steps; token-usage/cost metric tagged by feature. | **M** | The pink boxes in §4 become visible and measurable; AI cost tracked. |
-| **P3 — Correlation, SLOs & guardrails** | Inject `trace_id` into `ObservabilityLog.details`; define 3–5 SLOs + alerts; set sampling; add a PII attribute allow-list; document runbook. | **M** | Audit ↔ trace correlation, alerting, and safe, cost-controlled steady state. |
+| Phase | Feature | Required outcome |
+|---|---|---|
+| P1 — Baseline tracing | [OBS-001-P1](feature-observability-p1-baseline-tracing.md) | Real preview request/HTTP/Redis traces; full-population p95/error-rate metrics; safe logs; runtime visibility; proven export reliability. |
+| P2 — AI & custom spans/metrics | [OBS-001-P2](feature-observability-p2-ai-custom-telemetry.md) | Actual LLM/embedding, Pinecone, store and workflow timings/outcomes; feature token usage and estimated cost with explicit completeness. |
+| P3 — Correlation, SLOs & guardrails | [OBS-001-P3](feature-observability-p3-operational-readiness.md) | Safe audit correlation; at least three approved SLOs with tested alerts; sampling/governance; independent uptime/browser checks; customer status and incident readiness. |
 
-**Total:** ~**3 M-sized phases ≈ 2–3 engineering days**, plus the backend decision.
-Each phase is independently shippable and delivers value on its own.
+### Acceptance refinements
 
-### Acceptance criteria (per phase)
-- **P1:** A real request to a preview deployment produces a trace in the backend with
-  spans for the Express handler and any outbound HTTP; p95/error-rate metrics populate.
-- **P2:** A resume-parse or match request shows distinct LLM, Pinecone, and store spans
-  with durations; a token-usage metric is queryable by feature/route.
-- **P3:** An audit entry's `details.trace_id` opens the corresponding trace; at least
-  three SLOs have alerts; sampling and an attribute allow-list are in place and documented.
+- **P1:** A real preview request produces a correctly parented trace for the actual
+  Express handler and outbound calls. Request p95/error-rate metrics populate from
+  a verified metrics pipeline independent of trace sampling. Privacy and delivery
+  gates must pass before release.
+- **P2:** Real resume-parse/matching fixtures collectively show distinct LLM/embedding,
+  Pinecone and store spans with durations; no fictitious call is inserted to force
+  all components into one request. Tokens are queryable by feature/route mapping;
+  missing usage is unknown, not zero. Cost estimates expose price/usage coverage.
+- **P3:** An audit entry's `details.trace_id` resolves its retained trace for authorized
+  users; unsampled, expired or unavailable traces have an explicit fallback. At least
+  three SLOs have approved targets and tested alerts/runbooks. Sampling, privacy,
+  retention, external probes and customer status meet the linked feature criteria.
+
+No delivery estimate is committed. [D01–D15](README.md#decision-register-and-release-gates)
+record decisions and the specific releases they block. All stories remain Proposed.
+NFR-034 remains an independent blocker for production mutation and audit durability.
 
 ---
 
@@ -318,51 +339,42 @@ Trace: POST /api/agents/communication/generate        total 1.84s   status OK
 │  │  └─ span  store.write (observability)             0.04s
 │  └─ span  http.fetch  (provider userinfo)            0.31s   http.status=200
 ```
-*Reading it:* the LLM call dominates (1.21s of 1.84s) — the obvious optimization target.
-None of this timing exists today.
+*Reading it:* this is an illustration, not a verified route call tree; communication
+generation is not asserted to call OAuth userinfo. Inclusive and overlapping child
+span durations must not be summed as elapsed time. Actual paths are mapped by OBS-P2-S01.
 
 ### Appendix B — Backend options (decision aid)
 
 | Backend | Why consider | Notes |
 |---|---|---|
-| **Vercel Observability / OTel** | Native to our deploy target; least setup | Good default for P1. |
-| **Datadog** | Rich APM; a Datadog integration is already available to the team | Paid; strong dashboards/alerting. |
+| **Vercel Observability / OTel** | Candidate aligned to intended hosting | Verify plan, supported signals, querying, alerting and retention; not preselected. |
+| **Datadog** | Candidate APM platform; account/entitlement unverified | Paid; strong dashboards/alerting. |
 | **Grafana Cloud (Tempo/Mimir/Loki)** | Open-source stack; cost-effective | More setup. |
 | **Honeycomb** | Excellent high-cardinality trace exploration | Paid; great for debugging. |
 
-All speak OTLP, so the choice does not change application code — only exporter config.
+OTLP can reduce instrumentation coupling. OBS-P1-S01 must verify signal-specific
+support, plan entitlement, ingest authentication, query/dashboards, alerts and cost.
+Switching backend is not assumed to be an exporter-only change.
 
-### Appendix C — Minimal P1 shape (illustrative, not final)
+### Appendix C — Implementation safeguards
 
-```ts
-// instrumentation.ts  (loaded before app code; Vercel convention)
-import { registerOTel } from '@vercel/otel';
-registerOTel({ serviceName: 'rec-app-build' });
-// Auto-instruments Express, fetch, and more; exporter endpoint via env (OTLP).
-```
-
-```ts
-// Manual LLM span + token metric (Phase 2 sketch)
-await tracer.startActiveSpan('llm.openai.chat', async (span) => {
-  span.setAttribute('llm.model', model);
-  const res = await chat.invoke(messages);
-  span.setAttribute('llm.tokens.total', res.usage?.total_tokens ?? 0);
-  tokenCounter.add(res.usage?.total_tokens ?? 0, { feature: 'candidate_communication' });
-  span.end();
-  return res;
-});
-```
+The former minimal snippets are intentionally removed: they implied that a filename
+alone initializes this Express/ESM app, treated missing token usage as zero, and ended
+spans only on success. Use the acceptance contracts in OBS-P1-S03, OBS-P2-S02 and
+OBS-P2-S04 instead. Initialization must precede dependency loading in the actual
+runtime; spans must end on success/error/cancellation; missing usage remains unknown;
+automatic exception recording must not leak model output.
 
 ### Appendix D — References
 - OpenTelemetry docs: https://opentelemetry.io/docs/
 - OTel JS / Node: https://opentelemetry.io/docs/languages/js/
-- `@vercel/otel`: https://vercel.com/docs/observability/otel-overview
+- `@vercel/otel`: https://vercel.com/docs/tracing/instrumentation
 - OTLP spec: https://opentelemetry.io/docs/specs/otlp/
-- Related internal docs: `docs/features/README.md`, `docs/features/security/feature-oauth-security-hardening.md`, `BUGS.md` (NFR-034 data-store persistence)
+- Related internal docs: [feature index](../README.md), [decision and story index](README.md), [NFR-034 in BUGS.md](../../../BUGS.md). The originally referenced security feature file is absent in this checkout.
 
 ---
 
 ## Related tracking
-- Proposes new work; suggested tracking ID **NFR-079** (next free ID) once accepted.
+- Work is tracked locally as **OBS-001-P1/P2/P3** with stable **OBS-Px-Snn** story IDs. No external issue or NFR number is reserved by this document.
 - **NFR-034** (JSON data-store persistence on serverless) is a prerequisite for *audit-log*
   durability but **independent** of OTel telemetry — do not conflate them.

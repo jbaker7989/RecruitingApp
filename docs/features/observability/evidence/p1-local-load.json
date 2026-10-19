@@ -1,0 +1,481 @@
+{
+  "generated_at": "2026-10-19T06:10:35.411Z",
+  "environment": {
+    "kind": "local-loopback-synthetic",
+    "node": "v24.20.0",
+    "platform": "darwin-arm64",
+    "revision": "3ce9c71",
+    "entry": "dist/index.js"
+  },
+  "proposed_budget_UNAPPROVED": {
+    "approved": false,
+    "maxP95OverheadRatio": 1.5,
+    "maxFaultP95OverheadRatio": 2,
+    "maxRssGrowthRatio": 1.5,
+    "minDeliveryCompleteness": 0.9
+  },
+  "telemetry_wired_detected": true,
+  "readiness_wired_detected": true,
+  "limitations": [
+    "Local loopback only: says nothing about Vercel cold starts, forced termination loss, or hosted backend delivery (pending).",
+    "Budgets are proposals without an approver (OBS-P1-S07-AC1 open); \"within\" flags are informational, not acceptance.",
+    "Delivery completeness is not computed here: span counts depend on sampling/exclusions (/health is excluded by design) and a protobuf sink body is uncounted.",
+    "Single short run on a developer machine is noisy; repeat and compare before drawing conclusions."
+  ],
+  "scenarios": [
+    {
+      "scenario": "baseline_disabled",
+      "telemetry_enabled": false,
+      "sink_mode": "none",
+      "requests": 600,
+      "concurrency": 12,
+      "statuses": {
+        "200": 240,
+        "401": 240,
+        "503": 120
+      },
+      "unexpected_status_count": 0,
+      "throughput_rps": 6184.1,
+      "latency_ms": {
+        "p50": 1.976667,
+        "p95": 2.250875,
+        "p99": 2.501375,
+        "max": 3.66275
+      },
+      "rss_kb": {
+        "before": 203856,
+        "after": 223168
+      },
+      "readiness": {
+        "status_code": 200,
+        "body": {
+          "status": "ready",
+          "checked_at": "2026-10-19T06:10:31.198Z",
+          "dependencies": [
+            {
+              "name": "store",
+              "required": true,
+              "status": "up"
+            },
+            {
+              "name": "oauth_state_store",
+              "required": false,
+              "status": "up"
+            },
+            {
+              "name": "telemetry_export",
+              "required": false,
+              "status": "up"
+            }
+          ]
+        }
+      },
+      "shutdown_ms": 9,
+      "safe_log_tail_has_secret_like_values": false
+    },
+    {
+      "scenario": "enabled_sink_ok",
+      "telemetry_enabled": true,
+      "sink_mode": "ok",
+      "requests": 600,
+      "concurrency": 12,
+      "statuses": {
+        "200": 240,
+        "401": 240,
+        "503": 120
+      },
+      "unexpected_status_count": 0,
+      "throughput_rps": 5898.2,
+      "latency_ms": {
+        "p50": 2.072833,
+        "p95": 3.920042,
+        "p99": 4.3675,
+        "max": 4.448541
+      },
+      "rss_kb": {
+        "before": 221888,
+        "after": 245600
+      },
+      "readiness": {
+        "status_code": 200,
+        "body": {
+          "status": "ready",
+          "checked_at": "2026-10-19T06:10:31.724Z",
+          "dependencies": [
+            {
+              "name": "store",
+              "required": true,
+              "status": "up"
+            },
+            {
+              "name": "oauth_state_store",
+              "required": false,
+              "status": "up"
+            },
+            {
+              "name": "telemetry_export",
+              "required": false,
+              "status": "up"
+            }
+          ]
+        }
+      },
+      "shutdown_ms": 21,
+      "sink": {
+        "requests": 9,
+        "spans": 961,
+        "metricsPosts": 1,
+        "bytes": 1236220
+      },
+      "safe_log_tail_has_secret_like_values": false
+    },
+    {
+      "scenario": "fault_sink_http500",
+      "telemetry_enabled": true,
+      "sink_mode": "http500",
+      "requests": 600,
+      "concurrency": 12,
+      "statuses": {
+        "200": 240,
+        "401": 240,
+        "503": 120
+      },
+      "unexpected_status_count": 0,
+      "throughput_rps": 6080,
+      "latency_ms": {
+        "p50": 1.9745,
+        "p95": 2.553042,
+        "p99": 3.827625,
+        "max": 3.98
+      },
+      "rss_kb": {
+        "before": 217792,
+        "after": 225520
+      },
+      "readiness": {
+        "status_code": 200,
+        "body": {
+          "status": "ready",
+          "checked_at": "2026-10-19T06:10:32.261Z",
+          "dependencies": [
+            {
+              "name": "store",
+              "required": true,
+              "status": "up"
+            },
+            {
+              "name": "oauth_state_store",
+              "required": false,
+              "status": "up"
+            },
+            {
+              "name": "telemetry_export",
+              "required": false,
+              "status": "up"
+            }
+          ]
+        }
+      },
+      "shutdown_ms": 8,
+      "sink": {
+        "requests": 3,
+        "spans": 384,
+        "metricsPosts": 0,
+        "bytes": 492153
+      },
+      "safe_log_tail_has_secret_like_values": false
+    },
+    {
+      "scenario": "fault_sink_hang",
+      "telemetry_enabled": true,
+      "sink_mode": "hang",
+      "requests": 600,
+      "concurrency": 12,
+      "statuses": {
+        "200": 240,
+        "401": 240,
+        "503": 120
+      },
+      "unexpected_status_count": 0,
+      "throughput_rps": 6169.7,
+      "latency_ms": {
+        "p50": 2.0285,
+        "p95": 2.338917,
+        "p99": 2.615959,
+        "max": 3.663625
+      },
+      "rss_kb": {
+        "before": 212544,
+        "after": 222976
+      },
+      "readiness": {
+        "status_code": 200,
+        "body": {
+          "status": "ready",
+          "checked_at": "2026-10-19T06:10:32.786Z",
+          "dependencies": [
+            {
+              "name": "store",
+              "required": true,
+              "status": "up"
+            },
+            {
+              "name": "oauth_state_store",
+              "required": false,
+              "status": "up"
+            },
+            {
+              "name": "telemetry_export",
+              "required": false,
+              "status": "up"
+            }
+          ]
+        }
+      },
+      "shutdown_ms": 1025,
+      "sink": {
+        "requests": 6,
+        "spans": 640,
+        "metricsPosts": 1,
+        "bytes": 824842
+      },
+      "safe_log_tail_has_secret_like_values": false
+    },
+    {
+      "scenario": "fault_sink_connection_drop",
+      "telemetry_enabled": true,
+      "sink_mode": "drop",
+      "requests": 600,
+      "concurrency": 12,
+      "statuses": {
+        "200": 240,
+        "401": 240,
+        "503": 120
+      },
+      "unexpected_status_count": 0,
+      "throughput_rps": 6117.3,
+      "latency_ms": {
+        "p50": 2.01475,
+        "p95": 2.26325,
+        "p99": 3.299417,
+        "max": 4.608375
+      },
+      "rss_kb": {
+        "before": 215584,
+        "after": 225872
+      },
+      "readiness": {
+        "status_code": 200,
+        "body": {
+          "status": "ready",
+          "checked_at": "2026-10-19T06:10:34.332Z",
+          "dependencies": [
+            {
+              "name": "store",
+              "required": true,
+              "status": "up"
+            },
+            {
+              "name": "oauth_state_store",
+              "required": false,
+              "status": "up"
+            },
+            {
+              "name": "telemetry_export",
+              "required": false,
+              "status": "up"
+            }
+          ]
+        }
+      },
+      "shutdown_ms": 25,
+      "sink": {
+        "requests": 6,
+        "spans": 640,
+        "metricsPosts": 1,
+        "bytes": 824842
+      },
+      "safe_log_tail_has_secret_like_values": false
+    },
+    {
+      "scenario": "fault_backend_unreachable",
+      "telemetry_enabled": true,
+      "sink_mode": "none",
+      "requests": 600,
+      "concurrency": 12,
+      "statuses": {
+        "200": 240,
+        "401": 240,
+        "503": 120
+      },
+      "unexpected_status_count": 0,
+      "throughput_rps": 6012.4,
+      "latency_ms": {
+        "p50": 2.003833,
+        "p95": 2.616459,
+        "p99": 4.541791,
+        "max": 5.752416
+      },
+      "rss_kb": {
+        "before": 213424,
+        "after": 222944
+      },
+      "readiness": {
+        "status_code": 200,
+        "body": {
+          "status": "ready",
+          "checked_at": "2026-10-19T06:10:34.870Z",
+          "dependencies": [
+            {
+              "name": "store",
+              "required": true,
+              "status": "up"
+            },
+            {
+              "name": "oauth_state_store",
+              "required": false,
+              "status": "up"
+            },
+            {
+              "name": "telemetry_export",
+              "required": false,
+              "status": "up"
+            }
+          ]
+        }
+      },
+      "shutdown_ms": 12,
+      "safe_log_tail_has_secret_like_values": false
+    },
+    {
+      "scenario": "restore_enabled_sink_ok",
+      "telemetry_enabled": true,
+      "sink_mode": "ok",
+      "requests": 600,
+      "concurrency": 12,
+      "statuses": {
+        "200": 240,
+        "401": 240,
+        "503": 120
+      },
+      "unexpected_status_count": 0,
+      "throughput_rps": 5923.9,
+      "latency_ms": {
+        "p50": 1.978833,
+        "p95": 3.672334,
+        "p99": 4.699917,
+        "max": 6.3905
+      },
+      "rss_kb": {
+        "before": 219456,
+        "after": 229408
+      },
+      "readiness": {
+        "status_code": 200,
+        "body": {
+          "status": "ready",
+          "checked_at": "2026-10-19T06:10:35.402Z",
+          "dependencies": [
+            {
+              "name": "store",
+              "required": true,
+              "status": "up"
+            },
+            {
+              "name": "oauth_state_store",
+              "required": false,
+              "status": "up"
+            },
+            {
+              "name": "telemetry_export",
+              "required": false,
+              "status": "up"
+            }
+          ]
+        }
+      },
+      "shutdown_ms": 9,
+      "sink": {
+        "requests": 9,
+        "spans": 961,
+        "metricsPosts": 1,
+        "bytes": 1236222
+      },
+      "safe_log_tail_has_secret_like_values": false
+    }
+  ],
+  "checks": [
+    {
+      "scenario": "enabled_sink_ok",
+      "p95_ratio_vs_disabled": 1.74,
+      "within_proposed_p95_budget": false,
+      "rss_ratio_vs_disabled": 1.1,
+      "within_proposed_rss_budget": true,
+      "user_visible_behavior_unchanged": true,
+      "shutdown_ms": 21,
+      "telemetry_reached_sink": true,
+      "spans_received_by_sink": 961,
+      "error": null
+    },
+    {
+      "scenario": "fault_sink_http500",
+      "p95_ratio_vs_disabled": 1.13,
+      "within_proposed_p95_budget": true,
+      "rss_ratio_vs_disabled": 1.01,
+      "within_proposed_rss_budget": true,
+      "user_visible_behavior_unchanged": true,
+      "shutdown_ms": 8,
+      "telemetry_reached_sink": true,
+      "spans_received_by_sink": 384,
+      "error": null
+    },
+    {
+      "scenario": "fault_sink_hang",
+      "p95_ratio_vs_disabled": 1.04,
+      "within_proposed_p95_budget": true,
+      "rss_ratio_vs_disabled": 1,
+      "within_proposed_rss_budget": true,
+      "user_visible_behavior_unchanged": true,
+      "shutdown_ms": 1025,
+      "telemetry_reached_sink": true,
+      "spans_received_by_sink": 640,
+      "error": null
+    },
+    {
+      "scenario": "fault_sink_connection_drop",
+      "p95_ratio_vs_disabled": 1.01,
+      "within_proposed_p95_budget": true,
+      "rss_ratio_vs_disabled": 1.01,
+      "within_proposed_rss_budget": true,
+      "user_visible_behavior_unchanged": true,
+      "shutdown_ms": 25,
+      "telemetry_reached_sink": true,
+      "spans_received_by_sink": 640,
+      "error": null
+    },
+    {
+      "scenario": "fault_backend_unreachable",
+      "p95_ratio_vs_disabled": 1.16,
+      "within_proposed_p95_budget": true,
+      "rss_ratio_vs_disabled": 1,
+      "within_proposed_rss_budget": true,
+      "user_visible_behavior_unchanged": true,
+      "shutdown_ms": 12,
+      "telemetry_reached_sink": null,
+      "spans_received_by_sink": null,
+      "error": null
+    },
+    {
+      "scenario": "restore_enabled_sink_ok",
+      "p95_ratio_vs_disabled": 1.63,
+      "within_proposed_p95_budget": false,
+      "rss_ratio_vs_disabled": 1.03,
+      "within_proposed_rss_budget": true,
+      "user_visible_behavior_unchanged": true,
+      "shutdown_ms": 9,
+      "telemetry_reached_sink": true,
+      "spans_received_by_sink": 961,
+      "error": null
+    }
+  ]
+}

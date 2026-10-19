@@ -20,6 +20,10 @@ AI-powered automation using LangChain and LangGraph.
 - Candidate Communication Agent
 - Onboarding Orchestration
 
+### Observability
+
+[OpenTelemetry delivery backlog](observability/README.md): three proposed phase features and 33 prioritized stories covering baseline signals, AI/custom instrumentation, SLOs, governance, outside-in monitoring and customer status. Includes a detailed proposal review and gated decision register.
+
 ## Feature Templates
 
 When adding new features, follow this structure:
