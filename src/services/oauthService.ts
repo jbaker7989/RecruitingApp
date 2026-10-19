@@ -13,6 +13,22 @@ import { createRemoteJWKSet, customFetch, jwtVerify } from 'jose';
 import { addObservabilityEntry, generateId, now } from '../models/store.js';
 import { readStore, writeStore } from '../models/store.js';
 import { signApplicantToken } from './tokenService.js';
+import { logger } from '../telemetry/logger.js';
+import {
+  OAuthFlowError,
+  classifyFailure,
+  currentCorrelation,
+  linkActiveSpanTo,
+  observeLogin,
+  parseCorrelation,
+  recordStateOutcome,
+  setStateStoreMode,
+  tracedClientOperation,
+  tracedRedisOperation,
+  type ClientOperation,
+  type OAuthProvider,
+} from '../telemetry/providerOps.js';
+import type { SpanContext } from '@opentelemetry/api';
 
 // ─── Redis state store (CSRF) ─────────────────────────────────────────────────
 
@@ -30,43 +46,54 @@ async function initRedis(): Promise<void> {
       retryStrategy: (times) => (times > 3 ? null : Math.min(times * 200, 2000)),
       lazyConnect: true,
     });
-    await (redisClient as any).connect();
+    await tracedRedisOperation('connect', () => (redisClient as any).connect());
     useRedis = true;
-    console.log('[oauth] Redis state store enabled');
+    setStateStoreMode('redis');
+    logger.info('oauth.state_store.ready', { outcome: 'redis' });
   } catch (err) {
-    console.warn('[oauth] Redis connection failed, falling back to in-memory:', (err as Error).message);
     useRedis = false;
+    setStateStoreMode('memory_fallback');
+    recordStateOutcome('redis_unavailable_fallback');
+    logger.warn('oauth.state_store.fallback', { outcome: 'memory_fallback', error: err });
   }
 }
 
 const STATE_TTL_SECONDS = 600; // 10 minutes
-type OAuthProvider = 'google' | 'linkedin' | 'facebook';
-type OAuthState = { createdAt: number; provider: OAuthProvider; next: string };
+type OAuthState = { createdAt: number; provider: OAuthProvider; next: string; correlation?: string };
 const inMemoryStateStore = new Map<string, OAuthState>();
 
 async function storeState(state: string, provider: OAuthProvider, next: string): Promise<void> {
+  const correlation = currentCorrelation();
   if (useRedis && redisClient) {
-    await (redisClient as any).setex(`oauth:state:${state}`, STATE_TTL_SECONDS, JSON.stringify({ provider, next }));
+    await tracedRedisOperation('setex', () => (redisClient as any).setex(
+      `oauth:state:${state}`, STATE_TTL_SECONDS, JSON.stringify({ provider, next, correlation })));
   } else {
-    inMemoryStateStore.set(state, { createdAt: Date.now(), provider, next });
+    if (process.env.REDIS_URL) recordStateOutcome('memory_fallback');
+    inMemoryStateStore.set(state, { createdAt: Date.now(), provider, next, correlation });
   }
+  recordStateOutcome('stored');
 }
 
-async function validateState(state: string, provider: OAuthProvider): Promise<string | null> {
+async function consumeState(state: string, provider: OAuthProvider): Promise<{ next: string | null; link?: SpanContext }> {
+  let stored: Partial<OAuthState> | undefined;
   if (useRedis && redisClient) {
-    const result = await (redisClient as any).getdel(`oauth:state:${state}`);
-    if (!result) return null;
-    try {
-      const stored = JSON.parse(result) as { provider?: OAuthProvider; next?: string };
-      return stored.provider === provider && typeof stored.next === 'string' ? stored.next : null;
-    } catch { return null; }
+    const result = await tracedRedisOperation('getdel', () => (redisClient as any).getdel(`oauth:state:${state}`));
+    try { if (typeof result === 'string') stored = JSON.parse(result); } catch { /* Invalid state is rejected below. */ }
   } else {
     const entry = inMemoryStateStore.get(state);
-    if (!entry) return null;
     inMemoryStateStore.delete(state);
-    if (Date.now() - entry.createdAt >= STATE_TTL_SECONDS * 1000) return null;
-    return entry.provider === provider ? entry.next : null;
+    if (entry && Date.now() - entry.createdAt < STATE_TTL_SECONDS * 1000) stored = entry;
   }
+  const next = stored?.provider === provider && typeof stored.next === 'string' ? stored.next : null;
+  recordStateOutcome(next ? 'consumed' : 'missing_or_expired');
+  return { next, link: next ? parseCorrelation(stored?.correlation) : undefined };
+}
+
+async function requireValidState(state: string, provider: OAuthProvider): Promise<string> {
+  const { next, link } = await consumeState(state, provider);
+  if (!next) throw new OAuthFlowError('Invalid or expired OAuth state (CSRF check failed)', 'invalid_state');
+  linkActiveSpanTo(link);
+  return next;
 }
 
 function generateState(): string {
@@ -156,32 +183,46 @@ function buildAuthorizationUrl(config: OIDCConfig, clientId: string, state: stri
   return `${config.authorizationURL}?${params.toString()}`;
 }
 
+/** POST to the token endpoint under a client span; thrown messages are identical to the pre-telemetry code. */
+async function postTokenExchange(
+  provider: OAuthProvider,
+  config: OIDCConfig,
+  code: string,
+  clientId: string,
+  clientSecret: string,
+  redirectUri: string,
+): Promise<unknown> {
+  return tracedClientOperation({ provider, operation: 'token_exchange' as ClientOperation }, async () => {
+    const res = await fetch(config.tokenURL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: config.grantType,
+        code,
+        redirect_uri: redirectUri,
+        client_id: clientId,
+        client_secret: clientSecret,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.text();
+      throw new OAuthFlowError(`Token exchange failed: ${res.status} ${err}`, classifyFailure(undefined, res.status), res.status);
+    }
+    return res.json();
+  });
+}
+
 async function exchangeCodeForTokens(
+  provider: OAuthProvider,
   config: OIDCConfig,
   code: string,
   clientId: string,
   clientSecret: string,
   redirectUri: string,
 ): Promise<{ idToken: string; accessToken: string | null }> {
-  const res = await fetch(config.tokenURL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: config.grantType,
-      code,
-      redirect_uri: redirectUri,
-      client_id: clientId,
-      client_secret: clientSecret,
-    }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`Token exchange failed: ${res.status} ${err}`);
-  }
-
-  const data = await res.json() as { id_token?: string; access_token?: string };
-  if (!data.id_token) throw new Error('No id_token in token response');
+  const data = await postTokenExchange(provider, config, code, clientId, clientSecret, redirectUri) as { id_token?: string; access_token?: string };
+  if (!data.id_token) throw new OAuthFlowError('No id_token in token response', 'validation_error');
 
   return { idToken: data.id_token, accessToken: data.access_token ?? null };
 }
@@ -225,12 +266,14 @@ async function verifyIdToken(config: OIDCConfig, token: string, clientId: string
   }
 }
 
-async function fetchUserInfo(token: string, userInfoUrl: string): Promise<Record<string, unknown>> {
-  const res = await fetch(userInfoUrl, {
-    headers: { Authorization: `Bearer ${token}` },
+async function fetchUserInfo(provider: OAuthProvider, token: string, userInfoUrl: string): Promise<Record<string, unknown>> {
+  return tracedClientOperation({ provider, operation: 'userinfo' }, async () => {
+    const res = await fetch(userInfoUrl, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new OAuthFlowError(`UserInfo fetch failed: ${res.status}`, classifyFailure(undefined, res.status), res.status);
+    return res.json() as Promise<Record<string, unknown>>;
   });
-  if (!res.ok) throw new Error(`UserInfo fetch failed: ${res.status}`);
-  return res.json() as Promise<Record<string, unknown>>;
 }
 
 // ─── Public API ────────────────────────────────────────────────────────────────
@@ -316,21 +359,28 @@ export async function handleGoogleCallback(
   state: string,
   baseUrl: string,
 ): Promise<CallbackResult> {
-  const next = await validateState(state, 'google');
-  if (!next) throw new Error('Invalid or expired OAuth state (CSRF check failed)');
+  return observeLogin('google', () => runGoogleCallback(code, state, baseUrl));
+}
+
+async function runGoogleCallback(
+  code: string,
+  state: string,
+  baseUrl: string,
+): Promise<CallbackResult> {
+  const next = await requireValidState(state, 'google');
 
   const clientId = process.env.GOOGLE_CLIENT_ID!;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET!;
-  if (!clientSecret) throw new Error('GOOGLE_CLIENT_SECRET is not configured');
+  if (!clientSecret) throw new OAuthFlowError('GOOGLE_CLIENT_SECRET is not configured', 'invalid_configuration');
 
   const redirectUri = `${baseUrl}/api/applicants/auth/google/callback`;
   const config = googleConfig(redirectUri);
 
-  const { idToken } = await exchangeCodeForTokens(config, code, clientId, clientSecret, redirectUri);
+  const { idToken } = await exchangeCodeForTokens('google', config, code, clientId, clientSecret, redirectUri);
   const claims = await verifyIdToken(config, idToken, clientId);
 
   const email = (claims['email'] as string | undefined)?.toLowerCase();
-  if (!email) throw new Error('Google did not return an email address');
+  if (!email) throw new OAuthFlowError('Google did not return an email address', 'validation_error');
 
   return { ...await upsertOAuthApplicant({
     email,
@@ -347,29 +397,36 @@ export async function handleLinkedInCallback(
   state: string,
   baseUrl: string,
 ): Promise<CallbackResult> {
-  const next = await validateState(state, 'linkedin');
-  if (!next) throw new Error('Invalid or expired OAuth state (CSRF check failed)');
+  return observeLogin('linkedin', () => runLinkedInCallback(code, state, baseUrl));
+}
+
+async function runLinkedInCallback(
+  code: string,
+  state: string,
+  baseUrl: string,
+): Promise<CallbackResult> {
+  const next = await requireValidState(state, 'linkedin');
 
   const clientId = process.env.LINKEDIN_CLIENT_ID!;
   const clientSecret = process.env.LINKEDIN_CLIENT_SECRET!;
-  if (!clientSecret) throw new Error('LINKEDIN_CLIENT_SECRET is not configured');
+  if (!clientSecret) throw new OAuthFlowError('LINKEDIN_CLIENT_SECRET is not configured', 'invalid_configuration');
 
   const redirectUri = `${baseUrl}/api/applicants/auth/linkedin/callback`;
   const config = linkedinConfig(redirectUri);
 
   // LinkedIn returns id_token with openid scope
-  const { idToken, accessToken } = await exchangeCodeForTokens(config, code, clientId, clientSecret, redirectUri);
+  const { idToken, accessToken } = await exchangeCodeForTokens('linkedin', config, code, clientId, clientSecret, redirectUri);
   const idClaims = await verifyIdToken(config, idToken, clientId);
 
   const email = (idClaims['email'] as string | undefined)?.toLowerCase();
-  if (!email) throw new Error('LinkedIn did not return an email address');
+  if (!email) throw new OAuthFlowError('LinkedIn did not return an email address', 'validation_error');
 
   // Fetch full profile using access token (optional — fall back to id_token claims)
   let firstName = (idClaims['given_name'] as string | undefined) ?? '';
   let lastName = (idClaims['family_name'] as string | undefined) ?? '';
   if (accessToken) {
     try {
-      const profile = await fetchUserInfo(accessToken, config.userInfoURL);
+      const profile = await fetchUserInfo('linkedin', accessToken, config.userInfoURL);
       if (profile['sub'] !== idClaims.sub) throw new Error('UserInfo subject mismatch');
       firstName = (profile['given_name'] as string | undefined) ?? firstName;
       lastName = (profile['family_name'] as string | undefined) ?? lastName;
@@ -393,50 +450,40 @@ export async function handleFacebookCallback(
   state: string,
   baseUrl: string,
 ): Promise<CallbackResult> {
-  const next = await validateState(state, 'facebook');
-  if (!next) throw new Error('Invalid or expired OAuth state (CSRF check failed)');
+  return observeLogin('facebook', () => runFacebookCallback(code, state, baseUrl));
+}
+
+async function runFacebookCallback(
+  code: string,
+  state: string,
+  baseUrl: string,
+): Promise<CallbackResult> {
+  const next = await requireValidState(state, 'facebook');
 
   const clientId = process.env.FACEBOOK_CLIENT_ID!;
   const clientSecret = process.env.FACEBOOK_CLIENT_SECRET!;
-  if (!clientSecret) throw new Error('FACEBOOK_CLIENT_SECRET is not configured');
+  if (!clientSecret) throw new OAuthFlowError('FACEBOOK_CLIENT_SECRET is not configured', 'invalid_configuration');
 
   const redirectUri = `${baseUrl}/api/applicants/auth/facebook/callback`;
   const config = facebookConfig(redirectUri);
 
   // Facebook doesn't return id_token by default; use access token to get user info
-  const tokenRes = await fetch(config.tokenURL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: config.grantType,
-      code,
-      redirect_uri: redirectUri,
-      client_id: clientId,
-      client_secret: clientSecret,
-    }),
-  });
-
-  if (!tokenRes.ok) {
-    const err = await tokenRes.text();
-    throw new Error(`Token exchange failed: ${tokenRes.status} ${err}`);
-  }
-
-  const tokenData = await tokenRes.json() as { access_token?: string };
+  const tokenData = await postTokenExchange('facebook', config, code, clientId, clientSecret, redirectUri) as { access_token?: string };
   const accessToken = tokenData.access_token;
-  if (!accessToken) throw new Error('No access_token in Facebook token response');
+  if (!accessToken) throw new OAuthFlowError('No access_token in Facebook token response', 'validation_error');
 
   // Meta validates this HMAC using the app secret before returning profile data.
   const profileUrl = new URL(config.userInfoURL);
   profileUrl.searchParams.set('appsecret_proof', createHmac('sha256', clientSecret).update(accessToken).digest('hex'));
   let profile: Record<string, unknown>;
   try {
-    profile = await fetchUserInfo(accessToken, profileUrl.toString());
+    profile = await fetchUserInfo('facebook', accessToken, profileUrl.toString());
     if (typeof profile.id !== 'string' || !profile.id.trim()) throw new Error('Missing subject');
   } catch {
     throw new Error('OAuth identity verification failed');
   }
   const email = (profile['email'] as string | undefined)?.toLowerCase();
-  if (!email) throw new Error('Facebook did not return an email address');
+  if (!email) throw new OAuthFlowError('Facebook did not return an email address', 'validation_error');
 
   return { ...await upsertOAuthApplicant({
     email,

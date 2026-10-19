@@ -1,0 +1,16 @@
+# Preview deployments must not upload local credentials, telemetry logs, or test data.
+demo-credentials.json
+.env
+.env.*
+observability/local/logs/**
+data/**
+tests/**
+docs/**
+tasks/**
+.agents/**
+.codex/**
+.aws/**
+
+# Local agent context is not part of the application.
+agent-home/**
+brain/**

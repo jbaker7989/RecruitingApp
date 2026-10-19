@@ -1,3 +1,5 @@
+// Must stay the first import: starts the OpenTelemetry SDK before other modules load (no-op unless TELEMETRY_ENABLED=true).
+import './telemetry/init.js';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -17,12 +19,23 @@ import authRoutes from './routes/auth.js';
 import mcpRoutes from './routes/mcp.js';
 import agentRoutes from './routes/agents/index.js';
 import { handleFileUpload } from './middleware/fileUpload.js';
+import { telemetryMiddleware, telemetryErrorMiddleware, getTelemetryRuntime } from './telemetry/index.js';
+import { registerLifecycleHooks } from './telemetry/lifecycle.js';
+import { logContextMiddleware, logger, runWithEntryPoint } from './telemetry/logger.js';
+import { concurrencyMiddleware, registerRuntimeMetrics, recordStartupFailure } from './telemetry/runtime.js';
+import { readinessHandler, diagnosticsHandler, registerDefaultDependencies } from './telemetry/dependencies.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// First middleware: server span + RED metrics cover the whole request (OBS-P1-S03/S05).
+app.use(telemetryMiddleware());
+app.use(logContextMiddleware());
+app.use(concurrencyMiddleware());
+registerDefaultDependencies();
+registerRuntimeMetrics();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -41,6 +54,10 @@ app.set('views', resolve(projectRoot, 'views'));
 app.use('/health', (_req, res) => {
   res.json({ status: 'ok', message: 'New Fronteir Recruiting API', timestamp: new Date().toISOString() });
 });
+
+// Readiness stays separate from cheap liveness. Detailed diagnostics authenticate themselves.
+app.get('/ready', readinessHandler);
+app.get('/api/internal/telemetry-diagnostics', diagnosticsHandler);
 
 // Dashboard UI — cookie-based auth, mounts before global JWT middleware
 app.use('/dashboard', dashboardRouter);
@@ -61,9 +78,12 @@ app.get('/', (_req, res) => {
   res.json({ message: 'New Fronteir Recruiting API', version: '1.0.0' });
 });
 
+app.use(telemetryErrorMiddleware());
 app.use(errorHandler);
 
 async function start() {
+  const telemetry = getTelemetryRuntime();
+  if (telemetry?.enabled) registerLifecycleHooks([telemetry.flushable]);
   await initializeStore();
   await addObservabilityEntry({
     id: generateId(),
@@ -76,9 +96,7 @@ async function start() {
     outcome: 'success',
   });
   app.listen(PORT, () => {
-    console.log(`🚀 New Fronteir Recruiting server running on port ${PORT}`);
-    console.log(`   Health: http://localhost:${PORT}/health`);
-    console.log(`   MCP: http://localhost:${PORT}/api/mcp/health`);
+    runWithEntryPoint('startup', () => logger.info('server.started', { outcome: 'success' }));
   });
 }
 
@@ -101,7 +119,8 @@ function isEntrypoint(): boolean {
 
 if (isEntrypoint()) {
   start().catch((err) => {
-    console.error('Failed to start server', err);
+    recordStartupFailure('startup');
+    runWithEntryPoint('startup', () => logger.error('server.start_failed', { error: err }));
     process.exit(1);
   });
 }
