@@ -34,3 +34,5 @@ The preview intentionally targets an unreachable loopback OTLP endpoint to test 
 Implementation is reviewable; **P1 is not accepted for production**. S01/S02 provide proposed options, not approvals. Named ownership, destination/budget, retention/residency/access, approved performance/delivery budgets, real preview cold/warm/export evidence, real provider/Redis verification and operational dashboard acceptance remain open as specified by the story ledger. NFR-034 continues to block production mutation/audit durability.
 
 The restart test agent independently audited all 44 story criteria. Its recorded RED results are historical and were resolved before the integrated 220-test run. Feature acceptance must not be inferred solely from green CI.
+
+Preview configuration is tracked as [OBS-P1-S11 (P0 — Critical)](../../stories/observability/story-obs-p1-s11-vercel-preview-configuration.md). The user authorized proceeding with a draft PR while this gate remains blocked.

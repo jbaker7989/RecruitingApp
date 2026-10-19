@@ -118,13 +118,18 @@ test('NFR-002: running the entrypoint executes start() — startup observability
   }
 });
 
-test('NFR-002: entrypoint process stays alive and prints the startup banner', { timeout: 40000 }, async () => {
+test('NFR-002: entrypoint process stays alive and emits structured startup evidence', { timeout: 40000 }, async () => {
   await startEntrypoint();
   try {
     const healthy = await waitForHealth();
     assert.ok(healthy, `entrypoint never came up. exitCode=${child?.exitCode} output=${childOutput.trim() || '(none)'}`);
     assert.equal(child?.exitCode, null, 'server process must still be running (listener bound)');
-    assert.match(childOutput, /server running on port/i, `expected startup banner in output; got: ${childOutput.trim() || '(none)'}`);
+    const records = childOutput.split('\n').flatMap((line) => {
+      try { return [JSON.parse(line)]; } catch { return []; }
+    });
+    assert.ok(records.some((record) => record.event === 'server.started'
+      && record.level === 'info' && record.entry_point === 'startup'
+      && record.outcome === 'success'), 'expected structured server.started event');
   } finally {
     await stopEntrypoint();
   }

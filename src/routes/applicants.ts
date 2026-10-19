@@ -8,6 +8,7 @@ import { signApplicantToken, verifyApplicantToken } from '../services/tokenServi
 import { revokeToken, revokeAllForUser } from '../services/revocationService.js';
 import { createResetToken, validateAndConsumeResetToken } from '../services/passwordResetService.js';
 import { initiateGoogle, initiateLinkedIn, initiateFacebook, handleGoogleCallback, handleLinkedInCallback, handleFacebookCallback } from '../services/oauthService.js';
+import { recordOAuthUserDenied, recordOAuthValidationFailure } from '../telemetry/providerOps.js';
 
 const BCRYPT_ROUNDS = 10;
 const hashPassword = (password: string): Promise<string> => bcrypt.hash(password, BCRYPT_ROUNDS);
@@ -544,9 +545,11 @@ router.get('/auth/google/callback', async (req: any, res) => {
   const { code, state, error } = req.query as { code?: string; state?: string; error?: string };
 
   if (error) {
+    recordOAuthUserDenied('google');
     return res.status(400).json({ error: `Google authorization denied: ${error}` });
   }
   if (!code || !state) {
+    recordOAuthValidationFailure('google');
     return res.status(400).json({ error: 'Missing code or state parameter' });
   }
 
@@ -576,9 +579,11 @@ router.get('/auth/linkedin/callback', async (req: any, res) => {
   const { code, state, error } = req.query as { code?: string; state?: string; error?: string };
 
   if (error) {
+    recordOAuthUserDenied('linkedin');
     return res.status(400).json({ error: `LinkedIn authorization denied: ${error}` });
   }
   if (!code || !state) {
+    recordOAuthValidationFailure('linkedin');
     return res.status(400).json({ error: 'Missing code or state parameter' });
   }
 
@@ -608,9 +613,11 @@ router.get('/auth/facebook/callback', async (req: any, res) => {
   const { code, state, error } = req.query as { code?: string; state?: string; error?: string };
 
   if (error) {
+    recordOAuthUserDenied('facebook');
     return res.status(400).json({ error: `Facebook authorization denied: ${error}` });
   }
   if (!code || !state) {
+    recordOAuthValidationFailure('facebook');
     return res.status(400).json({ error: 'Missing code or state parameter' });
   }
 

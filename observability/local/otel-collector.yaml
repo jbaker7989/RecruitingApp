@@ -1,0 +1,43 @@
+# Receives OTLP/HTTP from the app (traces, metrics) and tails the app's JSON log file (logs).
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+  filelog:
+    include: [/var/log/app/*.log]
+    start_at: beginning
+    operators:
+      - type: json_parser
+        parse_from: body
+        on_error: send
+        timestamp:
+          parse_from: attributes.timestamp
+          layout_type: gotime
+          layout: "2006-01-02T15:04:05.000Z07:00"
+      - type: severity_parser
+        parse_from: attributes.level
+        on_error: send
+processors:
+  batch: {}
+  resource/logs:
+    attributes:
+      - { key: service.name, value: rec-app, action: upsert }
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+exporters:
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls: { insecure: true }
+  otlphttp/prometheus:
+    endpoint: http://prometheus:9090/api/v1/otlp
+    tls: { insecure: true }
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+    tls: { insecure: true }
+service:
+  pipelines:
+    traces:  { receivers: [otlp], processors: [memory_limiter, batch], exporters: [otlp/jaeger] }
+    metrics: { receivers: [otlp], processors: [memory_limiter, batch], exporters: [otlphttp/prometheus] }
+    logs:    { receivers: [filelog], processors: [memory_limiter, resource/logs, batch], exporters: [otlphttp/loki] }

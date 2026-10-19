@@ -1,9 +1,10 @@
-name: CI
+name: Observability P1 CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/observability-p1]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -40,6 +41,7 @@ jobs:
       - name: Build
         run: npm run build
 
+      # Tests use synthetic data and local exporters; no hosted credentials are supplied.
       - name: Test
         run: npm test
 

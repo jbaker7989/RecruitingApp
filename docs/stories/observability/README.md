@@ -17,6 +17,8 @@
 | [OBS-P1-S09: Observe health and runtime resource pressure](story-obs-p1-s09-health-runtime.md) | P1 | Implementation |
 | [OBS-P1-S10: Accept the baseline with reproducible evidence](story-obs-p1-s10-baseline-acceptance.md) | P1 | Verification |
 
+| [OBS-P1-S11: Configure and verify the Vercel Preview runtime](story-obs-p1-s11-vercel-preview-configuration.md) | P0 — Critical | Configuration / verification |
+
 ## Phase 2
 
 | Story | Priority | Type |
@@ -49,4 +51,3 @@
 | [OBS-P3-S11: Compare releases and guide rollback decisions](story-obs-p3-s11-release-regressions.md) | P1 | Implementation |
 | [OBS-P3-S12: Track future observability capabilities and adoption triggers](story-obs-p3-s12-future-capabilities-decision.md) | P2 | Decision / backlog governance |
 | [OBS-P3-S13: Prove incident response and close acceptance](story-obs-p3-s13-operational-game-day.md) | P1 | Verification |
-

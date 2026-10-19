@@ -32,6 +32,8 @@ Record expected and observed results, environment/revision, sanitized query or a
 
 ## Dependencies
 
+- [OBS-P1-S11: Critical Vercel Preview configuration gate](story-obs-p1-s11-vercel-preview-configuration.md)
+
 - [OBS-P1-S06: Trace outbound HTTP, OAuth, and Redis](story-obs-p1-s06-outbound-oauth-redis.md)
 - [OBS-P1-S07: Prove serverless export and fail-open behavior](story-obs-p1-s07-export-reliability.md)
 - [OBS-P1-S08: Create structured operational logs with context](story-obs-p1-s08-operational-logs.md)
