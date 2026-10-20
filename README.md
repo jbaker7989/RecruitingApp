@@ -568,47 +568,51 @@ These are approved product requirements. Only the Phase 1 profile foundation and
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    Client[Applicant / recruiter / hiring manager client]
-    Browser[Applicant Dashboard<br/>(EJS + httpOnly cookie auth)]
-    Agent[External agent or integration]
-    API[Express 5 API on Node.js 24]
-    Auth[Authentication and RBAC middleware]
-    Routes[Company / job / applicant / application / MCP routes]
-    DashboardRoutes[/dashboard/* EJS routes]
-    AgentRoutes[Agentic AI routes]
-    Match[Deterministic matching service]
-    SemanticMatch[Semantic Matching (LLM + Vectors)]
-    ResumeParser[Resume Parsing Chain]
-    Scheduling[Interview Scheduling State Machine]
-    Store[JSON prototype store]
-    Audit[Observability JSON]
-    Blob["Private Vercel Blob<br/>(feature branch)"]
-    CI[GitHub Actions + Greptile]
-    Human[Human release approval]
-    Vercel[Vercel preview / production]
+```text
+APPLICATION REQUESTS
 
-    Client --> API
-    Browser -->|GET/POST /dashboard/*| DashboardRoutes
-    DashboardRoutes --> Auth
-    Agent -->|MCP-shaped JSON HTTP| API
-    API --> Auth --> Routes
-    API --> Auth --> AgentRoutes
-    Routes --> Match
-    Routes --> Store
-    Routes --> Audit
-    Routes -->|private media bytes| Blob
-    AgentRoutes --> SemanticMatch
-    AgentRoutes --> ResumeParser
-    AgentRoutes --> Scheduling
-    SemanticMatch --> Store
-    CI -->|verified reviewed commit| Human
-    Human -->|current manual deployment| Vercel
-    CI -. planned automatic deployment: NFR-035 .-> Vercel
+Applicant / recruiter / hiring manager client
+    |
+    v
+Express 5 API (Node.js 24) <--- External agent or integration
+    |                         (MCP-shaped JSON HTTP)
+    v
+Authentication + RBAC <------ EJS routes (/dashboard/* GET/POST)
+    |                             ^
+    |                             |
+    |                         Applicant Dashboard
+    |                         (EJS + httpOnly cookie auth)
+    |
+    +--> Company / job / applicant / application / MCP routes
+    |        |
+    |        +--> Deterministic matching service
+    |        +--> JSON prototype store
+    |        +--> Observability JSON
+    |        +--> Private Vercel Blob (feature branch; media bytes)
+    |
+    +--> Agentic AI routes
+             |
+             +--> Semantic matching (LLM + vectors)
+             |        |
+             |        +--> JSON prototype store
+             |
+             +--> Resume parsing chain
+             +--> Interview scheduling state machine
+
+RELEASE FLOW
+
+GitHub Actions + Greptile
+    |
+    +-- verified reviewed commit --> Human release approval
+    |                                    |
+    |                                    +-- manual deployment --+
+    |                                                            |
+    + - - planned automatic deployment (NFR-035) - - - - - - - -> |
+                                                                 v
+                                                    Vercel preview / production
 ```
 
-GitHub CI and human release approval are operational. The dotted edge is the blocked target: automatic Vercel Git deployment remains open under NFR-035. Current production was deployed manually from a clean reviewed `main` commit.
+GitHub CI and human release approval are operational. The dashed arrow is the blocked target: automatic Vercel Git deployment remains open under NFR-035. Current production was deployed manually from a clean reviewed `main` commit.
 
 ---
 
