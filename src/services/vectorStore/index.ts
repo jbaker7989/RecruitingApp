@@ -12,6 +12,7 @@
 
 import { getEmbeddingsClient } from '../llm/index.js';
 import { readStore } from '../../models/store.js';
+import { withVectorstoreSpan } from '../../telemetry/p2Operations.js';
 
 /** Cosine similarity between two equal-length embedding vectors. */
 function cosineSimilarity(a: number[], b: number[]): number {
@@ -144,13 +145,17 @@ export async function indexJob(
     positionLocation: string;
   }
 ): Promise<void> {
-  const store = await getStore();
-  const embeddings = getEmbeddingsClient();
+  // Logical index span: embedding call + Pinecone upsert as separate child spans.
+  // Embedding time and Pinecone time are distinct (S07-AC4).
+  return withVectorstoreSpan('index', 'job_indexing', async () => {
+    const store = await getStore();
+    const embeddings = getEmbeddingsClient();
 
-  const text = buildJobText(job);
-  const embedding = await embeddings.embedQuery(text);
+    const text = buildJobText(job);
+    const embedding = await embeddings.embedQuery(text);
 
-  await store.addEntry(`job_${jobId}`, 'job', jobId, text, embedding);
+    await store.addEntry(`job_${jobId}`, 'job', jobId, text, embedding);
+  });
 }
 
 /**
@@ -168,13 +173,15 @@ export async function indexApplicant(
     achievements?: string[];
   }
 ): Promise<void> {
-  const store = await getStore();
-  const embeddings = getEmbeddingsClient();
+  return withVectorstoreSpan('index', 'applicant_indexing', async () => {
+    const store = await getStore();
+    const embeddings = getEmbeddingsClient();
 
-  const text = buildApplicantText(applicant);
-  const embedding = await embeddings.embedQuery(text);
+    const text = buildApplicantText(applicant);
+    const embedding = await embeddings.embedQuery(text);
 
-  await store.addEntry(`applicant_${applicantId}`, 'applicant', applicantId, text, embedding);
+    await store.addEntry(`applicant_${applicantId}`, 'applicant', applicantId, text, embedding);
+  });
 }
 
 // ─── Similarity Search ────────────────────────────────────────────────────────
@@ -280,6 +287,9 @@ export async function calculateSemanticSimilarity(
   jobId: string,
   applicantId: string
 ): Promise<number> {
+  // similarity_search span: reuse path uses stored vectors only; no embedding call.
+  // No embedding child span appears so traces show only actual work (S07-AC4).
+  return withVectorstoreSpan('similarity_search', 'semantic_matching', async () => {
   const store = await getStore();
 
   const jobEntry = await store.getEntry(`job_${jobId}`);
@@ -308,9 +318,10 @@ export async function calculateSemanticSimilarity(
 
   const similarity = cosineSimilarity(jobEntry.embedding, applicantEntry.embedding);
   return Math.round(similarity * 100) / 100;
+  }); // end withVectorstoreSpan('similarity_search')
 }
 
-// ─── Bulk Re-indexing ─────────────────────────────────────────────────────────
+// ─── Bulk Re-indexing (instrumented) ─────────────────────────────────────────
 
 /**
  * Re-index all active job postings in Pinecone.

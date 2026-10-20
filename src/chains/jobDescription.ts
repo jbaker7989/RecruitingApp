@@ -8,6 +8,7 @@ import { PromptTemplate } from '@langchain/core/prompts';
 import { z } from 'zod';
 import { getLLMClient } from '../services/llm/index.js';
 import { JDGInput, JDGOutput, JDGOutputSchema, ToneType } from '../types/jdGenerator.js';
+import { traceAIInvocation } from '../telemetry/ai.js';
 
 // ============================================================================
 // Prompt Templates
@@ -48,7 +49,7 @@ Generate a complete job description with:
 Return ONLY valid JSON matching this exact schema. No markdown, no explanation, just the JSON:
 
 \`\`\`json
-{
+{{
   "summary": "string - compelling 2-3 sentence overview",
   "positionDescription": "string - 300-500 word detailed description",
   "responsibilities": ["string", "string", ...],
@@ -58,7 +59,7 @@ Return ONLY valid JSON matching this exact schema. No markdown, no explanation, 
   "requiredExperience": number,
   "keywords": ["string", "string", ...],
   "confidence": number between 0 and 1
-}
+}}
 \`\`\`
 
 Important:
@@ -94,48 +95,56 @@ export async function generateJobDescription(
   input: JDGInput,
   companyContext?: { name?: string; description?: string; industry?: string }
 ): Promise<JDGOutput> {
-  const model = getLLMClient('job-description') as ChatOpenAI;
-  
-  // Enrich input with defaults
-  const enriched = enrichInput(input);
-  
-  // Build company context string
-  const companyCtx = buildCompanyContext(companyContext);
-  
-  // Get tone modifier
-  const tone = input.tone || 'professional';
-  const toneModifier = TONE_MODIFIERS[tone] || TONE_MODIFIERS.professional;
-  
-  // Build prompt
-  const prompt = PromptTemplate.fromTemplate(BASE_PROMPT);
-  
-  const formattedPrompt = await prompt.format({
-    jobTitle: enriched.jobTitle,
-    department: enriched.department || 'General',
-    seniority: enriched.seniority || 'Not specified',
-    requirements: enriched.requirements.length > 0 ? enriched.requirements.join('\n- ') : 'Not specified',
-    responsibilities: enriched.responsibilities.length > 0 ? enriched.responsibilities.join('\n- ') : 'To be determined based on role',
-    qualifications: enriched.qualifications.length > 0 ? enriched.qualifications.join('\n- ') : 'See requirements',
-    requiredSkills: enriched.requiredSkills.length > 0 ? enriched.requiredSkills.join(', ') : 'See requirements',
-    location: enriched.location || 'To be discussed',
-    remotePolicy: enriched.remotePolicy || 'To be discussed',
-    compensation: enriched.compensation 
-      ? `$${enriched.compensation.min || 'TBD'} - $${enriched.compensation.max || 'TBD'} ${enriched.compensation.currency || 'USD'}`
-      : 'Competitive compensation package',
-    tone: toneModifier,
-    companyContext: companyCtx,
-  });
-  
-  // Invoke model
-  const response = await model.invoke(formattedPrompt);
-  
-  const rawContent = response.content as string;
-  
-  // Parse JSON from response
-  const parsed = parseJsonResponse(rawContent);
-  
-  // Validate against schema
-  return JDGOutputSchema.parse(parsed);
+  return traceAIInvocation(
+    { feature: 'job_description', task: 'job_description', provider: 'openai', model: 'gpt-4o', operation: 'chat' },
+    async (ctx) => {
+      const model = getLLMClient('job-description') as ChatOpenAI;
+
+      const enriched = enrichInput(input);
+      const companyCtx = buildCompanyContext(companyContext);
+      const tone = input.tone || 'professional';
+      const toneModifier = TONE_MODIFIERS[tone] || TONE_MODIFIERS.professional;
+
+      const prompt = PromptTemplate.fromTemplate(BASE_PROMPT);
+      const formattedPrompt = await prompt.format({
+        jobTitle: enriched.jobTitle,
+        department: enriched.department || 'General',
+        seniority: enriched.seniority || 'Not specified',
+        requirements: enriched.requirements.length > 0 ? enriched.requirements.join('\n- ') : 'Not specified',
+        responsibilities: enriched.responsibilities.length > 0 ? enriched.responsibilities.join('\n- ') : 'To be determined based on role',
+        qualifications: enriched.qualifications.length > 0 ? enriched.qualifications.join('\n- ') : 'See requirements',
+        requiredSkills: enriched.requiredSkills.length > 0 ? enriched.requiredSkills.join(', ') : 'See requirements',
+        location: enriched.location || 'To be discussed',
+        remotePolicy: enriched.remotePolicy || 'To be discussed',
+        compensation: enriched.compensation
+          ? `$${enriched.compensation.min || 'TBD'} - $${enriched.compensation.max || 'TBD'} ${enriched.compensation.currency || 'USD'}`
+          : 'Competitive compensation package',
+        tone: toneModifier,
+        companyContext: companyCtx,
+      });
+
+      const response = await model.invoke(formattedPrompt);
+      // Token usage is recorded by InstrumentedChatOpenAI.invoke; no double-record here.
+
+      const rawContent = response.content as string;
+
+      // Provider responded; distinguish JSON parse failure from schema failure (OBS-P2-S02-AC3)
+      let parsed: unknown;
+      try {
+        parsed = parseJsonResponse(rawContent);
+      } catch (error) {
+        ctx.markParseOutcome('json_failure');
+        throw error;
+      }
+
+      try {
+        return JDGOutputSchema.parse(parsed);
+      } catch (error) {
+        ctx.markParseOutcome('schema_failure');
+        throw error;
+      }
+    },
+  );
 }
 
 /**

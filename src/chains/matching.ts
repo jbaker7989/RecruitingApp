@@ -13,6 +13,7 @@ import {
 } from '../services/vectorStore/index.js';
 import { readStore, writeStore, addObservabilityEntry, generateId, now } from '../models/store.js';
 import type { Applicant, JobPosting, Application } from '../models/store.js';
+import { withVectorstoreSpan } from '../telemetry/p2Operations.js';
 
 export interface MatchingResult {
   applicationId: string;
@@ -113,13 +114,18 @@ export async function calculateMatchScore(
   const educationScore = calculateEducationScore(applicant, job);
   const experienceScore = calculateExperienceScore(applicant, job);
 
-  // Calculate semantic similarity
+  // Calculate semantic similarity — wrapped so failure is visible in traces (S09-AC3).
+  // Caught fallback (semanticScore=0) remains observable even though HTTP status stays 200.
   let semanticScore = 0;
   try {
-    semanticScore = await calculateSemanticSimilarity(jobId, applicantId);
-    // Convert 0-1 to 0-10 scale
-    semanticScore = Math.round(semanticScore * 10);
+    semanticScore = await withVectorstoreSpan('semantic_similarity', 'semantic_matching', async () => {
+      const raw = await calculateSemanticSimilarity(jobId, applicantId);
+      // Convert 0-1 to 0-10 scale
+      return Math.round(raw * 10);
+    });
   } catch (error) {
+    // Caught fallback — telemetry already recorded the failure in the span above.
+    // Business behavior preserved: score falls back to 0 (S07-AC2, S09-AC3).
     console.warn('Semantic similarity calculation failed, using 0:', error);
   }
 
@@ -271,6 +277,13 @@ export async function rebuildSemanticIndex(): Promise<{
   applicationsRescored: number;
   errors: number;
 }> {
+  // Outer span covers the full rebuild; partial success (errors > 0, HTTP 200) is
+  // visible in the outcome attribute on this span (S09-AC3).
+  // 'partial' requires orchestrator schema integration (see observability/p2/schema-contract.md).
+  return withVectorstoreSpan(
+    'reindex',
+    'semantic_rebuild',
+    async () => {
   const store = await readStore();
   let jobsIndexed = 0;
   let applicantsIndexed = 0;
@@ -329,4 +342,8 @@ export async function rebuildSemanticIndex(): Promise<{
   });
 
   return { jobsIndexed, applicantsIndexed, applicationsRescored, errors };
+    },
+    // Outcome: 'partial' when some items failed but call succeeded (needs schema integration)
+    (result) => result.errors > 0 ? 'partial' : 'success',
+  ); // end withVectorstoreSpan('reindex')
 }

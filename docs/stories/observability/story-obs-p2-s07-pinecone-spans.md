@@ -1,6 +1,6 @@
 # OBS-P2-S07: Measure vector-store operations
 
-**Status:** Proposed — not implemented
+**Status:** Implementation complete (dev2) — awaiting tester verification
 **Phase:** P2 | **Type:** Implementation | **Priority:** P1
 **Priority rationale:** Required for the agreed phase outcome and operational coverage.
 **Accountable role:** Backend engineer (named assignee pending)
@@ -23,6 +23,15 @@ Cover actual Pinecone query/fetch/upsert/delete/batch operations and index readi
 - [ ] **OBS-P2-S07-AC2:** Not-found/empty results are distinct from timeout, rate-limit, authentication and provider failure; degraded matching remains visible when exceptions are caught upstream.
 - [ ] **OBS-P2-S07-AC3:** Operation rate/error/duration metrics are queryable by feature; batches/retries distinguish logical operation and attempts without counting the same wrapper twice.
 - [ ] **OBS-P2-S07-AC4:** Traces show embedding and Pinecone time as separate spans where both execute, and show only actual work on vector reuse/cache paths.
+
+## Implementation notes (dev2)
+
+- `src/telemetry/p2Operations.ts`: `withPineconeSpan` wraps each Pinecone SDK call; `withVectorstoreSpan` wraps logical operations.
+- `src/services/vectorStore/pinecone.ts`: all public methods instrumented (query, upsert, fetch, delete, delete_many, delete_all, batch_upsert, describe_stats, init).
+- `src/services/vectorStore/index.ts`: `indexJob`, `indexApplicant`, `calculateSemanticSimilarity` wrapped; embedding and Pinecone time as distinct child spans.
+- `src/chains/matching.ts`: `calculateMatchScore` wraps semantic similarity; fallback (score=0) visible in trace.
+- Caveat: Pinecone SDK may perform internal retries invisible to app-level spans — documented in schema-contract.md.
+- Empty results (not-found) return success outcome, not error (AC2).
 
 ## Verification and completion evidence
 

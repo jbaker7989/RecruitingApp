@@ -40,7 +40,8 @@ const METHODS = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'TR
 const ROUTE_RE = /^(\/[A-Za-z0-9_:.*-]{0,64}){0,12}$|^(unmatched|other)$/;
 const OUTCOMES = [
   'success', 'client_error', 'server_error', 'aborted', 'other', 'timeout', 'dns_failure', 'connect_failure',
-  'tls_failure', 'rate_limited', 'invalid_configuration', 'user_cancelled', 'invalid_state', 'validation_error', 'unknown',
+  'tls_failure', 'rate_limited', 'invalid_configuration', 'user_cancelled', 'invalid_state', 'validation_error',
+  'partial', 'degraded', 'empty', 'not_found', 'terminal', 'cancelled', 'wait', 'error', 'unknown',
 ];
 const ENUM_TOKEN = /^[a-z][a-z0-9_.]{0,39}$/;
 
@@ -84,6 +85,17 @@ const SCHEMA: Record<string, KeySpec> = {
   'app.operation': spec(SM, pattern(ENUM_TOKEN)),
   'app.reason': spec(SM, oneOf('health', 'static', 'synthetic')),
   'app.attempt': spec(S, intRange(1, 100)),
+  // P2 correlation stays span-only; only finite classifications become metric dimensions.
+  'app.workflow.run_id': spec(S, pattern(/^[A-Za-z0-9_-]{8,64}$/)),
+  'app.workflow.entry_point': spec(S, oneOf('api', 'fixture', 'retry', 'cron', 'unknown')),
+  'app.workflow.name': spec(SM, oneOf('interview_scheduling')),
+  'app.workflow.version': spec(SM, oneOf('1')),
+  'app.integration.mode': spec(SM, oneOf('simulated', 'live')),
+  'app.store.io_class': spec(S, oneOf('permission_denied', 'not_found', 'parse_error', 'io_error', 'ok')),
+  'app.query.topk': spec(S, intRange(1, 10000)),
+  'app.count_bucket': spec(S, oneOf('0', '1-10', '11-50', '51+')),
+  'app.size_bucket': spec(S, oneOf('0', '1-1024', '1025-65536', '65537+')),
+  'app.index.alias': spec(S, oneOf('primary')),
   'db.system.name': spec(SM, oneOf('redis')),
   'db.operation.name': spec(SM, oneOf('setex', 'getdel', 'get', 'set', 'del', 'connect', 'other')),
   'oauth.provider': spec(SM, oneOf('google', 'linkedin', 'facebook', 'other')),
@@ -93,6 +105,21 @@ const SCHEMA: Record<string, KeySpec> = {
   'oauth.recovered': spec(SM, bool),
   'oauth.state_outcome': spec(SM, oneOf('stored', 'consumed', 'missing_or_expired', 'redis_unavailable_fallback', 'memory_fallback')),
   category: spec(M, oneOf('startup', 'store_init', 'telemetry_init', 'listen', 'other')),
+  // ── AI / LLM attributes (OBS-P2-S02/S03/S04) ──────────────────────────────
+  // Bounded vocabularies only; prompts, completions, vectors and identifiers are never attributes.
+  'ai.provider': spec(SM, oneOf('openai', 'anthropic', 'other')),
+  'ai.model': spec(SM, oneOf('gpt-4o', 'gpt-4o-mini', 'claude-3-5-sonnet', 'text-embedding-3-small', 'unknown')),
+  'ai.operation': spec(SM, oneOf('chat', 'embed_query', 'embed_document', 'embed_batch', 'other')),
+  // ai.task: bounded low-cardinality key matching MODEL_CONFIGS keys (snake_case)
+  'ai.task': spec(SM, pattern(ENUM_TOKEN)),
+  // Distinguishes provider success + output parse failure from provider failure (OBS-P2-S02-AC3)
+  'ai.parse_outcome': spec(SM, oneOf('success', 'json_failure', 'schema_failure')),
+  // Coarse batch size bucket so metric series cardinality stays bounded
+  'ai.batch_size_bucket': spec(SM, oneOf('1', '2-10', '11-50', '51+')),
+  // Token category for per-category counters (metric-only; never in spans to avoid overlap)
+  'ai.token_category': spec(M, oneOf('input', 'output', 'cache_read', 'cache_write', 'reasoning')),
+  // Whether token counts came from the provider response or are absent/unknown (OBS-P2-S04-AC3)
+  'ai.usage_source': spec(SM, oneOf('provider_reported', 'unknown')),
 };
 
 const keysFor = (signal: Signal): ReadonlySet<string> =>
@@ -151,6 +178,8 @@ const HTTP_SPAN_NAME = new RegExp(`^(${METHODS.join('|')}|HTTP)( (/[A-Za-z0-9_:.
 const SPAN_NAMES = new Set<string>([
   'oauth.token_exchange', 'oauth.userinfo', 'oauth.login.callback',
   'redis.setex', 'redis.getdel', 'redis.get', 'redis.set', 'redis.del', 'redis.connect', 'redis.other',
+  // AI/LLM spans (OBS-P2-S02/S03)
+  'ai.chat', 'ai.chat.attempt', 'ai.embed',
 ]);
 const EVENT_NAMES = new Set<string>();
 const SCOPE_NAMES = new Set<string>([
@@ -162,6 +191,11 @@ const METRIC_NAMES = new Set<string>([
   'app.runtime.event_loop.delay.p99', 'app.runtime.requests.in_flight', 'app.runtime.cold_start',
   'app.oauth.client.attempts', 'app.oauth.client.duration', 'app.oauth.login.outcomes', 'app.oauth.state.outcomes',
   'app.redis.operation.count', 'app.redis.operation.duration',
+  // AI/LLM metrics (OBS-P2-S02/S03/S04)
+  'app.ai.invocation.count', 'app.ai.invocation.duration',
+  // Provider-attempt-level metrics (distinct from logical invocation metrics)
+  'app.ai.attempt.count', 'app.ai.attempt.duration',
+  'app.ai.tokens', 'app.ai.usage.unknown_count', 'app.ai.usage.known_count',
 ]);
 const NAME_RE = /^[a-z@][a-z0-9_.@/-]{0,79}$/;
 

@@ -7,6 +7,7 @@ import { ChatOpenAI } from '@langchain/openai';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { z } from 'zod';
 import { getLLMClient } from '../services/llm/index.js';
+import { traceAIInvocation } from '../telemetry/ai.js';
 
 // Zod schema for structured output matching Applicant model
 export const EducationEntrySchema = z.object({
@@ -64,12 +65,12 @@ Schema requirements:
 - lastName: Last name of the person
 - email: Valid email address
 - phone: Phone number
-- address: { state, zip } if available, omit if not found
-- educationHistory: Array of { institution, degree, fieldOfStudy, startDate, endDate, gpa? }
-- employmentHistory: Array of { company, position, startDate, endDate?, responsibilities? }
+- address: {{ state, zip }} if available, omit if not found
+- educationHistory: Array of {{ institution, degree, fieldOfStudy, startDate, endDate, gpa? }}
+- employmentHistory: Array of {{ company, position, startDate, endDate?, responsibilities? }}
 - skills: Array of skill strings
 - achievements: Array of quantified achievements (e.g., "increased sales by 20%")
-- certifications: Array of { name, issuingOrganization, dateObtained? } if available
+- certifications: Array of {{ name, issuingOrganization, dateObtained? }} if available
 - confidenceScores: Object mapping field names to confidence 0-1
 - rawText: The original text
 
@@ -88,32 +89,42 @@ Resume Text:
  * Parse resume text directly
  */
 export async function parseResume(resumeText: string): Promise<ParsedResume> {
-  const model = getLLMClient('resume-parsing') as ChatOpenAI;
-  
-  const prompt = PromptTemplate.fromTemplate(RESUME_PARSING_PROMPT);
-  
-  // Invoke model
-  const response = await model.invoke(
-    await prompt.format({ resumeText })
+  return traceAIInvocation(
+    { feature: 'resume_parsing', task: 'resume_parsing', provider: 'openai', model: 'gpt-4o', operation: 'chat' },
+    async (ctx) => {
+      const model = getLLMClient('resume-parsing') as ChatOpenAI;
+      const prompt = PromptTemplate.fromTemplate(RESUME_PARSING_PROMPT);
+
+      const response = await model.invoke(await prompt.format({ resumeText }));
+      // Token usage is recorded by InstrumentedChatOpenAI.invoke; no double-record here.
+
+      const rawContent = response.content as string;
+
+      // Handle markdown code blocks if present
+      let jsonStr = rawContent;
+      if (rawContent.includes('```json')) {
+        jsonStr = rawContent.split('```json')[1].split('```')[0].trim();
+      } else if (rawContent.includes('```')) {
+        jsonStr = rawContent.split('```')[1].split('```')[0].trim();
+      }
+
+      // Provider responded; distinguish JSON parse failure from schema failure (OBS-P2-S02-AC3)
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(jsonStr);
+      } catch (error) {
+        ctx.markParseOutcome('json_failure');
+        throw new Error(`Failed to parse resume JSON: ${error}. Raw content: ${rawContent.substring(0, 500)}`);
+      }
+
+      try {
+        return ParsedResumeSchema.parse(parsed);
+      } catch (error) {
+        ctx.markParseOutcome('schema_failure');
+        throw new Error(`Failed to parse resume JSON: ${error}. Raw content: ${rawContent.substring(0, 500)}`);
+      }
+    },
   );
-  
-  const rawContent = response.content as string;
-  
-  // Parse JSON from response
-  // Handle markdown code blocks if present
-  let jsonStr = rawContent;
-  if (rawContent.includes('```json')) {
-    jsonStr = rawContent.split('```json')[1].split('```')[0].trim();
-  } else if (rawContent.includes('```')) {
-    jsonStr = rawContent.split('```')[1].split('```')[0].trim();
-  }
-  
-  try {
-    const parsed = JSON.parse(jsonStr);
-    return ParsedResumeSchema.parse(parsed);
-  } catch (error) {
-    throw new Error(`Failed to parse resume JSON: ${error}. Raw content: ${rawContent.substring(0, 500)}`);
-  }
 }
 
 /**

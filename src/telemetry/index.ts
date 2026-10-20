@@ -25,3 +25,11 @@ export type { RequestContext } from './context.js';
 export { telemetryMiddleware, telemetryErrorMiddleware, normalizeRoute } from './http.js';
 export { createTestTelemetry, startOtlpSink } from './testing.js';
 export type { TestTelemetry, OtlpSink, SinkMode } from './testing.js';
+export {
+  traceAIInvocation, traceEmbedding, getInvocationFeature,
+} from './ai.js';
+export type { AIProvider, AIModel, AIOperation, AIParseOutcome, EmbeddingOpts, EmbedOperation, AIInvocationOpts, AIInvocationContext } from './ai.js';
+export {
+  extractLCUsage, extractEmbeddingUsage, recordTokenUsage,
+} from './usage.js';
+export type { NormalizedTokenUsage, AITokenCategory, TokenUsageAttrs } from './usage.js';

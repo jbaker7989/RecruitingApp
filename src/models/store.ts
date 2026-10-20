@@ -1,7 +1,9 @@
+import { trace } from '@opentelemetry/api';
 import { dirname, join, resolve } from 'path';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import dotenv from 'dotenv';
+import { withStoreSpan } from '../telemetry/p2Operations.js';
 
 dotenv.config();
 
@@ -228,41 +230,73 @@ export function emptyStore(): DataStore {
   };
 }
 
+// Buckets reveal workload scale without retaining file contents or record identities.
+function recordStoreScale(bytes: number, count?: number): void {
+  try {
+    const span = trace.getActiveSpan();
+    span?.setAttribute('app.size_bucket', bytes === 0 ? '0' : bytes <= 1024 ? '1-1024' : bytes <= 65536 ? '1025-65536' : '65537+');
+    if (count !== undefined) span?.setAttribute('app.count_bucket', count === 0 ? '0' : count <= 10 ? '1-10' : count <= 50 ? '11-50' : '51+');
+    span?.setAttribute('app.store.io_class', 'ok');
+  } catch { /* scale diagnostics never affect persistence */ }
+}
+
 export async function readStore(): Promise<DataStore> {
-  await ensureDataDir();
-  const data = await readFile(storeFile(), 'utf-8');
-  const parsed = JSON.parse(data);
-  // Normalize on read (NFR-004): files written before a collection existed
-  // (e.g. no `hires` key) are migrated in memory so store.hires.push/filter
-  // et al. can never crash on undefined. The normalized shape is persisted
-  // on the next writeStore call.
-  return { ...emptyStore(), ...parsed };
+  return withStoreSpan('read', 'store', async () => {
+    await ensureDataDir();
+    const data = await readFile(storeFile(), 'utf-8');
+    const parsed = JSON.parse(data);
+    recordStoreScale(Buffer.byteLength(data), Object.values(parsed).reduce<number>((n, v) => n + (Array.isArray(v) ? v.length : 0), 0));
+    // Normalize on read (NFR-004): files written before a collection existed
+    // (e.g. no `hires` key) are migrated in memory so store.hires.push/filter
+    // et al. can never crash on undefined. The normalized shape is persisted
+    // on the next writeStore call.
+    return { ...emptyStore(), ...parsed };
+  });
 }
 
 export async function writeStore(data: DataStore): Promise<void> {
-  await ensureDataDir();
-  await writeFile(storeFile(), JSON.stringify(data, null, 2), 'utf-8');
+  return withStoreSpan('write', 'store', async () => {
+    await ensureDataDir();
+    const serialized = JSON.stringify(data, null, 2);
+    await writeFile(storeFile(), serialized, 'utf-8');
+    recordStoreScale(Buffer.byteLength(serialized), Object.values(data).reduce<number>((n, v) => n + (Array.isArray(v) ? v.length : 0), 0));
+  });
 }
 
 export async function readObservability(): Promise<ObservabilityLog[]> {
-  await ensureDataDir();
-  if (!existsSync(observabilityFile())) {
-    await writeFile(observabilityFile(), JSON.stringify({ logs: [] }, null, 2), 'utf-8');
-    return [];
-  }
-  const data = await readFile(observabilityFile(), 'utf-8');
-  return JSON.parse(data).logs || [];
+  return withStoreSpan('audit_read', 'store', async () => {
+    await ensureDataDir();
+    if (!existsSync(observabilityFile())) {
+      await writeFile(observabilityFile(), JSON.stringify({ logs: [] }, null, 2), 'utf-8');
+      return [];
+    }
+    const data = await readFile(observabilityFile(), 'utf-8');
+    const logs = JSON.parse(data).logs || [];
+    recordStoreScale(Buffer.byteLength(data), logs.length);
+    return logs;
+  });
 }
 
 export async function writeObservability(logs: ObservabilityLog[]): Promise<void> {
-  await ensureDataDir();
-  await writeFile(observabilityFile(), JSON.stringify({ logs }, null, 2), 'utf-8');
+  return withStoreSpan('audit_write', 'store', async () => {
+    await ensureDataDir();
+    const serialized = JSON.stringify({ logs }, null, 2);
+    await writeFile(observabilityFile(), serialized, 'utf-8');
+    recordStoreScale(Buffer.byteLength(serialized), logs.length);
+  });
 }
 
+// addObservabilityEntry creates a parent audit_append span; read and write each
+// run as child spans within it.  This makes the parent–child structure explicit
+// so analysts do not add inclusive and exclusive durations (S08-AC2).
+// Telemetry errors must not trigger a recursive audit write — withStoreSpan is
+// fail-open so this invariant is preserved (S08-AC3).
 export async function addObservabilityEntry(entry: ObservabilityLog): Promise<void> {
-  const logs = await readObservability();
-  logs.push(entry);
-  await writeObservability(logs);
+  return withStoreSpan('audit_append', 'store', async () => {
+    const logs = await readObservability();
+    logs.push(entry);
+    await writeObservability(logs);
+  });
 }
 
 export function generateId(): string {

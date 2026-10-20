@@ -19,3 +19,7 @@ See the [detailed review](../docs/features/observability/review-opentelemetry-pr
 ## Outstanding questions
 
 [D01–D15](../docs/features/observability/README.md#decision-register-and-release-gates) are tracked by explicit prioritized stories. An unresolved decision blocks only its named gate. Future capabilities receive a disposition and adoption trigger before dependent implementation begins.
+
+## P2 local synthetic delivery (2026-10-19)
+
+Authorized implementation is tracked in [P2 execution plan](observability-p2-plan.md). Existing backlog and Docker followups remain intact. Decision approvals, live-provider validation, approved cost policy and hosted Vercel gates stay pending.

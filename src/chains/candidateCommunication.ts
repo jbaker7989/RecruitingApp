@@ -7,6 +7,7 @@ import { ChatOpenAI } from '@langchain/openai';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { getLLMClient } from '../services/llm/index.js';
 import { CCInput, CCOutput, CCOutputSchema, MessageType, ToneType } from '../types/candidateCommunication.js';
+import { traceAIInvocation } from '../telemetry/ai.js';
 
 // ============================================================================
 // Message Templates
@@ -46,14 +47,14 @@ Generate a professional recruiting message with:
 Return ONLY valid JSON matching this exact schema. No markdown, no explanation:
 
 \`\`\`json
-{
+{{
   "subject": "string - clear email subject line",
   "body": "string - complete email body",
   "tone": "professional|warm|concise|inclusive",
   "messageType": "same as input",
   "confidence": number between 0 and 1,
   "requiresHumanReview": boolean
-}
+}}
 \`\`\`
 
 Important:
@@ -80,38 +81,50 @@ const TONE_MODIFIERS: Record<string, string> = {
 export async function generateCandidateMessage(
   input: CCInput
 ): Promise<CCOutput> {
-  const model = getLLMClient('candidate-communication') as ChatOpenAI;
+  return traceAIInvocation(
+    { feature: 'candidate_communication', task: 'communication', provider: 'anthropic', model: 'claude-3-5-sonnet', operation: 'chat' },
+    async (ctx) => {
+      const model = getLLMClient('candidate-communication') as ChatOpenAI;
 
-  // Get tone modifier
-  const tone = input.tone || 'professional';
-  const toneModifier = TONE_MODIFIERS[tone] || TONE_MODIFIERS.professional;
+      const tone = input.tone || 'professional';
+      const toneModifier = TONE_MODIFIERS[tone] || TONE_MODIFIERS.professional;
 
-  // Build prompt
-  const prompt = PromptTemplate.fromTemplate(BASE_PROMPT);
+      const prompt = PromptTemplate.fromTemplate(BASE_PROMPT);
+      const formattedPrompt = await prompt.format({
+        messageType: input.messageType,
+        applicantName: input.applicantName,
+        jobTitle: input.jobTitle,
+        companyName: input.companyName || 'The Company',
+        interviewerName: input.interviewerName || 'the hiring team',
+        scheduledTime: input.scheduledTime || 'to be determined',
+        location: input.location || 'TBD',
+        additionalNotes: input.additionalNotes || 'None provided',
+        tone: toneModifier,
+        companyContext: input.companyContext || 'A professional organization committed to hiring top talent.',
+      });
 
-  const formattedPrompt = await prompt.format({
-    messageType: input.messageType,
-    applicantName: input.applicantName,
-    jobTitle: input.jobTitle,
-    companyName: input.companyName || 'The Company',
-    interviewerName: input.interviewerName || 'the hiring team',
-    scheduledTime: input.scheduledTime || 'to be determined',
-    location: input.location || 'TBD',
-    additionalNotes: input.additionalNotes || 'None provided',
-    tone: toneModifier,
-    companyContext: input.companyContext || 'A professional organization committed to hiring top talent.',
-  });
+      const response = await model.invoke(formattedPrompt);
+      // Token usage is recorded by InstrumentedChatAnthropic.invoke; no double-record here.
 
-  // Invoke model
-  const response = await model.invoke(formattedPrompt);
+      const rawContent = response.content as string;
 
-  const rawContent = response.content as string;
+      // Provider responded; distinguish JSON parse failure from schema failure (OBS-P2-S02-AC3)
+      let parsed: unknown;
+      try {
+        parsed = parseJsonResponse(rawContent);
+      } catch (error) {
+        ctx.markParseOutcome('json_failure');
+        throw error;
+      }
 
-  // Parse JSON from response
-  const parsed = parseJsonResponse(rawContent);
-
-  // Validate against schema
-  return CCOutputSchema.parse(parsed);
+      try {
+        return CCOutputSchema.parse(parsed);
+      } catch (error) {
+        ctx.markParseOutcome('schema_failure');
+        throw error;
+      }
+    },
+  );
 }
 
 /**

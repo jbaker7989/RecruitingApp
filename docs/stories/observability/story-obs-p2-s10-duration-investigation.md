@@ -1,6 +1,6 @@
 # OBS-P2-S10: Deliver end-to-end duration and dependency investigation
 
-**Status:** Proposed — not implemented
+**Status:** Implementation in progress (dev2) — independent tester verification pending; real OTLP query evidence not yet recorded; no ACs accepted
 **Phase:** P2 | **Type:** Verification / dashboard | **Priority:** P1
 **Priority rationale:** Required for the agreed phase outcome and operational coverage.
 **Accountable role:** QA + platform engineer (named assignee pending)
@@ -23,6 +23,19 @@ Provide saved queries and a dependency dashboard connecting route/feature metric
 - [ ] **OBS-P2-S10-AC2:** A controlled slow LLM, slow store, Pinecone timeout, malformed model output, and caught fallback can each be localized from telemetry alone; only real calls appear in the trace.
 - [ ] **OBS-P2-S10-AC3:** Feature token totals/cost coverage and release comparisons are available; missing/sampled traces or sparse data are clearly identified rather than treated as proof of health.
 - [ ] **OBS-P2-S10-AC4:** P2 evidence maps every feature criterion to a story and includes saved query, dataset/deployment revision, expected/observed outcome, and privacy verification.
+
+## Implementation notes (dev2)
+
+- `scripts/observability-p2-fixtures.mjs`: S10 fixture driver using actual instrumented seams (readStore, PineconeVectorStore, calculateSemanticSimilarity, withSchedulingSpan) with patched Pinecone SDK. No network calls possible. Scenarios: store_read, pinecone_empty, pinecone_not_found, pinecone_timeout, matching_fallback, scheduling.
+- Dual mode: in-memory InMemorySpanExporter (default) or real OTLP export to local collector (when OTLP_ENDPOINT set).
+- `scripts/observability-p2-verify.mjs`: runs fixture driver with OTLP export; queries Jaeger for span presence and Prometheus for metric counters/histograms. CI command: `node --import tsx scripts/observability-p2-verify.mjs`.
+- Overlapping durations: child spans nest inside parent; do not sum child durations when parent provides wall-clock view (AC1). Explained in script output.
+- Sparse data caveat: P2 scenarios run once; p95 equals p50 with < 20 data points. Documented in verifier output (AC3).
+- Saved PromQL queries for p50/p95/p99, error rates, and dependency breakdown: see verifier script output and schema-contract.md.
+- No durable continuation (scheduling): no spans open across human waiting; documented limitation.
+- SDK hidden retry (Pinecone): not visible as separate spans; documented limitation.
+- "empty"/"not_found" outcomes pending OUTCOMES schema integration (sanitized until then).
+- Independent diagnosis evidence: tester runs `node --import tsx scripts/observability-p2-verify.mjs` to produce real backend query results.
 
 ## Verification and completion evidence
 
