@@ -42,3 +42,7 @@ proposed usage normalizer; AI invocation wrappers; tests. These are investigatio
 ## Boundaries
 
 Use synthetic data for acceptance. Never copy applicant records, secrets, prompts, completions or raw audit payloads into evidence. Observability must not change business behavior, introduce new external product integrations, or imply that NFR-034 is resolved. Follow the [shared acceptance contract](../../features/observability/README.md#shared-acceptance-contract) and this story's explicit scope exceptions.
+
+## Local synthetic delivery status (2026-10-20)
+
+Implementation and evidence are tracked in [P2 coverage](../../features/observability/p2-test-coverage.md) and [execution plan](../../../tasks/observability-p2-plan.md). Local implementation does not close decision approval or live-provider/hosted gates.

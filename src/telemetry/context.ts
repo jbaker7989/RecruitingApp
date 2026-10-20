@@ -10,6 +10,7 @@ import { trace } from '@opentelemetry/api';
 export interface RequestContext {
   requestId: string;
   feature?: string;
+  applicationOutcome?: 'validation_error';
 }
 
 const storage = new AsyncLocalStorage<RequestContext>();
@@ -65,4 +66,10 @@ export function getTraceCorrelation(): { trace_id?: string; span_id?: string; re
     ...(valid ? { trace_id: sc.traceId, span_id: sc.spanId } : {}),
     ...(ctx ? { request_id: ctx.requestId } : {}),
   };
+}
+
+/** Preserve application validation failure when a route catches it and returns HTTP 200. */
+export function markRequestValidationFailure(): void {
+  const ctx = storage.getStore();
+  if (ctx) ctx.applicationOutcome = 'validation_error';
 }

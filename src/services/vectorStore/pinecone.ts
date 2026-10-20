@@ -18,6 +18,7 @@ import { Pinecone } from '@pinecone-database/pinecone';
 import type { PineconeRecord, RecordMetadata } from '@pinecone-database/pinecone/dist/data/vectors/types';
 import type { ScoredPineconeRecord } from '@pinecone-database/pinecone/dist/data/vectors/query';
 import { Embeddings } from '@langchain/core/embeddings';
+import { withPineconeSpan } from '../../telemetry/p2Operations.js';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -64,25 +65,27 @@ export function getPineconeClient(): Pinecone {
 
 /** Create the Pinecone index if it doesn't already exist (idempotent). */
 export async function initPineconeIndex(): Promise<void> {
-  const pc = getPineconeClient();
-  const { indexes } = await pc.listIndexes();
+  return withPineconeSpan('init', 'vectorstore_init', async () => {
+    const pc = getPineconeClient();
+    const { indexes } = await pc.listIndexes();
 
-  if (indexes?.some(idx => idx.name === PINECONE_INDEX_NAME)) {
-    console.log(`[Pinecone] Index "${PINECONE_INDEX_NAME}" already exists.`);
-    return;
-  }
+    if (indexes?.some(idx => idx.name === PINECONE_INDEX_NAME)) {
+      console.log(`[Pinecone] Index "${PINECONE_INDEX_NAME}" already exists.`);
+      return;
+    }
 
-  console.log(`[Pinecone] Creating index "${PINECONE_INDEX_NAME}"...`);
-  await pc.createIndex({
-    name: PINECONE_INDEX_NAME,
-    dimension: EMBEDDING_DIMENSION,
-    metric: 'cosine',
-    spec: {
-      serverless: { cloud: PINECONE_CLOUD, region: PINECONE_REGION },
-    },
-    waitUntilReady: true,
+    console.log(`[Pinecone] Creating index "${PINECONE_INDEX_NAME}"...`);
+    await pc.createIndex({
+      name: PINECONE_INDEX_NAME,
+      dimension: EMBEDDING_DIMENSION,
+      metric: 'cosine',
+      spec: {
+        serverless: { cloud: PINECONE_CLOUD, region: PINECONE_REGION },
+      },
+      waitUntilReady: true,
+    });
+    console.log(`[Pinecone] Index "${PINECONE_INDEX_NAME}" is ready.`);
   });
-  console.log(`[Pinecone] Index "${PINECONE_INDEX_NAME}" is ready.`);
 }
 
 /** Get or create the singleton store (auto-initialises Pinecone on first call). */
@@ -158,22 +161,24 @@ export class PineconeVectorStore {
     text:       string,
     embedding:  number[]
   ): Promise<void> {
-    const pc    = getPineconeClient();
-    const index = pc.index(PINECONE_INDEX_NAME);
+    return withPineconeSpan('upsert', entityType === 'job' ? 'job_indexing' : 'applicant_indexing', async () => {
+      const pc    = getPineconeClient();
+      const index = pc.index(PINECONE_INDEX_NAME);
 
-    const record: PineconeRecord<RecordMetadata> = {
-      id,
-      values:  embedding,
-      metadata: {
-        entityType,
-        entityId,
-        text,
-        updatedAt: new Date().toISOString(),
-      } as RecordMetadata,
-    };
+      const record: PineconeRecord<RecordMetadata> = {
+        id,
+        values:  embedding,
+        metadata: {
+          entityType,
+          entityId,
+          text,
+          updatedAt: new Date().toISOString(),
+        } as RecordMetadata,
+      };
 
-    // v2 SDK: upsert takes { records: PineconeRecord[] }
-    await index.upsert({ records: [record] });
+      // v2 SDK: upsert takes { records: PineconeRecord[] }
+      await index.upsert({ records: [record] });
+    });
   }
 
   /**
@@ -181,24 +186,32 @@ export class PineconeVectorStore {
    * Returns undefined if not found.
    */
   async getEntry(id: string): Promise<VectorEntry | undefined> {
-    const pc    = getPineconeClient();
-    const index = pc.index(PINECONE_INDEX_NAME);
+    return withPineconeSpan('fetch', 'vectorstore', async () => {
+      const pc    = getPineconeClient();
+      const index = pc.index(PINECONE_INDEX_NAME);
 
-    const result = await index.fetch({ ids: [id] });
-    const record = result.records?.[id];
+      const result = await index.fetch({ ids: [id] });
+      const record = result.records?.[id];
 
-    return record ? toVectorEntry(id, record) : undefined;
+      return record ? toVectorEntry(id, record) : undefined;
+    }, {
+      // Distinct outcome for "record does not exist" vs an error (S07-AC2).
+      // 'not_found' declared in schema-contract.md; sanitized until OUTCOMES updated.
+      outcomeFn: (entry) => entry === undefined ? 'not_found' : 'success',
+    });
   }
 
   /**
    * Delete a single record by id.
    */
   async deleteEntry(id: string): Promise<void> {
-    const pc    = getPineconeClient();
-    const index = pc.index(PINECONE_INDEX_NAME);
+    return withPineconeSpan('delete', 'vectorstore', async () => {
+      const pc    = getPineconeClient();
+      const index = pc.index(PINECONE_INDEX_NAME);
 
-    // v2 SDK: deleteOne takes { id: string }
-    await index.deleteOne({ id });
+      // v2 SDK: deleteOne takes { id: string }
+      await index.deleteOne({ id });
+    });
   }
 
   /**
@@ -209,10 +222,12 @@ export class PineconeVectorStore {
     entityId:   string,
     entityType: 'job' | 'applicant'
   ): Promise<void> {
-    const pc    = getPineconeClient();
-    const index = pc.index(PINECONE_INDEX_NAME);
-    await index.deleteMany({
-      filter: { entityId: { $eq: entityId }, entityType: { $eq: entityType } },
+    return withPineconeSpan('delete_many', 'vectorstore', async () => {
+      const pc    = getPineconeClient();
+      const index = pc.index(PINECONE_INDEX_NAME);
+      await index.deleteMany({
+        filter: { entityId: { $eq: entityId }, entityType: { $eq: entityType } },
+      });
     });
   }
 
@@ -225,26 +240,43 @@ export class PineconeVectorStore {
     filter?: { entityType?: 'job' | 'applicant'; entityIds?: string[] },
     topK: number = 10
   ): Promise<SearchResult[]> {
-    const pc    = getPineconeClient();
-    const index = pc.index(PINECONE_INDEX_NAME);
+    const featureDefault = filter?.entityType === 'job' ? 'job_search' : filter?.entityType === 'applicant' ? 'applicant_search' : 'vectorstore';
+    return withPineconeSpan('query', featureDefault, async () => {
+      const pc    = getPineconeClient();
+      const index = pc.index(PINECONE_INDEX_NAME);
 
-    // Build v2 metadata filter
-    const pineconeFilter: Record<string, unknown> = {};
-    if (filter?.entityType) {
-      pineconeFilter.entityType = filter.entityType;
-    }
-    if (filter?.entityIds?.length) {
-      pineconeFilter.entityId = { $in: filter.entityIds };
-    }
+      // Build v2 metadata filter
+      const pineconeFilter: Record<string, unknown> = {};
+      if (filter?.entityType) {
+        pineconeFilter.entityType = filter.entityType;
+      }
+      if (filter?.entityIds?.length) {
+        pineconeFilter.entityId = { $in: filter.entityIds };
+      }
 
-    const response = await index.query({
-      vector:          queryEmbedding,
-      topK,
-      includeMetadata:  true,
-      ...(Object.keys(pineconeFilter).length > 0 ? { filter: pineconeFilter } : {}),
+      const response = await index.query({
+        vector:          queryEmbedding,
+        topK,
+        includeMetadata:  true,
+        ...(Object.keys(pineconeFilter).length > 0 ? { filter: pineconeFilter } : {}),
+      });
+
+      // Empty result (no matches) is a valid outcome, not an error (S07-AC2)
+      return (response.matches ?? []).map(toSearchResult);
+    }, {
+      // Distinct outcome for empty result set vs an error (S07-AC2).
+      // 'empty' declared in schema-contract.md; sanitized until OUTCOMES updated.
+      outcomeFn: (results) => results.length === 0 ? 'empty' : 'success',
+      // Safe bounded result metadata (S07-AC2). Keys declared in schema-contract.md.
+      // app.count_bucket: finite enum bucket for result count; sanitized until schema updated.
+      resultAttrs: (results) => ({
+        'app.query.topk': topK,
+        'app.count_bucket': results.length === 0 ? '0'
+          : results.length <= 10 ? '1-10'
+          : results.length <= 50 ? '11-50'
+          : '51+',
+      }),
     });
-
-    return (response.matches ?? []).map(toSearchResult);
   }
 
   /**
@@ -263,16 +295,20 @@ export class PineconeVectorStore {
 
   /** Total vector count across the index. */
   async getCount(): Promise<number> {
-    const pc    = getPineconeClient();
-    const stats = await pc.index(PINECONE_INDEX_NAME).describeIndexStats();
-    return stats.totalRecordCount ?? 0;
+    return withPineconeSpan('describe_stats', 'vectorstore', async () => {
+      const pc    = getPineconeClient();
+      const stats = await pc.index(PINECONE_INDEX_NAME).describeIndexStats();
+      return stats.totalRecordCount ?? 0;
+    });
   }
 
   /** Delete ALL vectors in the index. Use with caution. */
   async clearAll(): Promise<void> {
-    const pc    = getPineconeClient();
-    const index = pc.index(PINECONE_INDEX_NAME);
-    await index.deleteAll();
+    return withPineconeSpan('delete_all', 'vectorstore', async () => {
+      const pc    = getPineconeClient();
+      const index = pc.index(PINECONE_INDEX_NAME);
+      await index.deleteAll();
+    });
   }
 
   /**
@@ -288,27 +324,32 @@ export class PineconeVectorStore {
       text:       string;
     }>
   ): Promise<void> {
-    const pc    = getPineconeClient();
-    const index = pc.index(PINECONE_INDEX_NAME);
-    const BATCH = 1000;
+    // Logical batch_upsert span wraps the whole operation; each chunk has a child upsert span.
+    return withPineconeSpan('batch_upsert', 'reindex', async () => {
+      const pc    = getPineconeClient();
+      const index = pc.index(PINECONE_INDEX_NAME);
+      const BATCH = 1000;
 
-    for (let i = 0; i < records.length; i += BATCH) {
-      const chunk = records.slice(i, i + BATCH);
-      await index.upsert({
-        records: chunk.map(r => ({
-          id:     r.id,
-          values: r.embedding,
-          metadata: {
-            entityType: r.entityType,
-            entityId:   r.entityId,
-            text:       r.text,
-            updatedAt:  new Date().toISOString(),
-          } as RecordMetadata,
-        })),
-      });
-      if (i + BATCH < records.length) {
-        console.log(`[Pinecone] Upserted batch ${i + BATCH} / ${records.length} vectors…`);
+      for (let i = 0; i < records.length; i += BATCH) {
+        const chunk = records.slice(i, i + BATCH);
+        await withPineconeSpan('upsert', 'reindex', async () => {
+          await index.upsert({
+            records: chunk.map(r => ({
+              id:     r.id,
+              values: r.embedding,
+              metadata: {
+                entityType: r.entityType,
+                entityId:   r.entityId,
+                text:       r.text,
+                updatedAt:  new Date().toISOString(),
+              } as RecordMetadata,
+            })),
+          });
+        });
+        if (i + BATCH < records.length) {
+          console.log(`[Pinecone] Upserted batch ${i + BATCH} / ${records.length} vectors…`);
+        }
       }
-    }
+    });
   }
 }

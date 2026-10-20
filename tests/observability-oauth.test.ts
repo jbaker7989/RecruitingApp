@@ -197,7 +197,10 @@ test('S06: actual LinkedIn callback recovers from userinfo failure with opted-in
     assert.ok(callback); assert.notEqual(callback.spanContext().traceId, redirectTrace);
     assert.ok(callback.links.some(link => link.context.traceId === redirectTrace && link.context.spanId === redirectSpan));
     const children = telemetry.spans().filter(span => span.parentSpanContext?.spanId === callback.spanContext().spanId);
-    assert.deepEqual(new Set(children.map(span => span.name)), new Set(['oauth.token_exchange', 'oauth.userinfo']));
+    const oauthChildren = children.filter(span => span.name.startsWith('oauth.'));
+    assert.deepEqual(new Set(oauthChildren.map(span => span.name)), new Set(['oauth.token_exchange', 'oauth.userinfo']));
+    assert.equal(oauthChildren.length, 2, 'OAuth provider attempts remain exactly one token exchange and one userinfo call');
+    assert.ok(children.some(span => span.name === 'store.read'), 'the callback also parents its instrumented store read');
     for (const marker of [state, 'SYNTHETIC_CODE_93812', 'synthetic-access-token-93812', 'SYNTHETIC_MODEL_OUTPUT_93812', 'synthetic93812@example.invalid']) assert.ok(!telemetry.payloadJson().includes(marker), marker);
     assert.ok(!JSON.stringify(logs).includes('SYNTHETIC_MODEL_OUTPUT_93812'));
   } finally { globalThis.fetch = originalBoundary; delete process.env.OBS_OAUTH_SPAN_LINKS; }

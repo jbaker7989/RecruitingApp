@@ -1,6 +1,6 @@
 # OBS-P2-S08: Expose store and audit-write latency
 
-**Status:** Proposed — not implemented
+**Status:** Implementation complete (dev2) — awaiting tester verification
 **Phase:** P2 | **Type:** Implementation | **Priority:** P1
 **Priority rationale:** Required for the agreed phase outcome and operational coverage.
 **Accountable role:** Backend engineer (named assignee pending)
@@ -23,6 +23,13 @@ Observe readStore/writeStore/readObservability/writeObservability without changi
 - [ ] **OBS-P2-S08-AC2:** Parent/child structure distinguishes total audit append from its read/write children so analysts do not sum inclusive durations as elapsed time.
 - [ ] **OBS-P2-S08-AC3:** Permission failure, parse corruption, missing file, and concurrent activity are diagnosable without recursive audit writes triggered by telemetry failure.
 - [ ] **OBS-P2-S08-AC4:** NFR-034 remains an explicit production mutation/durable audit dependency; evidence uses synthetic data and labels ephemeral-store limitations; future durable-store instrumentation is tracked.
+
+## Implementation notes (dev2)
+
+- `src/models/store.ts`: `readStore`, `writeStore`, `readObservability`, `writeObservability`, `addObservabilityEntry` all wrapped with `withStoreSpan`.
+- `addObservabilityEntry` creates a parent `store.audit.append` span containing child `store.audit.read` and `store.audit.write` spans — parent/child structure avoids double-counting inclusive duration (AC2).
+- Telemetry errors in `withStoreSpan` are fail-open, preventing recursive audit writes triggered by telemetry failure (AC3).
+- NFR-034 remains open: JSON file store is ephemeral; no production mutation traffic or durable audit acceptance until resolved (AC4).
 
 ## Verification and completion evidence
 

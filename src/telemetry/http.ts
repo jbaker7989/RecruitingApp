@@ -115,7 +115,7 @@ export function telemetryMiddleware(options: TelemetryMiddlewareOptions = {}): R
         const code = res.statusCode;
         const route = routeTemplate(req, http.seenRoutes, config.maxRoutes);
         const feature = rctx.feature ?? featureFor(route);
-        const outcome = aborted ? 'aborted' : code >= 500 ? 'server_error' : code >= 400 ? 'client_error' : 'success';
+        const outcome = aborted ? 'aborted' : code >= 500 ? 'server_error' : code >= 400 ? 'client_error' : rctx.applicationOutcome ?? 'success';
         const attrs: Attributes = {
           'http.request.method': method,
           'http.route': route,
@@ -130,8 +130,8 @@ export function telemetryMiddleware(options: TelemetryMiddlewareOptions = {}): R
         span.updateName(`${method} ${route}`);
         span.setAttributes({ 'http.route': route, 'app.feature': feature, 'app.outcome': outcome });
         if (!aborted) span.setAttribute('http.response.status_code', code);
-        if (aborted || code >= 500) {
-          span.setAttribute('error.type', errorTypes.get(res) ?? (aborted ? 'aborted' : 'internal'));
+        if (aborted || code >= 500 || rctx.applicationOutcome) {
+          span.setAttribute('error.type', errorTypes.get(res) ?? (aborted ? 'aborted' : rctx.applicationOutcome ? 'validation' : 'internal'));
           span.setStatus({ code: SpanStatusCode.ERROR });
         }
         span.end();

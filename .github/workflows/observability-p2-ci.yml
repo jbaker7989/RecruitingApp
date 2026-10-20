@@ -1,0 +1,92 @@
+name: Observability P2 CI
+
+on:
+  push:
+    branches: [main, feature/observability-p2]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Tests use local synthetic fixtures and need no repository write access or secrets.
+permissions:
+  contents: read
+
+# Superseded branch runs should not consume runners or container resources.
+concurrency:
+  group: observability-p2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      # Keep a separately named acceptance step so P2 failures are immediately visible.
+      - name: P2 synthetic acceptance tests
+        run: npm run test:observability:p2
+      - name: Full regression tests
+        run: npm test
+      - name: Smoke built artifact
+        run: npm run smoke
+
+  local-backend:
+    # Hosted Ubuntu supports Docker. No Vercel deployment or provider credentials are used.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      # Grafana is unnecessary for query evidence; only signal storage/export dependencies run.
+      - name: Start local telemetry backends
+        run: |
+          mkdir -p observability/local/logs
+          docker info > /dev/null
+          timeout 180 docker compose -f observability/local/docker-compose.yml up -d collector jaeger prometheus loki
+      - name: Wait for backend readiness
+        run: |
+          deadline=$((SECONDS + 90))
+          while (( SECONDS < deadline )); do
+            if curl --fail --silent --max-time 3 http://127.0.0.1:16686/ > /dev/null &&
+               curl --fail --silent --max-time 3 http://127.0.0.1:9090/-/ready > /dev/null &&
+               curl --fail --silent --max-time 3 http://127.0.0.1:3100/ready > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'Local synthetic backends did not become ready within 90 seconds.'
+          exit 1
+      - name: Query synthetic telemetry through real local backends
+        run: timeout 120 npm run telemetry:verify
+      # Verify P2 operation/usage exports through the real local storage/query path.
+      - name: Query P2 synthetic dependency and usage telemetry
+        run: timeout 120 npm run telemetry:p2:verify
+      # A failed readiness/query step must still release containers and local volumes.
+      - name: Clean up local telemetry backends
+        if: always()
+        run: docker compose -f observability/local/docker-compose.yml down --volumes --remove-orphans

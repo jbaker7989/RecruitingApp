@@ -5,6 +5,8 @@
 
 import { addObservabilityEntry, generateId, now, readStore, writeStore } from '../../models/store.js';
 import type { Application } from '../../models/store.js';
+import { withSchedulingSpan } from '../../telemetry/p2Operations.js';
+import { randomUUID } from 'node:crypto';
 
 // State definition
 export interface InterviewSchedulingState {
@@ -434,47 +436,66 @@ class InterviewSchedulingMachine {
     this.machine = machine;
   }
 
-  async execute(initialState: InterviewSchedulingState): Promise<InterviewSchedulingState> {
-    let currentState = initialState;
-    
-    while (!this.machine.finalStates.includes(currentState.currentState)) {
-      const node = this.machine.states[currentState.currentState];
-      
-      if (!node) {
-        throw new Error(`No handler for state: ${currentState.currentState}`);
+  async execute(initialState: InterviewSchedulingState, entryPoint: string = 'api'): Promise<InterviewSchedulingState> {
+    // Generate a safe opaque run identity for span correlation (S09-AC1).
+    // Used as span-only attribute (never a metric label); candidate IDs are never included.
+    const runId = randomUUID().replace(/-/g, '').slice(0, 16);
+    return withSchedulingSpan('execute', 'execute', { simulated: true, runId, entryPoint }, async () => {
+      let currentState = initialState;
+
+      while (!this.machine.finalStates.includes(currentState.currentState)) {
+        const node = this.machine.states[currentState.currentState];
+
+        if (!node) {
+          throw new Error(`No handler for state: ${currentState.currentState}`);
+        }
+
+        // Each active step is wrapped; no span is held open across human waiting.
+        // simulated=true: scheduling uses simulated calendar/email integration (S09-AC1).
+        // runId propagated to step spans for trace correlation without exposing candidate identity.
+        const updates = await withSchedulingSpan('step', currentState.currentState, { simulated: true, attempt: currentState.retryCount + 1, runId }, () => node(currentState));
+        currentState = { ...currentState, ...updates } as InterviewSchedulingState;
+
+        // Safety check to prevent infinite loops
+        if (updates.currentState === currentState.currentState &&
+            currentState.currentState !== 'init') {
+          // We're stuck, exit
+          break;
+        }
       }
-      
-      const updates = await node(currentState);
-      currentState = { ...currentState, ...updates } as InterviewSchedulingState;
-      
-      // Safety check to prevent infinite loops
-      if (updates.currentState === currentState.currentState && 
-          currentState.currentState !== 'init') {
-        // We're stuck, exit
-        break;
-      }
-    }
-    
-    return currentState;
+
+      return currentState;
+    }, (finalState) => {
+      // Map terminal business states to span outcomes (S09-AC3).
+      // 'error'/'cancelled' are pending schema-contract.md OUTCOMES integration;
+      // they will be sanitized until the orchestrator updates privacy.ts.
+      if (finalState.currentState === 'error') return 'error';
+      if (finalState.currentState === 'cancelled') return 'cancelled';
+      return 'success';
+    });
   }
 
   async transition(state: InterviewSchedulingState, newState: InterviewState): Promise<InterviewSchedulingState> {
-    // Validate transition
-    const allowedTransitions = this.machine.transitions[state.currentState];
-    if (!allowedTransitions.includes(newState)) {
-      throw new Error(
-        `Invalid transition from ${state.currentState} to ${newState}. ` +
-        `Allowed: ${allowedTransitions.join(', ') || 'none (terminal state)'}`
-      );
-    }
+    // Validation belongs inside the active span so rejected replay remains observable.
+    // The state, allowed transitions and original exception message are unchanged.
+    const runId = randomUUID().replace(/-/g, '').slice(0, 16);
+    return withSchedulingSpan('transition', newState, { simulated: true, runId, entryPoint: 'api' }, async () => {
+      const allowedTransitions = this.machine.transitions[state.currentState];
+      if (!allowedTransitions.includes(newState)) {
+        throw new Error(
+          `Invalid transition from ${state.currentState} to ${newState}. ` +
+          `Allowed: ${allowedTransitions.join(', ') || 'none (terminal state)'}`
+        );
+      }
 
-    const node = this.machine.states[newState];
-    if (!node) {
-      throw new Error(`No handler for state: ${newState}`);
-    }
+      const node = this.machine.states[newState];
+      if (!node) {
+        throw new Error(`No handler for state: ${newState}`);
+      }
 
-    const updates = await node({ ...state, currentState: newState });
-    return { ...state, ...updates, currentState: newState } as InterviewSchedulingState;
+      const updates = await node({ ...state, currentState: newState });
+      return { ...state, ...updates, currentState: newState } as InterviewSchedulingState;
+    });
   }
 }
 
@@ -487,7 +508,8 @@ export async function startInterviewScheduling(
   jobId: string,
   companyId: string,
   interviewerIds: string[],
-  proposedTimes?: string[]
+  proposedTimes?: string[],
+  entryPoint: string = 'api',
 ): Promise<InterviewSchedulingState> {
   const initialState = createInitialState(
     applicationId,
@@ -496,12 +518,12 @@ export async function startInterviewScheduling(
     companyId,
     interviewerIds
   );
-  
+
   if (proposedTimes?.length) {
     initialState.proposedTimes = proposedTimes;
   }
-  
-  return await machine.execute(initialState);
+
+  return await machine.execute(initialState, entryPoint);
 }
 
 export async function requestReschedule(

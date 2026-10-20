@@ -19,7 +19,11 @@
     "lint:fix": "eslint \"src/**/*.ts\" \"tests/**/*.test.ts\" --fix",
     "telemetry:stack:up": "docker compose -f observability/local/docker-compose.yml up -d",
     "telemetry:stack:down": "docker compose -f observability/local/docker-compose.yml down",
-    "telemetry:verify": "node scripts/telemetry-local-verify.mjs"
+    "telemetry:verify": "node scripts/telemetry-local-verify.mjs",
+    "test:observability:p2": "tsx --test \"tests/observability-p2*.test.ts\"",
+    "telemetry:p2:fixtures": "node --import tsx scripts/observability-p2-fixtures.mjs",
+    "telemetry:p2:verify": "node --import tsx scripts/observability-p2-verify.mjs",
+    "telemetry:p2:cost-report": "node --import tsx scripts/observability-p2-cost-report.mjs"
   },
   "keywords": [],
   "author": "",

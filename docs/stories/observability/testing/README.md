@@ -11,3 +11,16 @@ Local synthetic verification is authorized. Production export, paid services and
 | Parallel decision work / final gate | [T05 hosted decisions and acceptance](story-obs-p1-t05-hosted-decisions-acceptance.md) | P0 |
 
 See the [44-AC coverage ledger](../../../features/observability/p1-test-coverage.md) for evidence and unresolved gates. Code checks and hosted/decision checks are separate: successful local tests cannot close a hosted acceptance criterion or approve a proposed policy.
+
+## P2 independent verification
+
+| Test story | Coverage |
+|---|---|
+| [T01 AI, usage and privacy](story-obs-p2-t01-ai-usage-privacy.md) | Actual model/embedding attempts, usage under sampling, sanitizer |
+| [T02 dependencies and workflow](story-obs-p2-t02-dependencies-workflow.md) | Pinecone, JSON/audit store, scheduling and degraded outcomes |
+| [T03 cost and diagnosis](story-obs-p2-t03-cost-investigation.md) | Effective-date fixture reports and independent latency investigation |
+| [T04 decisions](story-obs-p2-t04-decisions-gates.md) | D07 journey and D08 cost approvals |
+
+The [47-AC P2 ledger](../../../features/observability/p2-test-coverage.md) records every story and feature criterion separately. Local synthetic tests cannot approve journey ownership, finance policy, or production durability.
+
+Independent Codex test run on 2026-10-20: 43/43 focused tests and 338/338 full tests pass. The local Docker backend verifier passes 27/27; invalid scheduling replay exports an OTel ERROR transition span. See the ledger for measured durations, exact token counts, privacy result, and remaining decisions.

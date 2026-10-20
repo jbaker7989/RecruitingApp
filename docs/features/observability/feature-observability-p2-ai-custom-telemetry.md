@@ -1,6 +1,6 @@
 # OBS-001-P2: AI, custom spans, usage and duration attribution
 
-**Status:** Proposed — detailed backlog, not implemented
+**Status:** Local synthetic implementation in validation; decision, live-provider and hosted acceptance pending
 **Created:** 2026-10-18 | **Parent initiative:** [OBS-001](feature-opentelemetry-integration.md)
 **Accountability:** Engineering delivery; Product approves objectives; Platform/Operations owns acceptance. Named assignments are decision-story outputs.
 **Priority:** Required initiative phase; individual stories carry P0/P1/P2 priority and gate rationale.
@@ -86,3 +86,7 @@ Future capabilities are owned by [OBS-P3-S12](../../stories/observability/story-
 ## Sizing
 
 Estimate at story/task level after the blocking decisions and compatibility spike. The original 2–3 day estimate is not a commitment for this expanded scope. Separate active engineering effort, approval/provisioning lead time, baseline collection and operational validation. Split large implementation stories into focused tasks while preserving their AC IDs.
+
+## Delivery evidence
+
+The [47-criterion evidence ledger](p2-test-coverage.md) distinguishes local automated results, manual diagnosis and pending decisions. S01 is a semantics proposal, S05 remains an unapproved cost policy, and S06 uses arbitrary synthetic rates. No live vendor spend, approved budget, provider reconciliation, hosted Vercel delivery or durable production audit acceptance is claimed.
