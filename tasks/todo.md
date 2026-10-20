@@ -54,4 +54,4 @@ All entries are Proposed. Use linked stories as the canonical AC and evidence so
 
 - [x] Execute [P2 plan](observability-p2-plan.md), retaining every story/feature AC and open decision gate.
 - [x] Independent Codex tests and full baseline quality gates; real Docker query integration passed (P1 4/4, P2 27/27).
-- [ ] Review privacy/behavior/cardinality and evidence; commit, push and open linked PR without merging.
+- [x] Review privacy/behavior/cardinality and evidence; commit, push and open linked [PR #18](https://github.com/jbaker7989/RecruitingApp/pull/18) without merging. Acceptance decisions remain open.
