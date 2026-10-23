@@ -35,6 +35,10 @@ RUN printf '%s\n%s\n%s\n%s\n' \
 COPY --from=builder --chown=appuser:appgroup /app/dist        ./dist
 COPY --from=builder --chown=appuser:appgroup /app/node_modules ./node_modules
 COPY --from=builder --chown=appuser:appgroup /app/package.json ./package.json
+# EJS templates (rendered by the dashboard router) and static assets (CSS/images)
+# are resolved relative to the project root at runtime, so they must ship in the image.
+COPY --from=builder --chown=appuser:appgroup /app/views        ./views
+COPY --from=builder --chown=appuser:appgroup /app/public       ./public
 # .env was created above by the RUN instruction; no separate copy needed
 
 # Disable dotenv.config() in production — Docker sets env via -e / --env-file.
