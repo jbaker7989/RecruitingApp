@@ -5,7 +5,8 @@
 
 import { Router } from 'express';
 import { z } from 'zod';
-import { readStore, writeStore, generateId, now } from '../../models/store.js';
+import { readStore, updateStore, generateId, now } from '../../models/store.js';
+import type { JobDraft } from '../../models/store.js';
 import { generateJobDescription, generateJobDescriptionVariants } from '../../chains/jobDescription.js';
 import { requireRole } from '../../middleware/auth.js';
 import { addObservabilityEntry } from '../../models/store.js';
@@ -131,9 +132,7 @@ router.post('/generate', requireRole(['hiring-manager', 'member-services']), asy
     };
 
     // Save to store
-    const updatedStore = await readStore();
-    updatedStore.drafts.push(draft);
-    await writeStore(updatedStore);
+    await updateStore((s) => { s.drafts.push(draft); });
 
     // Log observability
     await addObservabilityEntry({
@@ -223,6 +222,7 @@ router.post('/generate-variants', requireRole(['hiring-manager', 'member-service
 
     // Generate variants sequentially
     const variants: { draftId: string; tone: string; confidence: number }[] = [];
+    const newDrafts: JobDraft[] = [];
     
     for (const tone of tonesToGenerate) {
       try {
@@ -252,7 +252,7 @@ router.post('/generate-variants', requireRole(['hiring-manager', 'member-service
           updatedAt: now(),
         };
 
-        store.drafts.push(variantDraft);
+        newDrafts.push(variantDraft);
         variants.push({
           draftId: variantId,
           tone: tone,
@@ -265,13 +265,14 @@ router.post('/generate-variants', requireRole(['hiring-manager', 'member-service
     }
 
     // Update base draft variant count
-    const baseDraftIndex = store.drafts.findIndex(d => d.id === baseDraftId);
-    if (baseDraftIndex !== -1) {
-      store.drafts[baseDraftIndex].variantsGenerated = variants.length;
-      store.drafts[baseDraftIndex].updatedAt = now();
-    }
-
-    await writeStore(store);
+    await updateStore((s) => {
+      s.drafts.push(...newDrafts);
+      const base = s.drafts.find(d => d.id === baseDraftId);
+      if (base) {
+        base.variantsGenerated = variants.length;
+        base.updatedAt = now();
+      }
+    });
 
     const response: GenerateVariantsResponse = {
       baseDraftId,
@@ -401,65 +402,68 @@ router.put('/drafts/:id', requireRole(['hiring-manager', 'member-services']), as
       });
     }
 
-    const store = await readStore();
-    const draftIndex = store.drafts.findIndex(d => d.id === id);
+    const outcome = await updateStore((store) => {
+      const draftIndex = store.drafts.findIndex(d => d.id === id);
     
-    if (draftIndex === -1) {
-      return res.status(404).json({ error: 'Draft not found' });
-    }
+      if (draftIndex === -1) {
+        return { error: 'Draft not found', status: 404 };
+      }
 
-    const draft = store.drafts[draftIndex];
+      const draft = store.drafts[draftIndex];
 
-    // Check ownership
-    if (draft.userId !== userId) {
-      return res.status(403).json({ error: 'Not authorized to update this draft' });
-    }
+      // Check ownership
+      if (draft.userId !== userId) {
+        return { error: 'Not authorized to update this draft', status: 403 };
+      }
 
-    // Cannot edit published drafts
-    if (draft.status === 'published') {
-      return res.status(400).json({ error: 'Cannot edit published drafts' });
-    }
+      // Cannot edit published drafts
+      if (draft.status === 'published') {
+        return { error: 'Cannot edit published drafts', status: 400 };
+      }
 
-    const updates = validation.data;
+      const updates = validation.data;
 
-    // Apply updates
-    if (updates.jobTitle) {
-      draft.input.jobTitle = updates.jobTitle;
-    }
-    if (updates.summary !== undefined) {
-      draft.output.summary = updates.summary;
-    }
-    if (updates.positionDescription !== undefined) {
-      draft.output.positionDescription = updates.positionDescription;
-    }
-    if (updates.responsibilities !== undefined) {
-      draft.output.responsibilities = updates.responsibilities;
-    }
-    if (updates.qualifications !== undefined) {
-      draft.output.qualifications = updates.qualifications;
-    }
-    if (updates.requirements !== undefined) {
-      draft.output.requirements = updates.requirements;
-    }
-    if (updates.requiredSkills !== undefined) {
-      draft.output.requiredSkills = updates.requiredSkills;
-    }
-    if (updates.requiredExperience !== undefined) {
-      draft.output.requiredExperience = updates.requiredExperience;
-    }
-    if (updates.keywords !== undefined) {
-      draft.output.keywords = updates.keywords;
-    }
-    if (updates.tone) {
-      draft.input.tone = updates.tone;
-    }
-    if (updates.status) {
-      draft.status = updates.status;
-    }
+      // Apply updates
+      if (updates.jobTitle) {
+        draft.input.jobTitle = updates.jobTitle;
+      }
+      if (updates.summary !== undefined) {
+        draft.output.summary = updates.summary;
+      }
+      if (updates.positionDescription !== undefined) {
+        draft.output.positionDescription = updates.positionDescription;
+      }
+      if (updates.responsibilities !== undefined) {
+        draft.output.responsibilities = updates.responsibilities;
+      }
+      if (updates.qualifications !== undefined) {
+        draft.output.qualifications = updates.qualifications;
+      }
+      if (updates.requirements !== undefined) {
+        draft.output.requirements = updates.requirements;
+      }
+      if (updates.requiredSkills !== undefined) {
+        draft.output.requiredSkills = updates.requiredSkills;
+      }
+      if (updates.requiredExperience !== undefined) {
+        draft.output.requiredExperience = updates.requiredExperience;
+      }
+      if (updates.keywords !== undefined) {
+        draft.output.keywords = updates.keywords;
+      }
+      if (updates.tone) {
+        draft.input.tone = updates.tone;
+      }
+      if (updates.status) {
+        draft.status = updates.status;
+      }
 
-    draft.updatedAt = now();
+      draft.updatedAt = now();
 
-    await writeStore(store);
+      return { draft: structuredClone(draft) as JobDraft };
+    });
+    if ('error' in outcome) return res.status(outcome.status ?? 500).json({ error: outcome.error });
+    const draft = outcome.draft;
 
     res.json({
       id: draft.id,
@@ -483,68 +487,69 @@ router.post('/drafts/:id/publish', requireRole(['hiring-manager', 'member-servic
   try {
     const { id } = req.params;
     const userId = req.user?.id || 'unknown';
-    const store = await readStore();
-
-    const draftIndex = store.drafts.findIndex(d => d.id === id);
+    const outcome = await updateStore((store) => {
+      const draftIndex = store.drafts.findIndex(d => d.id === id);
     
-    if (draftIndex === -1) {
-      return res.status(404).json({ error: 'Draft not found' });
-    }
+      if (draftIndex === -1) {
+        return { error: 'Draft not found', status: 404 };
+      }
 
-    const draft = store.drafts[draftIndex];
+      const draft = store.drafts[draftIndex];
 
-    // Check ownership
-    if (draft.userId !== userId) {
-      return res.status(403).json({ error: 'Not authorized to publish this draft' });
-    }
+      // Check ownership
+      if (draft.userId !== userId) {
+        return { error: 'Not authorized to publish this draft', status: 403 };
+      }
 
-    // Check if already published
-    if (draft.status === 'published') {
-      return res.status(400).json({ error: 'Draft already published' });
-    }
+      // Check if already published
+      if (draft.status === 'published') {
+        return { error: 'Draft already published', status: 400 };
+      }
 
-    // Require companyId for publishing
-    if (!draft.companyId) {
-      return res.status(400).json({ 
-        error: 'Cannot publish draft without company. Please recreate with a companyId.' 
-      });
-    }
+      // Require companyId for publishing
+      if (!draft.companyId) {
+        return { error: 'Cannot publish draft without company. Please recreate with a companyId.', status: 400 };
+      }
 
-    // Create job posting from draft
-    const jobId = generateId();
-    const jobPosting = {
-      id: jobId,
-      companyId: draft.companyId,
-      jobTitle: draft.input.jobTitle,
-      positionDescription: draft.output.positionDescription,
-      requirements: draft.output.requirements,
-      positionLocation: draft.input.location || '',
-      payRange: {
-        min: draft.input.compensation?.min || 0,
-        max: draft.input.compensation?.max || 0,
-        currency: draft.input.compensation?.currency || 'USD',
-      },
-      responsibilities: draft.output.responsibilities,
-      qualifications: draft.output.qualifications,
-      requiredSkills: draft.output.requiredSkills,
-      requiredExperience: draft.output.requiredExperience,
-      reportsTo: 'N/A',
-      isActive: true,
-      totalOpenings: 1,
-      currentApplications: 0,
-      createdAt: now(),
-      updatedAt: now(),
-    };
+      // Create job posting from draft
+      const jobId = generateId();
+      const jobPosting = {
+        id: jobId,
+        companyId: draft.companyId,
+        jobTitle: draft.input.jobTitle,
+        positionDescription: draft.output.positionDescription,
+        requirements: draft.output.requirements,
+        positionLocation: draft.input.location || '',
+        payRange: {
+          min: draft.input.compensation?.min || 0,
+          max: draft.input.compensation?.max || 0,
+          currency: draft.input.compensation?.currency || 'USD',
+        },
+        responsibilities: draft.output.responsibilities,
+        qualifications: draft.output.qualifications,
+        requiredSkills: draft.output.requiredSkills,
+        requiredExperience: draft.output.requiredExperience,
+        reportsTo: 'N/A',
+        isActive: true,
+        totalOpenings: 1,
+        currentApplications: 0,
+        createdAt: now(),
+        updatedAt: now(),
+      };
 
-    // Add to store
-    store.jobs.push(jobPosting);
+      // Add to store
+      store.jobs.push(jobPosting);
 
-    // Update draft status
-    draft.status = 'published';
-    draft.publishedAt = now();
-    draft.updatedAt = now();
+      // Update draft status
+      draft.status = 'published';
+      draft.publishedAt = now();
+      draft.updatedAt = now();
 
-    await writeStore(store);
+      return { draft: structuredClone(draft) as JobDraft, jobPosting };
+    });
+    if ('error' in outcome) return res.status(outcome.status ?? 500).json({ error: outcome.error });
+    const { draft, jobPosting } = outcome;
+    const jobId = jobPosting.id;
 
     // Log observability
     await addObservabilityEntry({
@@ -590,31 +595,32 @@ router.delete('/drafts/:id', requireRole(['hiring-manager', 'member-services']),
   try {
     const { id } = req.params;
     const userId = req.user?.id || 'unknown';
-    const store = await readStore();
-
-    const draft = store.drafts.find(d => d.id === id);
+    const outcome = await updateStore((store) => {
+      const draft = store.drafts.find(d => d.id === id);
     
-    if (!draft) {
-      return res.status(404).json({ error: 'Draft not found' });
-    }
+      if (!draft) {
+        return { error: 'Draft not found', status: 404 };
+      }
 
-    // Check ownership
-    if (draft.userId !== userId) {
-      return res.status(403).json({ error: 'Not authorized to delete this draft' });
-    }
+      // Check ownership
+      if (draft.userId !== userId) {
+        return { error: 'Not authorized to delete this draft', status: 403 };
+      }
 
-    // Soft delete - mark as archived
-    draft.status = 'archived';
-    draft.updatedAt = now();
+      // Soft delete - mark as archived
+      draft.status = 'archived';
+      draft.updatedAt = now();
 
-    // Also archive any variants
-    const variants = store.drafts.filter(d => d.variantOf === id);
-    for (const variant of variants) {
-      variant.status = 'archived';
-      variant.updatedAt = now();
-    }
+      // Also archive any variants
+      const variants = store.drafts.filter(d => d.variantOf === id);
+      for (const variant of variants) {
+        variant.status = 'archived';
+        variant.updatedAt = now();
+      }
 
-    await writeStore(store);
+      return {};
+    });
+    if ('error' in outcome) return res.status(outcome.status ?? 500).json({ error: outcome.error });
 
     res.json({ message: 'Draft deleted successfully' });
   } catch (error) {

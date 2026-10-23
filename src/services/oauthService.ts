@@ -11,7 +11,7 @@
 import { createHmac, randomBytes } from 'crypto';
 import { createRemoteJWKSet, customFetch, jwtVerify } from 'jose';
 import { addObservabilityEntry, generateId, now } from '../models/store.js';
-import { readStore, writeStore } from '../models/store.js';
+import { updateStore, type Applicant } from '../models/store.js';
 import { signApplicantToken } from './tokenService.js';
 import { logger } from '../telemetry/logger.js';
 import {
@@ -498,12 +498,7 @@ async function runFacebookCallback(
 
 /** Find existing applicant by email, or create a new one. */
 async function upsertOAuthApplicant(info: OAuthUserInfo): Promise<Omit<CallbackResult, 'next'>> {
-  const store = await readStore();
-
-  const existingApplicant = store.applicants.find(a => a.email?.toLowerCase() === info.email.toLowerCase());
-  const isNewApplicant = !existingApplicant;
-
-  const newApplicant: typeof store.applicants[0] = {
+  const candidate: Applicant = {
     id: generateId(),
     firstName: info.firstName,
     lastName: info.lastName,
@@ -525,32 +520,33 @@ async function upsertOAuthApplicant(info: OAuthUserInfo): Promise<Omit<CallbackR
     updatedAt: now(),
   };
 
-  const applicant: typeof store.applicants[0] = existingApplicant ?? newApplicant;
-
-  if (isNewApplicant) {
-    store.applicants.push(applicant);
-    await writeStore(store);
-  } else {
+  // Lookup, create-or-link and update are one atomic step: concurrent first logins for the
+  // same email cannot create duplicate applicants.
+  const { applicantId, isNewApplicant } = await updateStore((store) => {
+    const existing = store.applicants.find(a => a.email?.toLowerCase() === info.email.toLowerCase());
+    if (!existing) {
+      store.applicants.push(candidate);
+      return { applicantId: candidate.id, isNewApplicant: true };
+    }
     // Update name if it changed, link OAuth provider if not already linked
     let updated = false;
-    if (info.firstName && applicant.firstName !== info.firstName) {
-      applicant.firstName = info.firstName;
+    if (info.firstName && existing.firstName !== info.firstName) {
+      existing.firstName = info.firstName;
       updated = true;
     }
-    if (info.lastName && applicant.lastName !== info.lastName) {
-      applicant.lastName = info.lastName;
+    if (info.lastName && existing.lastName !== info.lastName) {
+      existing.lastName = info.lastName;
       updated = true;
     }
-    if (!applicant.oauthProvider) {
-      applicant.oauthProvider = info.provider;
-      applicant.oauthProviderId = info.providerId;
+    if (!existing.oauthProvider) {
+      existing.oauthProvider = info.provider;
+      existing.oauthProviderId = info.providerId;
       updated = true;
     }
-    if (updated) {
-      applicant.updatedAt = now();
-      await writeStore(store);
-    }
-  }
+    if (updated) existing.updatedAt = now();
+    return { applicantId: existing.id, isNewApplicant: false };
+  });
+  const applicant = { id: applicantId };
 
   // Issue JWT — hasCredentials: false (no password)
   const token = await signApplicantToken(applicant.id, false);

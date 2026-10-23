@@ -1,0 +1,82 @@
+name: PostgreSQL Durability CI
+
+on:
+  push:
+    branches: [main, feature/durable-db-nfr034-061-070]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: database-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: recruiting_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d recruiting_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/recruiting_test
+      USE_DATABASE: "true"
+      DB_TEST_REQUIRED: "true"
+      NODE_ENV: test
+      JWT_SECRET: database-ci-user-secret-at-least-32-characters
+      APPLICANT_JWT_SECRET: database-ci-applicant-secret-at-least-32-characters
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Require PostgreSQL readiness
+        run: |
+          node --input-type=module <<'NODE'
+          import pg from 'pg';
+          const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
+          await client.connect();
+          await client.query('SELECT 1');
+          await client.end();
+          NODE
+
+      - name: Typecheck database integration code
+        run: npm run typecheck
+
+      - name: Lint database integration code
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      # DB_TEST_REQUIRED prevents missing services or connection failures from becoming skips.
+      - name: PostgreSQL durability and migration acceptance
+        run: npm run test:db
+
+      - name: Smoke built artifact with PostgreSQL
+        env:
+          DATABASE_SCHEMA: nfr_ci_smoke
+        run: npm run smoke

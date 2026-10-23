@@ -1,6 +1,6 @@
 import { Readable } from 'stream';
 import Papa from 'papaparse';
-import { readStore, writeStore, generateId, now, addObservabilityEntry, Company, JobPosting } from '../models/store.js';
+import { updateStore, generateId, now, addObservabilityEntry, Company, JobPosting } from '../models/store.js';
 
 export interface ImportResult {
   totalRows: number;
@@ -54,7 +54,6 @@ export async function processImport(
   companyId: string,
   userId: string
 ): Promise<ImportResult> {
-  const store = await readStore();
   const result: ImportResult = {
     totalRows: rows.length,
     successes: 0,
@@ -64,6 +63,8 @@ export async function processImport(
   };
 
   const nowStr = now();
+  const created: JobPosting[] = [];
+  const audits: Array<Parameters<typeof addObservabilityEntry>[0]> = [];
 
   for (const row of rows) {
     try {
@@ -93,11 +94,11 @@ export async function processImport(
         updatedAt: nowStr,
       };
 
-      store.jobs.push(job);
+      created.push(job);
       result.successes++;
       result.jobsCreated.push(job.id);
 
-      await addObservabilityEntry({
+      audits.push({
         id: generateId(),
         timestamp: nowStr,
         action: 'import_job',
@@ -111,7 +112,7 @@ export async function processImport(
       result.failures++;
       result.errors.push(`Row "${row.jobTitle}": ${error}`);
 
-      await addObservabilityEntry({
+      audits.push({
         id: generateId(),
         timestamp: nowStr,
         action: 'import_job',
@@ -124,7 +125,9 @@ export async function processImport(
     }
   }
 
-  await writeStore(store);
+  // All valid rows commit together; audit entries are written only after the commit succeeds.
+  if (created.length > 0) await updateStore((store) => { store.jobs.push(...created); });
+  for (const entry of audits) await addObservabilityEntry(entry);
   return result;
 }
 

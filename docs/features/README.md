@@ -24,6 +24,10 @@ AI-powered automation using LangChain and LangGraph.
 
 [OpenTelemetry delivery backlog](observability/README.md): three proposed phase features and 33 prioritized stories covering baseline signals, AI/custom instrumentation, SLOs, governance, outside-in monitoring and customer status. Includes a detailed proposal review and gated decision register.
 
+### Platform
+
+[Durable PostgreSQL Application Storage](platform/feature-durable-postgresql-storage.md) defines the transactional store, migration, fail-closed startup, and local/hosted verification requirements for NFR-034 and NFR-061–NFR-070.
+
 ## Feature Templates
 
 When adding new features, follow this structure:

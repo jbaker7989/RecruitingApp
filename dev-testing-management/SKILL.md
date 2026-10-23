@@ -102,6 +102,20 @@ The test-first requirement ensures:
 - **Initial enforcement:** existing pre-lint cleanup debt is tracked separately (NFR-027), so warnings may be tolerated only when documented; lint errors must be fixed or explicitly converted to warnings with a linked debt issue.
 - **No bypass:** do not use `--no-verify`, CI overrides, or local-only exclusions to bypass lint failures.
 
+### Completion review for changed behavior
+- Trace each accepted request field through validation, route/service calls, workflow state, and the observable result. Test at least one non-default value as well as the omitted default; a field that is accepted but ignored is a functional defect, not unused-variable cleanup.
+- For changed dependency adapters, verify the API against the installed locked version and execute the real library with a small valid synthetic fixture. Mock remote providers downstream, not the adapter being verified. A typecheck or a mocked parser cannot establish runtime compatibility. Include malformed-input behavior and resource cleanup when applicable.
+- Exercise failure paths as well as successful results. Use synthetic sensitive markers to check that HTTP errors, audit entries, logs, and exported telemetry do not copy raw inputs or provider output. Preserve safe error categories; retaining a cause does not authorize serializing it.
+- Confirm new tests are actually discovered by a CI command. Report required service-backed suites separately from ordinary tests, with pass/fail/skip counts; a skipped suite is not verification.
+- Record which acceptance criteria were verified and any remaining limits. Distinguish locally implemented/tested, hosted-CI-passed, merged, and production-verified states. Follow the user's authorized delivery scope; a local-only assignment does not authorize merge or deployment.
+
+### Warning triage
+- A zero-error lint exit is necessary but does not prove completeness. Review new warnings and warnings in changed execution paths before declaring the work complete.
+- Classify each relevant warning as a confirmed defect, suspected defect needing reproduction, cleanup debt, or tooling false positive. Record the rule/location, reasoning, and linked backlog item where needed; a warning count alone is not a disposition.
+- Prioritize unused accepted inputs, validation helpers, and caught errors for call-path inspection. Reproduce behavior before assigning severity. Fix defects within the assigned scope; file separately scoped defects with evidence, priority, size, and regression criteria.
+- Check actual TypeScript usage before deleting imports or constructor parameter properties. The current base `no-unused-vars` rule can flag type-only references and properties used through `this`; classify these as tooling issues when confirmed.
+- Do not blanket-suppress warnings or rename a meaningful input to `_name` to hide missing behavior. Existing unrelated cleanup can remain linked to NFR-027; it is not a reason to ignore a confirmed functional defect.
+
 ### Commit Standards
 - Messages: `type(NFR-ID): summary`
   - `test(NFR-004): add failing regression for missing hires array`

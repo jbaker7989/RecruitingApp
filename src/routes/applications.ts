@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { readStore, writeStore, generateId, now, addObservabilityEntry } from '../models/store.js';
+import { readStore, updateStore, generateId, now, addObservabilityEntry } from '../models/store.js';
 import { validateApplicationBody } from '../middleware/validation.js';
 import { calculateMatchScore } from '../services/matching.js';
 import { requireRole } from '../middleware/auth.js';
@@ -13,71 +13,74 @@ const activeApplicationLocks = new Set<string>();
 // ─── Shared submit logic — wrapped by auth + lock in the POST handler ──────────
 
 async function submitApplication(req: any, res: any, applicantId: string) {
-  const store = await readStore();
-  const job = store.jobs.find((j: any) => j.id === req.body.jobPostingId);
+  const jobPostingId = req.body.jobPostingId;
+  // Duplicate/capacity checks, application insert, job counters and applicant touch commit atomically.
+  const outcome = await updateStore((store) => {
+    const job = store.jobs.find((j: any) => j.id === jobPostingId);
+    if (!job) return { kind: 'job-not-found' as const };
+    if (!job.isActive) return { kind: 'job-closed' as const };
 
-  if (!job) return res.status(404).json({ error: 'Job not found' });
-  if (!job.isActive) return res.status(400).json({ error: 'Job is no longer accepting applications' });
+    const applicant = store.applicants.find((a: any) => a.id === applicantId);
+    if (!applicant) return { kind: 'applicant-not-found' as const };
 
-  const applicant = store.applicants.find((a: any) => a.id === applicantId);
-  if (!applicant) return res.status(404).json({ error: 'Applicant not found' });
+    const existing = store.applications.find(
+      (a: any) => a.applicantId === applicantId && a.jobPostingId === jobPostingId,
+    );
+    if (existing) return { kind: 'duplicate' as const, applicationId: existing.id };
 
-  // Duplicate check
-  const existing = store.applications.find(
-    (a: any) => a.applicantId === applicantId && a.jobPostingId === req.body.jobPostingId,
-  );
-  if (existing) {
+    const { matchScore, keywordMatches, educationMatchScore, experienceMatchScore } =
+      calculateMatchScore(applicant, job);
+
+    const application: any = {
+      id: generateId(),
+      applicantId: applicant.id,
+      jobPostingId: job.id,
+      status: 'pending',
+      matchScore,
+      keywordMatches,
+      educationMatchScore,
+      experienceMatchScore,
+      appliedAt: now(),
+      updatedAt: now(),
+      emailConfirmed: req.body.email === req.body.emailConfirmation,
+    };
+
+    store.applications.push(application);
+    job.currentApplications += 1;
+    if (job.currentApplications >= job.totalOpenings) job.isActive = false;
+    applicant.updatedAt = now();
+    return { kind: 'created' as const, application, jobId: job.id, matchScore };
+  });
+
+  if (outcome.kind === 'job-not-found') return res.status(404).json({ error: 'Job not found' });
+  if (outcome.kind === 'job-closed') return res.status(400).json({ error: 'Job is no longer accepting applications' });
+  if (outcome.kind === 'applicant-not-found') return res.status(404).json({ error: 'Applicant not found' });
+  if (outcome.kind === 'duplicate') {
     await addObservabilityEntry({
       id: generateId(),
       timestamp: now(),
       action: 'apply',
       entityType: 'Application',
-      entityId: existing.id,
+      entityId: outcome.applicationId,
       userId: applicantId,
-      details: { jobPostingId: req.body.jobPostingId, duplicate: true },
+      details: { jobPostingId, duplicate: true },
       outcome: 'failure',
     });
-    return res.status(409).json({ error: 'Already applied to this job', applicationId: existing.id });
+    return res.status(409).json({ error: 'Already applied to this job', applicationId: outcome.applicationId });
   }
 
-  // Calculate match score
-  const { matchScore, keywordMatches, educationMatchScore, experienceMatchScore } =
-    calculateMatchScore(applicant, job);
-
-  const emailConfirmed = req.body.email === req.body.emailConfirmation;
-
-  const application: any = {
-    id: generateId(),
-    applicantId: applicant.id,
-    jobPostingId: job.id,
-    status: 'pending',
-    matchScore,
-    keywordMatches,
-    educationMatchScore,
-    experienceMatchScore,
-    appliedAt: now(),
-    updatedAt: now(),
-    emailConfirmed,
-  };
-
-  store.applications.push(application);
-  job.currentApplications += 1;
-  if (job.currentApplications >= job.totalOpenings) job.isActive = false;
-  applicant.updatedAt = now();
-
-  await writeStore(store);
   await addObservabilityEntry({
     id: generateId(),
     timestamp: now(),
     action: 'apply',
     entityType: 'Application',
-    entityId: application.id,
-    userId: applicant.id,
-    details: { jobId: job.id, matchScore },
+    entityId: outcome.application.id,
+    userId: applicantId,
+    details: { jobId: outcome.jobId, matchScore: outcome.matchScore },
     outcome: 'success',
   });
 
-  res.status(201).json(application);
+  res.status(201).json(outcome.application);
 }
 
 // ─── POST /api/applications ──────────────────────────────────────────────────
@@ -158,38 +161,39 @@ router.put(
         return res.status(400).json({ error: 'Invalid status' });
       }
 
-      const store = await readStore();
-      const appIndex = store.applications.findIndex((a: any) => a.id === req.params.id);
-      if (appIndex === -1) return res.status(404).json({ error: 'Application not found' });
+      const outcome = await updateStore((store) => {
+        const target = store.applications.find((a: any) => a.id === req.params.id);
+        if (!target) return { kind: 'not-found' as const };
 
-      const oldStatus = store.applications[appIndex].status;
-      store.applications[appIndex].status = status;
-      store.applications[appIndex].updatedAt = now();
+        const oldStatus = target.status;
+        target.status = status;
+        target.updatedAt = now();
 
-      if (status === 'accepted') {
-        const app = store.applications[appIndex];
-        const applicant = store.applicants.find((a: any) => a.id === app.applicantId);
-        const job = store.jobs.find((j: any) => j.id === app.jobPostingId);
-        if (applicant && job) {
-          const hireRecord: any = {
-            id: generateId(),
-            applicantId: applicant.id,
-            companyId: job.companyId,
-            jobPostingId: job.id,
-            hireDate: now(),
-            positionTitle: job.jobTitle,
-            status: 'active',
-            notifiedEmployer: false,
-            createdAt: now(),
-            updatedAt: now(),
-          };
-          store.hires.push(hireRecord);
-          applicant.hireRecords.push(hireRecord.id);
-          applicant.updatedAt = now();
+        if (status === 'accepted') {
+          const applicant = store.applicants.find((a: any) => a.id === target.applicantId);
+          const job = store.jobs.find((j: any) => j.id === target.jobPostingId);
+          if (applicant && job) {
+            const hireRecord: any = {
+              id: generateId(),
+              applicantId: applicant.id,
+              companyId: job.companyId,
+              jobPostingId: job.id,
+              hireDate: now(),
+              positionTitle: job.jobTitle,
+              status: 'active',
+              notifiedEmployer: false,
+              createdAt: now(),
+              updatedAt: now(),
+            };
+            store.hires.push(hireRecord);
+            applicant.hireRecords.push(hireRecord.id);
+            applicant.updatedAt = now();
+          }
         }
-      }
+        return { kind: 'updated' as const, application: target, oldStatus };
+      });
+      if (outcome.kind === 'not-found') return res.status(404).json({ error: 'Application not found' });
 
-      await writeStore(store);
       await addObservabilityEntry({
         id: generateId(),
         timestamp: now(),
@@ -197,11 +201,11 @@ router.put(
         entityType: 'Application',
         entityId: req.params.id,
         userId: req.user.id,
-        details: { oldStatus, newStatus: status },
+        details: { oldStatus: outcome.oldStatus, newStatus: status },
         outcome: 'success',
       });
 
-      res.json(store.applications[appIndex]);
+      res.json(outcome.application);
     } catch (error) {
       res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to update status' });
     }

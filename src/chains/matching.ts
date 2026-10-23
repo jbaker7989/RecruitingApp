@@ -11,7 +11,7 @@ import {
   findSimilarJobsForApplicant,
   findSimilarApplicantsForJob,
 } from '../services/vectorStore/index.js';
-import { readStore, writeStore, addObservabilityEntry, generateId, now } from '../models/store.js';
+import { readStore, updateStore, addObservabilityEntry, generateId, now } from '../models/store.js';
 import type { Applicant, JobPosting, Application } from '../models/store.js';
 import { withVectorstoreSpan } from '../telemetry/p2Operations.js';
 
@@ -159,6 +159,22 @@ export async function calculateMatchScore(
   };
 }
 
+/** Apply computed scores to the latest application records in one atomic update. */
+async function applyScores(scored: Array<{ id: string; semanticScore: number; matchScore: number }>): Promise<void> {
+  if (scored.length === 0) return;
+  const byId = new Map(scored.map((s) => [s.id, s]));
+  await updateStore((store) => {
+    const ts = now();
+    for (const app of store.applications) {
+      const s = byId.get(app.id);
+      if (!s) continue;
+      (app as any).semanticScore = s.semanticScore;
+      (app as any).matchScore = s.matchScore;
+      app.updatedAt = ts;
+    }
+  });
+}
+
 /**
  * Re-score all applications for a job
  */
@@ -178,15 +194,15 @@ export async function rescoreApplicationsForJob(jobId: string): Promise<{
 
   let updated = 0;
   let errors = 0;
+  // Scores are computed outside the transaction (vector-store/network calls) and then applied
+  // to the CURRENT application records, so concurrent status changes are never overwritten.
+  const scored: Array<{ id: string; semanticScore: number; matchScore: number }> = [];
 
   for (const app of store.applications.filter((a: Application) => a.jobPostingId === jobId)) {
     try {
       const result = await calculateMatchScore(app.applicantId, jobId);
       const semanticScoreNormalized = result.semanticScore / 10; // Convert back to 0-1 for storage
-      
-      (app as any).semanticScore = semanticScoreNormalized;
-      (app as any).matchScore = result.finalScore;
-      app.updatedAt = now();
+      scored.push({ id: app.id, semanticScore: semanticScoreNormalized, matchScore: result.finalScore });
       updated++;
     } catch (error) {
       console.error(`Failed to rescore application ${app.id}:`, error);
@@ -194,7 +210,7 @@ export async function rescoreApplicationsForJob(jobId: string): Promise<{
     }
   }
 
-  await writeStore(store);
+  await applyScores(scored);
   return { updated, errors };
 }
 
@@ -289,6 +305,7 @@ export async function rebuildSemanticIndex(): Promise<{
   let applicantsIndexed = 0;
   let applicationsRescored = 0;
   let errors = 0;
+  const scored: Array<{ id: string; semanticScore: number; matchScore: number }> = [];
 
   // Index all active jobs
   for (const job of store.jobs.filter((j: JobPosting) => j.isActive)) {
@@ -316,11 +333,8 @@ export async function rebuildSemanticIndex(): Promise<{
   for (const app of store.applications) {
     try {
       const semanticScore = await calculateSemanticSimilarity(app.jobPostingId, app.applicantId);
-      (app as any).semanticScore = semanticScore;
-      
       const result = await calculateMatchScore(app.applicantId, app.jobPostingId);
-      (app as any).matchScore = result.finalScore;
-      app.updatedAt = now();
+      scored.push({ id: app.id, semanticScore, matchScore: result.finalScore });
       applicationsRescored++;
     } catch (error) {
       console.error(`Failed to rescore application ${app.id}:`, error);
@@ -328,7 +342,7 @@ export async function rebuildSemanticIndex(): Promise<{
     }
   }
 
-  await writeStore(store);
+  await applyScores(scored);
 
   await addObservabilityEntry({
     id: generateId(),

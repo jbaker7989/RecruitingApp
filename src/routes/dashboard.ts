@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import { readStore } from '../models/store.js';
+import { readStore, updateStore } from '../models/store.js';
 import { verifyApplicantToken } from '../services/tokenService.js';
 import { revokeToken } from '../services/revocationService.js';
 import { clearApplicantSessionCookie, safeApplicantDestination, setApplicantSessionCookie } from '../services/applicantSession.js';
@@ -102,23 +102,6 @@ router.post('/register', async (req: any, res: any) => {
   }
 
   try {
-    const store = await readStore();
-    
-    // Check for existing applicant with this email
-    const existing = store.applicants.find(
-      (a: any) => a.email?.toLowerCase() === email.toLowerCase(),
-    );
-    if (existing) {
-      return res.status(200).render('dashboard/register', {
-        error: 'An account with this email already exists.',
-        email,
-        firstName,
-        lastName,
-        phone,
-        next,
-      });
-    }
-
     const { generateId, now } = await import('../models/store.js');
     const passwordHash = await bcrypt.hash(password, 10);
 
@@ -144,9 +127,22 @@ router.post('/register', async (req: any, res: any) => {
       updatedAt: now(),
     };
 
-    store.applicants.push(applicant);
-    const { writeStore } = await import('../models/store.js');
-    await writeStore(store);
+    // Duplicate-email check and insert are one atomic step (NFR-061).
+    const created = await updateStore((store) => {
+      if (store.applicants.some((a: any) => a.email?.toLowerCase() === email.toLowerCase())) return false;
+      store.applicants.push(applicant);
+      return true;
+    });
+    if (!created) {
+      return res.status(200).render('dashboard/register', {
+        error: 'An account with this email already exists.',
+        email,
+        firstName,
+        lastName,
+        phone,
+        next,
+      });
+    }
 
     const { signApplicantToken } = await import('../services/tokenService.js');
     const token = await signApplicantToken(applicant.id, true); // hasCredentials = true
@@ -232,9 +228,21 @@ router.post('/login', async (req: any, res: any) => {
           next,
         });
       }
-      applicant.passwordHash = await bcrypt.hash(password, 10);
-      const { writeStore } = await import('../models/store.js');
-      await writeStore(store);
+      const upgraded = await bcrypt.hash(password, 10);
+      // Compare-and-swap: a password changed since we verified must not yield a stale login.
+      const swapped = await updateStore((s) => {
+        const current = s.applicants.find((a: any) => a.id === applicant.id);
+        if (!current || current.passwordHash !== legacyHash) return false;
+        current.passwordHash = upgraded;
+        return true;
+      });
+      if (!swapped) {
+        return res.status(200).render('dashboard/login', {
+          error: 'Incorrect password. Please try again.',
+          email,
+          next,
+        });
+      }
     } else if (!(await bcrypt.compare(password, applicant.passwordHash))) {
       return res.status(200).render('dashboard/login', {
         error: 'Incorrect password. Please try again.',
@@ -362,30 +370,30 @@ router.get('/jobs', requireApplicant, async (req: any, res: any) => {
 router.post('/jobs/:jobId/apply', requireApplicant, async (req: any, res: any) => {
   try {
     const { jobId } = req.params;
-    const store = await readStore();
     const { generateId, now } = await import('../models/store.js');
 
-    const existing = store.applications.find(
-      (a: any) => a.applicantId === req.applicantId && a.jobPostingId === jobId,
-    );
-    if (existing) return res.redirect('/dashboard/jobs');
-
-    store.applications.push({
-      id: generateId(),
-      applicantId: req.applicantId,
-      jobPostingId: jobId,
-      status: 'pending',
-      matchScore: 0,
-      keywordMatches: [],
-      educationMatchScore: 0,
-      experienceMatchScore: 0,
-      appliedAt: now(),
-      updatedAt: now(),
-      emailConfirmed: false,
+    // Duplicate check + insert are atomic so double-submits create one application.
+    const created = await updateStore((store) => {
+      const existing = store.applications.find(
+        (a: any) => a.applicantId === req.applicantId && a.jobPostingId === jobId,
+      );
+      if (existing) return false;
+      store.applications.push({
+        id: generateId(),
+        applicantId: req.applicantId,
+        jobPostingId: jobId,
+        status: 'pending',
+        matchScore: 0,
+        keywordMatches: [],
+        educationMatchScore: 0,
+        experienceMatchScore: 0,
+        appliedAt: now(),
+        updatedAt: now(),
+        emailConfirmed: false,
+      });
+      return true;
     });
-
-    const { writeStore } = await import('../models/store.js');
-    await writeStore(store);
+    if (!created) return res.redirect('/dashboard/jobs');
     res.redirect('/dashboard/applications');
   } catch (err) {
     console.error('[dashboard/apply]', err);
@@ -433,19 +441,18 @@ router.get('/profile', requireApplicant, async (req: any, res: any) => {
 router.post('/profile', requireApplicant, async (req: any, res: any) => {
   try {
     const { firstName, lastName, phone, state, zip } = req.body;
-    const store = await readStore();
-    const idx = store.applicants.findIndex((a: any) => a.id === req.applicantId);
-    if (idx === -1) return res.redirect('/dashboard/login');
-
-    if (firstName !== undefined) store.applicants[idx].firstName = firstName;
-    if (lastName !== undefined) store.applicants[idx].lastName = lastName;
-    if (phone !== undefined) store.applicants[idx].phone = phone;
-    if (!store.applicants[idx].address) store.applicants[idx].address = { state: '', zip: '' };
-    if (state !== undefined) store.applicants[idx].address.state = state;
-    if (zip !== undefined) store.applicants[idx].address.zip = zip;
-
-    const { writeStore } = await import('../models/store.js');
-    await writeStore(store);
+    const found = await updateStore((store) => {
+      const idx = store.applicants.findIndex((a: any) => a.id === req.applicantId);
+      if (idx === -1) return false;
+      if (firstName !== undefined) store.applicants[idx].firstName = firstName;
+      if (lastName !== undefined) store.applicants[idx].lastName = lastName;
+      if (phone !== undefined) store.applicants[idx].phone = phone;
+      if (!store.applicants[idx].address) store.applicants[idx].address = { state: '', zip: '' };
+      if (state !== undefined) store.applicants[idx].address.state = state;
+      if (zip !== undefined) store.applicants[idx].address.zip = zip;
+      return true;
+    });
+    if (!found) return res.redirect('/dashboard/login');
 
     res.redirect('/dashboard/profile?updated=1');
   } catch (err) {

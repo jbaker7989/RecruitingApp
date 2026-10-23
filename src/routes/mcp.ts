@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { readStore, writeStore, generateId, now, addObservabilityEntry } from '../models/store.js';
+import { readStore, updateStore, generateId, now, addObservabilityEntry } from '../models/store.js';
 import { requireRole } from '../middleware/auth.js';
 
 const router = Router();
@@ -31,33 +31,36 @@ router.get('/applications', requireRole(['recruiter', 'hiring-manager', 'member-
 // POST /api/mcp/apply - MCP-compatible endpoint: Submit application
 router.post('/apply', async (req: any, res) => {
   try {
-    const store = await readStore();
     const { applicantId, jobPostingId } = req.body;
 
-    const applicant = store.applicants.find(a => a.id === applicantId);
-    const job = store.jobs.find(j => j.id === jobPostingId);
-    if (!applicant || !job) return res.status(404).json({ error: 'Applicant or job not found' });
-    if (!job.isActive) return res.status(400).json({ error: 'Job is no longer active' });
+    const outcome = await updateStore((store) => {
+      const applicant = store.applicants.find(a => a.id === applicantId);
+      const job = store.jobs.find(j => j.id === jobPostingId);
+      if (!applicant || !job) return { status: 404 as const };
+      if (!job.isActive) return { status: 400 as const };
 
-    const application = {
-      id: generateId(),
-      applicantId,
-      jobPostingId,
-      status: 'pending' as const,
-      matchScore: 0,
-      keywordMatches: [],
-      educationMatchScore: 0,
-      experienceMatchScore: 0,
-      appliedAt: now(),
-      updatedAt: now(),
-      emailConfirmed: false,
-    };
+      const application = {
+        id: generateId(),
+        applicantId,
+        jobPostingId,
+        status: 'pending' as const,
+        matchScore: 0,
+        keywordMatches: [],
+        educationMatchScore: 0,
+        experienceMatchScore: 0,
+        appliedAt: now(),
+        updatedAt: now(),
+        emailConfirmed: false,
+      };
 
-    store.applications.push(application);
-    job.currentApplications += 1;
-    if (job.currentApplications >= job.totalOpenings) job.isActive = false;
-
-    await writeStore(store);
+      store.applications.push(application);
+      job.currentApplications += 1;
+      if (job.currentApplications >= job.totalOpenings) job.isActive = false;
+      return { status: 200 as const, application };
+    });
+    if (outcome.status === 404) return res.status(404).json({ error: 'Applicant or job not found' });
+    if (outcome.status === 400) return res.status(400).json({ error: 'Job is no longer active' });
+    const application = outcome.application;
 
     res.json({ success: true, application, type: 'application_submitted' });
   } catch (error) {

@@ -21,7 +21,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-006 | 6 | 🔴 | Job import silently drops all `requirements` |
 | NFR-007 | 7 | 🔴 | Hires routes unreachable — route ordering |
 | NFR-033 | 33 | 🔴 | ✅ Vercel deployment fails — Node type definitions unavailable during build — **RESOLVED** (PR #1) |
-| NFR-034 | 34 | 🔴 | Vercel serverless runtime cannot safely persist the JSON data store |
+| NFR-034 | 34 | 🔴 | PostgreSQL durability implemented and locally DB-verified; hosted verification pending — [feature](./docs/features/platform/feature-durable-postgresql-storage.md) · [story](./docs/stories/story-durable-postgresql-storage.md) · [QA](./docs/qa/nfr-034-durable-postgresql-local-qa.md) |
 | NFR-035 | 35 | 🔴 | Git/Vercel release pipeline is disconnected and deployments are not reproducible |
 | NFR-043 | 43 | 🔴 | ✅ Agent workflow routes emit extensionless ESM imports and crash the built server — **RESOLVED** (chore/NFR-043-esm-imports-fix) |
 | NFR-008 | 8 | 🟠 | Trivially forgeable auth tokens |
@@ -48,6 +48,16 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-041 | 41 | 🟡 | Uploads above the raw-parser limit return 500 instead of 413 |
 | NFR-045 | 45 | 🟡 | JD draft update can mark drafts published without creating a job posting |
 | NFR-048 | 48 | 🔴 | Missing static file serving — images not displayed on any route |
+| NFR-061 | 61 | 🟠 | Dashboard registration persistence — implemented; local PostgreSQL QA passed |
+| NFR-062 | 62 | 🟠 | Applicant persistence — implemented and locally exercised; reset route atomicity follow-up open |
+| NFR-063 | 63 | 🟠 | Application persistence/concurrency — implemented; local PostgreSQL QA passed |
+| NFR-064 | 64 | 🟠 | Company persistence — implemented; local PostgreSQL QA passed |
+| NFR-065 | 65 | 🟠 | Job persistence/import — implemented; local PostgreSQL QA passed |
+| NFR-066 | 66 | 🟠 | Dashboard PostgreSQL login — implemented; local PostgreSQL QA passed |
+| NFR-067 | 67 | 🟠 | Import service persistence — implemented; local PostgreSQL QA passed |
+| NFR-068 | 68 | 🟠 | Matching/scheduling PostgreSQL paths — implemented; local PostgreSQL QA passed |
+| NFR-069 | 69 | 🟡 | Staff auth persistence — implemented; local PostgreSQL QA passed |
+| NFR-070 | 70 | 🟡 | Dashboard bcrypt/legacy migration — implemented; local PostgreSQL QA passed |
 | NFR-024 | 24 | 🔵 | Spec mismatch — data files |
 | NFR-025 | 25 | 🔵 | Dead `observability` array in store |
 | NFR-026 | 26 | 🔵 | Empty/duplicate directories |
@@ -67,6 +77,9 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-075 | 75 | 🟡 | In-memory OAuth state TTL enforcement — **Complete; QA passed; local only** (2026-10-16) — [story](./docs/stories/story-bug-oauth-in-memory-state-ttl.md) · [SEC-OAUTH-001 P2](./docs/features/security/feature-oauth-security-hardening.md) |
 | NFR-076 | 76 | 🟠 | OAuth `id_token` claims trusted without signature/`iss`/`aud`/`exp` verification — [story](./docs/stories/story-sec-oauth-idtoken-verification.md) · [SEC-OAUTH-001 P1](./docs/features/security/feature-oauth-security-hardening.md) |
 | NFR-077 | 77 | 🔵 | Regression guardrails for reflected-error XSS and open-redirect `next` (safe today, untested) — [story](./docs/stories/story-sec-xss-open-redirect-regression-guardrails.md) · [SEC-OAUTH-001 P3](./docs/features/security/feature-oauth-security-hardening.md) |
+| NFR-078 | 78 | 🟠 | Restore PDF resume parsing with the installed parser API — **S** — [story](./docs/stories/story-bug-pdf-resume-parser-api.md) |
+| NFR-079 | 79 | 🟠 | Keep resume content out of parse errors and audit records — **M** — [story](./docs/stories/story-bug-resume-error-content-disclosure.md) |
+| NFR-080 | 80 | 🟡 | Honor requested interview duration — **S** — [story](./docs/stories/story-bug-interview-duration-ignored.md) |
 
 ---
 
@@ -156,7 +169,15 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Evidence:** Static runtime-path review after the first healthy Vercel preview; this is additionally compounded by NFR-020's read-modify-write race. The preview cannot create an authenticated test user because NFR-003 blocks unauthenticated registration and the committed store contains no users, so no destructive production mutation was attempted.
 - **Impact:** The deployed API is not production-safe for applicant/profile metadata even though photo bytes themselves can be stored durably in private Vercel Blob.
 - **Required fix:** Replace JSON persistence with a durable transactional database supported by the deployment environment, migrate existing data, and add deployment-level mutation/persistence/concurrency tests. Do not use Blob object replacement as a pseudo-database.
-- **Status:** OPEN — blocks production data entry and full NFR-FEAT-001 release.
+- **Status:** IMPLEMENTED; TARGETED LOCAL POSTGRESQL QA PASSED — production remains open pending a hosted database migration/restart/concurrency smoke and hosted CI release gates. See the [feature](./docs/features/platform/feature-durable-postgresql-storage.md), [story](./docs/stories/story-durable-postgresql-storage.md), and [local QA record](./docs/qa/nfr-034-durable-postgresql-local-qa.md).
+
+> **LOCAL IMPLEMENTATION EVIDENCE — 2026-10-22, branch `feature/durable-db-nfr034-061-070`**
+> - PostgreSQL is selected by explicit configuration and fails closed when configured but unavailable. Production JSON mode requires an explicit ephemeral-store opt-in.
+> - `updateStore` provides serialized, commit-before-response mutations with rollback on error; legacy wholesale `writeStore` rejects PostgreSQL mode.
+> - Every `DataStore` collection and append-only audit data is durable. JSON mode retains atomic local writes and stale-snapshot protection.
+> - The JSON migration supports dry-run, idempotent replay, conflicting-target refusal, and explicit non-empty-target handling.
+> - A disposable PostgreSQL 16 container verified 18 substantive acceptance checks: schema/readiness idempotence, cross-process persistence, rollback, concurrent updates, all primary HTTP route groups, dashboard/auth/MCP/import/matching/scheduling flows, duplicate/capacity races, hires/audit, bcrypt migration/reset, fail-closed connection behavior, and migration protection.
+> - Local typecheck, build, JSON smoke, and PostgreSQL built smoke pass. Repository-wide JSON tests pass 340/340; lint has zero errors and 178 warnings. Hosted verification remains outstanding.
 
 ### 35. [NFR-035] Git/Vercel release pipeline is disconnected and deployments are not reproducible
 - **Priority:** P0 release-governance blocker.
@@ -464,75 +485,86 @@ Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, 
 
 ---
 
-## Bugs from story-commercial-replace-json-store-with-db follow-up (deferred)
+## Bugs from durable PostgreSQL storage follow-up
 
 **Date:** 2026-10-02
-**Context:** PR #9 (feat/db-replace-json-store-with-db) was closed unmerged. The DB infrastructure (`db.ts`, `unifiedStore.ts`, `scripts/migrate.mjs`, `vercel.json`, the new tests, the CI service container) is correct and verified at the schema level. But the route handlers still use the in-memory `store.X.push + writeStore(store)` pattern, which is a no-op in DB mode. CI caught ~8 routes failing in PostgreSQL mode. These are tracked as separate bugs so the follow-up work can be split into small, reviewable PRs.
+**Context:** Archived PR #9 was closed unmerged because its database facade allowed route handlers to mutate snapshots and call a database-mode no-op. The current implementation uses the atomic `updateStore` contract throughout production writers and has been exercised against a real local PostgreSQL instance. These entries remain separate so each former loss path has explicit evidence and hosted verification is not confused with local completion.
 
-**Status:** DB story is deferred until each route is converted. The auth-hardening story (PR #10) is merged and works in JSON mode.
+**Overall status:** Implementation present; targeted local PostgreSQL QA passed 2026-10-22. Production completion and repository-wide release gates remain pending.
 
-### NFR-061 (P1) — FIXED in commit 90f9176 (not merged)
+### NFR-061 (P1) — Dashboard registration persistence
 **Route:** `src/routes/dashboard.ts` `POST /dashboard/register`
 **Symptom:** Registered applicants did not persist in DB mode. Test `story-dashboard-login-phone-optional` returned 200 instead of 302 redirect.
-**Root cause:** `store.applicants.push(applicant) + writeStore(store)` — `writeStore` is a no-op in DB mode.
-**Fix (closed PR, not merged):** Branch on `USE_DATABASE` — DB mode calls `db.saveApplicant` (UPSERT), JSON mode keeps the existing `push + writeStore` pattern. Fix is correct and works in JSON mode; DB mode path is verified by code review (no local Postgres to test live).
+**Root cause:** `store.applicants.push(applicant) + writeStore(store)` against the archived database facade lost the write.
+**Current implementation/evidence:** Dashboard registration uses `updateStore`. Local PostgreSQL HTTP QA verified registration redirect, bcrypt login, profile mutation, and persisted applicant state. **Status: implemented; local QA passed; hosted evidence pending.**
 
 ### NFR-062 (P1) — `src/routes/applicants.ts` does not persist in DB mode
 **Symptom:** Register, PATCH /me, /reset-password all lose changes in DB mode.
-**Root cause:** Same as NFR-061 — `store.X.push + writeStore` pattern.
-**Fix:** Convert to use `db.saveApplicant` in DB mode. Also: bcryptjs migration logic for legacy sha256 hashes works in DB mode only if `saveApplicant` is called (it isn't today).
-**Status:** Not started.
+**Root cause:** Same unsafe archived snapshot-write pattern as NFR-061.
+**Current implementation/evidence:** Registration, profile mutation, legacy hash migration, reset token storage, bcrypt replacement, and single-use reset success were exercised against PostgreSQL. The HTTP route uses `resetPasswordWithToken` to consume the token and replace the password atomically. A database-trigger failure regression proves both changes roll back together. **Status: implemented; local QA passed; hosted evidence pending.**
 
 ### NFR-063 (P1) — `src/routes/applications.ts` does not persist in DB mode
 **Symptom:** POST /api/applications, PUT /api/applications/:id/status do not write in DB mode.
-**Root cause:** Same.
-**Fix:** Convert to `db.saveApplication`.
-**Status:** Not started.
+**Root cause:** Same unsafe archived snapshot-write pattern.
+**Current implementation/evidence:** Application creation and status changes use `updateStore`. Local PostgreSQL QA verified concurrent duplicate submissions, one-opening capacity, counters, accepted status, hire creation, and audit persistence. **Status: implemented; local QA passed; hosted evidence pending.**
 
 ### NFR-064 (P1) — `src/routes/companies.ts` does not persist in DB mode
-**Symptom:** Company CRUD loses changes in DB mode.
-**Fix:** Convert to `db.saveCompany`.
-**Status:** Not started.
+**Symptom:** Company CRUD lost changes in the archived DB mode.
+**Current implementation/evidence:** Company mutations use `updateStore`; create and dependent reads persisted across a separate process in local PostgreSQL QA. **Status: implemented; local QA passed; hosted evidence pending.**
 
 ### NFR-065 (P1) — `src/routes/jobs.ts` does not persist in DB mode
-**Symptom:** Job CRUD loses changes in DB mode.
-**Fix:** Convert to `db.saveJobPosting`.
-**Status:** Not started.
+**Symptom:** Job CRUD and imports lost changes in the archived DB mode.
+**Current implementation/evidence:** Job mutations/import use `updateStore`; create, bulk route import, service import, reads, counters, and automatic capacity close persisted in local PostgreSQL QA. **Status: implemented; local QA passed; hosted evidence pending.**
 
 ### NFR-066 (P1) — `src/routes/dashboard.ts` `POST /login` does not authenticate in DB mode
 **Symptom:** Login fails because `applicant.passwordHash` is the bcrypt value from the DB but the comparison is sha256.
-**Root cause:** Two layers — `dashboard.ts` login uses sha256, but `applicants.ts` (which is the only place new applicants are created from a JSON-store test fixture) is sha256 too. In DB mode the test fixture may store sha256 but a real flow would store bcrypt, causing login to fail. (The auth-hardening branch's bcrypt migration in `applicants.ts` login would normally fix this, but that branch is merged without the DB route conversions.)
-**Fix:** Convert `dashboard.ts` login to call `db.findApplicant` and use bcryptjs `compare`.
-**Status:** Not started. **Must be fixed together with NFR-062 or login will never work in DB mode.**
+**Root cause:** The archived branch compared PostgreSQL bcrypt values as SHA-256 and could not persist login-time migration.
+**Current implementation/evidence:** Dashboard login reads the current store, verifies bcrypt, and atomically migrates legacy SHA-256. Local PostgreSQL QA verified new bcrypt registration/login and persisted profile changes. **Status: implemented; local QA passed; hosted evidence pending.**
 
 ### NFR-067 (P1) — `src/services/importService.ts` does not persist in DB mode
-**Symptom:** Bulk imports lose data in DB mode.
-**Fix:** Use `db.saveX` in a loop.
-**Status:** Not started.
+**Symptom:** Bulk imports lost data in archived DB mode.
+**Current implementation/evidence:** `processImport` prepares rows before an atomic `updateStore` commit; local PostgreSQL QA invoked `importFromJSON` and verified the resulting job through the durable store. **Status: implemented; local QA passed; hosted evidence pending.**
 
 ### NFR-068 (P1) — `src/agents/scheduling/agent.ts` and `src/chains/matching.ts` read paths broken in DB mode
 **Symptom:** Agents reading applicant data may return stale or empty results in DB mode.
-**Root cause:** These services import from `store.js` directly; in DB mode `readStore` is the unifiedStore version but these don't use it.
-**Fix:** Audit and route all reads through `unifiedStore.readStore`.
-**Status:** Not started.
+**Root cause:** Archived services bypassed the database-aware facade and used unsafe snapshot writes.
+**Current implementation/evidence:** Matching and scheduling use the unified `readStore`/`updateStore` facade. Local HTTP QA exercised match calculation with the external vector provider unavailable and the scheduling state transition, then verified application/audit persistence. **Status: implemented; local QA passed; hosted evidence pending.**
 
 ### NFR-069 (P2) — `src/routes/auth.ts` user registration does not persist in DB mode
 **Symptom:** New users (recruiters, hiring-managers) lose registration in DB mode.
-**Root cause:** Same ��� `store.users.push + writeStore`.
-**Fix:** Convert to `db.saveUser`.
-**Status:** Not started.
+**Root cause:** Same unsafe archived snapshot-write pattern.
+**Current implementation/evidence:** Staff registration, legacy password migration, login, and audit append use durable store operations. Local PostgreSQL QA verified the persisted user and bcrypt migration. **Status: implemented; local QA passed; hosted evidence pending.**
 
 ### NFR-070 (P2) — Dashboard bcrypt verification missing in DB mode without auth branch
-**Symptom:** Without NFR-066's fix, even if NFR-061 ships, dashboard login will compare bcrypt against sha256 and reject valid logins.
-**Root cause:** Auth-hardening branch (PR #10) added bcryptjs to `dashboard.ts`, but the DB branch's `dashboard.ts` is the pre-auth version.
-**Fix:** When re-opening the DB branch, merge the auth branch's `dashboard.ts` changes into the DB branch first. Or fix NFR-066 by re-adding the bcrypt check.
-**Status:** Not started.
+**Symptom:** The archived database branch rejected correct bcrypt dashboard credentials.
+**Current implementation/evidence:** Dashboard bcrypt verification and legacy SHA-256 migration are present and locally verified against PostgreSQL. **Status: implemented; local QA passed; hosted evidence pending.**
 
-### Recovery plan
-The DB story is split into:
-1. **Re-open DB branch with a clean base** (current main, which has auth-hardening)
-2. **Merge NFR-061 (the dashboard register fix) into the new DB branch** — small, atomic, CI-verified in JSON mode
-3. **Convert routes one at a time** (NFR-062, 063, 064, 065, 066, 067, 068, 069) — each as its own PR for review
-4. **Run full PostgreSQL test suite** before merging the final route conversion
+### Remaining release work
 
-Estimated effort: 8 small PRs, ~30min each, plus a final integration PR. ~4-5 hours total.
+1. Wire the applicant reset HTTP route to `resetPasswordWithToken` so token consumption and password replacement are one transaction.
+2. Restore clean repository-wide JSON and lint gates, then run the locked-install command sequence recorded in the QA document.
+3. Run the PostgreSQL service job in hosted CI.
+4. Capture hosted deployment migration, readiness, fresh-instance durability, rollback, and concurrency evidence before marking NFR-034 production complete.
+
+
+## Lint review findings — 2026-10-22
+
+Review of the 178 warnings identified three actionable defects. They are open; creating these stories does not mark implementation or QA complete. Work order: NFR-079 (data disclosure), NFR-078 (broken PDF path), then NFR-080 (ignored duration). Each estimate includes regression and CI coverage.
+
+### NFR-078 — Restore PDF resume parsing with the installed parser API
+
+- **Priority:** High (P1); **Size:** S (1–3h); **Status:** Open.
+- **Impact:** PDF resume uploads fail before text extraction, blocking a supported application input.
+- **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-pdf-resume-parser-api.md).
+
+### NFR-079 — Keep resume content out of parse errors and audit records
+
+- **Priority:** High (P1); **Size:** M (3–6h); **Status:** Open.
+- **Impact:** Malformed model output can cause applicant content to be retained in diagnostic audit records and returned in error responses.
+- **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-resume-error-content-disclosure.md).
+
+### NFR-080 — Honor requested interview duration
+
+- **Priority:** Medium (P2); **Size:** S (1–3h); **Status:** Open.
+- **Impact:** A caller requesting a non-default interview duration receives a scheduling workflow initialized to 60 minutes.
+- **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-interview-duration-ignored.md).
