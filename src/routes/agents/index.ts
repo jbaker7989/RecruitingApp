@@ -5,7 +5,7 @@
 
 import { Router } from 'express';
 import { requireRole } from '../../middleware/auth.js';
-import { readStore, writeStore, generateId, now, addObservabilityEntry } from '../../models/store.js';
+import { readStore, updateStore, generateId, now, addObservabilityEntry } from '../../models/store.js';
 import type { ScreeningRequest, ScreeningJobResponse, ScreeningResult, CandidateInput } from '../../types/screening.js';
 import { parseResumeFromBuffer, parseResume } from '../../chains/resumeParsing.js';
 import {
@@ -561,48 +561,27 @@ router.get(
       const result: ScreeningResult =
         await pythonRes.json() as ScreeningResult;
 
-      // story-slop-cleanup-screening-vectorstore: `updated` was computed
-      // then discarded via `void updated; // suppress lint` instead of
-      // being used. Replaced below with an updatedCount that feeds the
-      // observability log.
-      // if (result.ranked_candidates?.length) {
-      //   const store = await readStore();
-      //   let updated = 0;
-      //   for (const ranked of result.ranked_candidates) {
-      //     const app = store.applications.find(
-      //       (a: any) => a.id === ranked.applicant_id,
-      //     );
-      //     if (app) {
-      //       app.matchScore = Math.round(ranked.overall_score / 10); // 0-100 → 0-10
-      //       (app as any).llmSkillScore = ranked.skill_score;
-      //       (app as any).llmExperienceScore = ranked.experience_score;
-      //       (app as any).llmEducationScore = ranked.education_score;
-      //       (app as any).llmScoringReasoning = ranked.scoring_reasoning;
-      //       app.updatedAt = now();
-      //       updated++;
-      //     }
-      //   }
-      //   await writeStore(store);
-      //   void updated; // suppress lint
-      // }
       let updatedCount = 0;
       if (result.ranked_candidates?.length) {
-        const store = await readStore();
-        for (const ranked of result.ranked_candidates) {
-          const app = store.applications.find(
-            (a: any) => a.id === ranked.applicant_id,
-          );
-          if (app) {
-            app.matchScore = Math.round(ranked.overall_score / 10); // 0-100 → 0-10
-            (app as any).llmSkillScore = ranked.skill_score;
-            (app as any).llmExperienceScore = ranked.experience_score;
-            (app as any).llmEducationScore = ranked.education_score;
-            (app as any).llmScoringReasoning = ranked.scoring_reasoning;
-            app.updatedAt = now();
-            updatedCount++;
+        // The external screening call is done; apply scores to the latest records atomically.
+        updatedCount = await updateStore((store) => {
+          let count = 0;
+          for (const ranked of result.ranked_candidates) {
+            const app = store.applications.find(
+              (a: any) => a.id === ranked.applicant_id,
+            );
+            if (app) {
+              app.matchScore = Math.round(ranked.overall_score / 10); // 0-100 → 0-10
+              (app as any).llmSkillScore = ranked.skill_score;
+              (app as any).llmExperienceScore = ranked.experience_score;
+              (app as any).llmEducationScore = ranked.education_score;
+              (app as any).llmScoringReasoning = ranked.scoring_reasoning;
+              app.updatedAt = now();
+              count++;
+            }
           }
-        }
-        await writeStore(store);
+          return count;
+        });
       }
 
       await addObservabilityEntry({

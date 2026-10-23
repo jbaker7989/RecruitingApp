@@ -3,14 +3,13 @@
  * readiness separates required from optional dependencies, caches bounded probes,
  * and exposes no sensitive detail publicly.
  */
-import { access, constants } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
 import type { Request, Response } from 'express';
 import { getExportHealth, isTelemetryDisabled } from './lifecycle.js';
 import { getRuntimeSnapshot } from './runtime.js';
 import { getStateStoreMode } from './providerOps.js';
 import { logger } from './logger.js';
+import { checkStoreHealth, getStoreMode } from '../models/store.js';
 
 export type DependencyStatus = 'up' | 'degraded' | 'down';
 export type ReadinessStatus = 'ready' | 'degraded' | 'not_ready';
@@ -80,22 +79,14 @@ export async function getReadiness(): Promise<ReadinessReport> {
 }
 
 /**
- * Defaults. The JSON store check proves the data directory is readable ONLY;
- * it makes no claim that the audit store is durable (NFR-034 remains open).
+ * Defaults. The `store` check delegates to the configured backend: Postgres `SELECT 1`
+ * (durable) or JSON data-directory readability (local/test only, not durable).
  */
 export function registerDefaultDependencies(): void {
   registerDependency({
     name: 'store',
     required: true,
-    check: async () => {
-      const dir = process.env.DATA_DIR ? resolve(process.env.DATA_DIR) : join(process.cwd(), 'data');
-      try {
-        await access(dir, constants.R_OK);
-        return 'up';
-      } catch {
-        return 'down';
-      }
-    },
+    check: () => checkStoreHealth(),
   });
   registerDependency({
     name: 'oauth_state_store',
@@ -131,6 +122,10 @@ function tokenMatches(header: string | undefined, expected: string): boolean {
 }
 
 /** Internal diagnostics. Hidden (404) unless TELEMETRY_DIAGNOSTICS_TOKEN is configured and presented. */
+function getStoreModeSafe(): string {
+  try { return getStoreMode(); } catch { return 'misconfigured'; }
+}
+
 export async function diagnosticsHandler(req: Request, res: Response): Promise<void> {
   const expected = process.env.TELEMETRY_DIAGNOSTICS_TOKEN;
   if (!expected || !tokenMatches(req.headers.authorization, expected)) {
@@ -144,7 +139,10 @@ export async function diagnosticsHandler(req: Request, res: Response): Promise<v
     telemetry_export: getExportHealth(),
     telemetry_disabled: isTelemetryDisabled(),
     oauth_state_store: getStateStoreMode(),
-    durability_note: 'Readiness reports data-directory access only; it does not assert audit-store durability (NFR-034).',
+    store_backend: getStoreModeSafe(),
+    durability_note: getStoreModeSafe() === 'postgres'
+      ? 'Store is PostgreSQL (transactional); readiness reports reachability only.'
+      : 'Readiness reports data-directory access only; it does not assert audit-store durability (NFR-034).',
   });
 }
 

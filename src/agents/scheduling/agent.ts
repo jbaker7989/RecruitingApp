@@ -3,7 +3,7 @@
  * State machine for managing interview scheduling workflow
  */
 
-import { addObservabilityEntry, generateId, now, readStore, writeStore } from '../../models/store.js';
+import { addObservabilityEntry, generateId, now, readStore, updateStore } from '../../models/store.js';
 import type { Application } from '../../models/store.js';
 import { withSchedulingSpan } from '../../telemetry/p2Operations.js';
 import { randomUUID } from 'node:crypto';
@@ -258,13 +258,13 @@ async function sendingInvitesNode(
   const videoLink = `https://meet.example.com/interview-${calendarEventId}`;
   
   // Update application status
-  const store = await readStore();
-  const appIndex = store.applications.findIndex((a: Application) => a.id === state.applicationId);
-  if (appIndex !== -1) {
-    store.applications[appIndex].status = 'interview scheduled';
-    store.applications[appIndex].updatedAt = now();
-    await writeStore(store);
-  }
+  await updateStore((store) => {
+    const app = store.applications.find((a: Application) => a.id === state.applicationId);
+    if (app) {
+      app.status = 'interview scheduled';
+      app.updatedAt = now();
+    }
+  });
   
   await addObservabilityEntry({
     id: generateId(),
@@ -305,14 +305,7 @@ async function confirmedNode(
 async function cancelledNode(
   state: InterviewSchedulingState
 ): Promise<Partial<InterviewSchedulingState>> {
-  // Update application status if needed
-  const store = await readStore();
-  const appIndex = store.applications.findIndex((a: Application) => a.id === state.applicationId);
-  if (appIndex !== -1) {
-    // Don't change status back, just log the cancellation
-    await writeStore(store);
-  }
-  
+  // Status is intentionally left unchanged on cancellation; only the audit entry is recorded.
   await addObservabilityEntry({
     id: generateId(),
     timestamp: now(),

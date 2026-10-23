@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
-import { readStore, writeStore, generateId, now, addObservabilityEntry } from '../models/store.js';
+import { readStore, updateStore, generateId, now, addObservabilityEntry } from '../models/store.js';
 import { requireRole, AuthRequest } from '../middleware/auth.js';
 import { signUserToken, verifyUserToken } from '../services/tokenService.js';
 import { revokeToken, revokeAllForUser } from '../services/revocationService.js';
@@ -14,21 +14,16 @@ const router = Router();
 // POST /api/auth/register - Register new user
 router.post('/register', async (req: any, res) => {
   try {
-    const store = await readStore();
     const { username, password, email, role } = req.body;
 
     if (!username || !password || !email || !role) {
       return res.status(400).json({ error: 'All fields required' });
     }
 
-    if (store.users.find((u: { username: string }) => u.username === username)) {
-      return res.status(400).json({ error: 'Username already exists' });
-    }
-
     const user = {
       id: generateId(),
       username,
-      passwordHash: await userPasswordHash(password), // bcrypt hash
+      passwordHash: await userPasswordHash(password), // bcrypt hash (outside the transaction)
       role,
       email,
       companyId: req.body.companyId,
@@ -36,8 +31,13 @@ router.post('/register', async (req: any, res) => {
       oauthProvider: null,
     };
 
-    store.users.push(user);
-    await writeStore(store);
+    // Duplicate check and insert are one atomic step: concurrent registrations cannot both succeed.
+    const created = await updateStore((store) => {
+      if (store.users.some((u: { username: string }) => u.username === username)) return false;
+      store.users.push(user);
+      return true;
+    });
+    if (!created) return res.status(400).json({ error: 'Username already exists' });
 
     const token = await signUserToken(user.id, user.role, user.companyId);
     await addObservabilityEntry({
@@ -68,12 +68,21 @@ router.post('/login', async (req: any, res) => {
     }
     // Migrate legacy encrypted_<password> stub on first successful login
     if (user.passwordHash.startsWith('encrypted_')) {
-      const legacy = user.passwordHash.slice('encrypted_'.length);
+      const legacyHash = user.passwordHash;
+      const legacy = legacyHash.slice('encrypted_'.length);
       if (legacy !== password) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
-      user.passwordHash = await userPasswordHash(password);
-      await writeStore(store);
+      const upgraded = await userPasswordHash(password);
+      // Compare-and-swap: only upgrade if the stored hash is still the legacy one we verified.
+      // If the password changed meanwhile, this login must not succeed on the stale credential.
+      const swapped = await updateStore((s) => {
+        const current = s.users.find((u: { id: string }) => u.id === user.id);
+        if (!current || current.passwordHash !== legacyHash) return false;
+        current.passwordHash = upgraded;
+        return true;
+      });
+      if (!swapped) return res.status(401).json({ error: 'Invalid credentials' });
     } else if (!(await userPasswordVerify(password, user.passwordHash))) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -99,14 +108,15 @@ router.post('/login', async (req: any, res) => {
 // POST /api/auth/oauth-stub - OAuth stub endpoint
 router.post('/oauth-stub', requireRole(['member-services', 'hiring-manager']), async (req: any, res) => {
   try {
-    const store = await readStore();
     const { userId, provider } = req.body;
 
-    const user = store.users.find((u: { id: string }) => u.id === userId);
-    if (!user) return res.status(404).json({ error: 'User not found' });
-
-    user.oauthProvider = provider;
-    await writeStore(store);
+    const found = await updateStore((store) => {
+      const user = store.users.find((u: { id: string }) => u.id === userId);
+      if (!user) return false;
+      user.oauthProvider = provider;
+      return true;
+    });
+    if (!found) return res.status(404).json({ error: 'User not found' });
 
     res.json({ message: 'OAuth provider configured', provider });
   } catch (error) {
@@ -136,24 +146,29 @@ router.patch('/me', async (req: any, res) => {
   if (!token) return res.status(401).json({ error: 'No authentication token provided' });
   try {
     const payload = await verifyUserToken(token);
-    const store = await readStore();
-    const index = store.users.findIndex((u: { id: string }) => u.id === payload.sub);
-    if (index === -1) return res.status(404).json({ error: 'User not found' });
+    const { password, ...restBody } = req.body;
+    // Self-service updates must not change identity, role, tenant or credential-provenance fields.
+    const rest: Record<string, unknown> = { ...restBody };
+    for (const k of ['id', 'role', 'companyId', 'passwordHash', 'createdAt', 'oauthProvider']) delete rest[k];
 
-    const { password, ...rest } = req.body;
+    const existing = (await readStore()).users.find((u: { id: string }) => u.id === payload.sub);
+    if (!existing) return res.status(404).json({ error: 'User not found' });
+
+    let newHash: string | undefined;
     if (password) {
       // Password change — revoke all tokens for this user
       await revokeAllForUser(payload.sub, 'User', payload.jti, 28800);
-      store.users[index] = {
-        ...store.users[index],
-        passwordHash: await userPasswordHash(password),
-        ...rest,
-      };
-    } else {
-      store.users[index] = { ...store.users[index], ...rest };
+      newHash = await userPasswordHash(password);
     }
 
-    await writeStore(store);
+    const updated = await updateStore((store) => {
+      const index = store.users.findIndex((u: { id: string }) => u.id === payload.sub);
+      if (index === -1) return null;
+      store.users[index] = { ...store.users[index], ...(newHash ? { passwordHash: newHash } : {}), ...rest };
+      const u = store.users[index];
+      return { id: u.id, username: u.username, role: u.role, email: u.email };
+    });
+    if (!updated) return res.status(404).json({ error: 'User not found' });
 
     await addObservabilityEntry({
       id: generateId(),
@@ -166,7 +181,7 @@ router.patch('/me', async (req: any, res) => {
       outcome: 'success',
     });
 
-    res.json({ id: store.users[index].id, username: store.users[index].username, role: store.users[index].role, email: store.users[index].email });
+    res.json(updated);
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes('revoked')) return res.status(401).json({ error: 'Token has been revoked' });

@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { createHash } from 'crypto'; // ponytail: bcrypt when prod
-import { readStore, writeStore, generateId, now, addObservabilityEntry, JobPosting, Applicant } from '../models/store.js';
+import { readStore, updateStore, generateId, now, addObservabilityEntry, JobPosting, Applicant } from '../models/store.js';
 import { validateApplicantProfile, validateApplicationBody } from '../middleware/validation.js';
 import { authenticateApplicant, AuthRequest } from '../middleware/applicantAuth.js';
 import { signApplicantToken, verifyApplicantToken } from '../services/tokenService.js';
 import { revokeToken, revokeAllForUser } from '../services/revocationService.js';
-import { createResetToken, validateAndConsumeResetToken } from '../services/passwordResetService.js';
+import { createResetToken, resetPasswordWithToken } from '../services/passwordResetService.js';
 import { initiateGoogle, initiateLinkedIn, initiateFacebook, handleGoogleCallback, handleLinkedInCallback, handleFacebookCallback, resolveOAuthBaseUrl } from '../services/oauthService.js';
 import { safeApplicantDestination, setApplicantSessionCookie } from '../services/applicantSession.js';
 import { recordOAuthUserDenied, recordOAuthValidationFailure } from '../telemetry/providerOps.js';
@@ -62,12 +62,6 @@ router.post('/register', async (req: any, res) => {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
 
-    const store = await readStore();
-
-    if (store.applicants.find(a => a.email?.toLowerCase() === email.toLowerCase())) {
-      return res.status(409).json({ error: 'An account with this email already exists' });
-    }
-
     const applicant = {
       id: generateId(),
       firstName,
@@ -90,8 +84,13 @@ router.post('/register', async (req: any, res) => {
       updatedAt: now(),
     };
 
-    store.applicants.push(applicant);
-    await writeStore(store);
+    // Duplicate-email check and insert are one transaction so concurrent registrations cannot both succeed.
+    const registered = await updateStore((store) => {
+      if (store.applicants.some(a => a.email?.toLowerCase() === email.toLowerCase())) return false;
+      store.applicants.push(applicant);
+      return true;
+    });
+    if (!registered) return res.status(409).json({ error: 'An account with this email already exists' });
 
     await addObservabilityEntry({
       id: generateId(),
@@ -157,8 +156,19 @@ router.post('/login', async (req: any, res) => {
       if (applicant.passwordHash !== legacySha) {
         return res.status(401).json({ error: 'Invalid email or password' });
       }
-      applicant.passwordHash = await hashPassword(password);
-      await writeStore(store);
+      // Compare-and-set: only upgrade if the legacy hash is still the stored value.
+      const legacyHash = applicant.passwordHash;
+      const upgraded = await hashPassword(password);
+      const swapped = await updateStore((fresh) => {
+        const current = fresh.applicants.find(a => a.id === applicant.id);
+        if (current && current.passwordHash === legacyHash) {
+          current.passwordHash = upgraded;
+          return true;
+        }
+        return false;
+      });
+      // Credentials changed while hashing: no session for the stale password.
+      if (!swapped) return res.status(401).json({ error: 'Invalid email or password' });
     } else if (!(await verifyPassword(password, applicant.passwordHash))) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
@@ -216,32 +226,32 @@ router.patch('/me', async (req: AuthRequest, res) => {
 
   try {
     const payload = await verifyApplicantToken(rawToken);
-    const store = await readStore();
-    const index = store.applicants.findIndex(a => a.id === payload.sub);
-    if (index === -1) return res.status(404).json({ error: 'Applicant not found' });
-
     const { password, hireRecords, createdAt, ...safeUpdates } = req.body;
+    let newPasswordHash: string | undefined;
     if (password) {
+      const store = await readStore();
+      if (!store.applicants.some(a => a.id === payload.sub)) return res.status(404).json({ error: 'Applicant not found' });
       // Password change — revoke all tokens for this applicant
       await revokeAllForUser(payload.sub, 'Applicant', payload.jti, 604800);
-      store.applicants[index] = {
-        ...store.applicants[index],
-        passwordHash: await hashPassword(password),
-        ...safeUpdates,
-        updatedAt: now(),
-      };
-    } else {
-      store.applicants[index] = {
-        ...store.applicants[index],
-        ...safeUpdates,
-        updatedAt: now(),
-      };
+      newPasswordHash = await hashPassword(password);
     }
-    await writeStore(store);
+
+    const updated = await updateStore((store) => {
+      const index = store.applicants.findIndex(a => a.id === payload.sub);
+      if (index === -1) return null;
+      store.applicants[index] = {
+        ...store.applicants[index],
+        ...(newPasswordHash ? { passwordHash: newPasswordHash } : {}),
+        ...safeUpdates,
+        updatedAt: now(),
+      };
+      return store.applicants[index];
+    });
+    if (!updated) return res.status(404).json({ error: 'Applicant not found' });
 
     res.json({
-      ...store.applicants[index],
-      completeness: calculateCompleteness(store.applicants[index]),
+      ...updated,
+      completeness: calculateCompleteness(updated),
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -307,7 +317,6 @@ router.post('/', async (req: any, res) => {
       return res.status(400).json({ errors: validation.errors });
     }
 
-    const store = await readStore();
     const applicant = {
       id: generateId(),
       firstName: req.body.firstName,
@@ -330,8 +339,9 @@ router.post('/', async (req: any, res) => {
       updatedAt: now(),
     };
 
-    store.applicants.push(applicant);
-    await writeStore(store);
+    await updateStore((store) => {
+      store.applicants.push(applicant);
+    });
 
     await addObservabilityEntry({
       id: generateId(),
@@ -367,19 +377,20 @@ router.get('/:id', async (req, res) => {
 // PUT /api/applicants/:id — update (non-auth, kept for legacy)
 router.put('/:id', async (req: any, res) => {
   try {
-    const store = await readStore();
-    const index = store.applicants.findIndex(a => a.id === req.params.id);
-    if (index === -1) return res.status(404).json({ error: 'Applicant not found' });
+    const updated = await updateStore((store) => {
+      const index = store.applicants.findIndex(a => a.id === req.params.id);
+      if (index === -1) return { kind: 'not-found' as const };
 
-    // Reject credential fields from client input — passwordHash must never be
-    // set through the legacy update path (use the password-reset / register flow).
-    if ('passwordHash' in req.body) {
-      return res.status(400).json({ error: 'passwordHash cannot be set via this endpoint' });
-    }
+      // Reject credential fields from client input — passwordHash must never be
+      // set through the legacy update path (use the password-reset / register flow).
+      if ('passwordHash' in req.body) return { kind: 'forbidden-field' as const };
 
-    store.applicants[index] = { ...store.applicants[index], ...req.body, updatedAt: now() };
-    await writeStore(store);
-    res.json(store.applicants[index]);
+      store.applicants[index] = { ...store.applicants[index], ...req.body, updatedAt: now() };
+      return { kind: 'updated' as const, applicant: store.applicants[index] };
+    });
+    if (updated.kind === 'not-found') return res.status(404).json({ error: 'Applicant not found' });
+    if (updated.kind === 'forbidden-field') return res.status(400).json({ error: 'passwordHash cannot be set via this endpoint' });
+    res.json(updated.applicant);
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to update applicant' });
   }
@@ -388,35 +399,37 @@ router.put('/:id', async (req: any, res) => {
 // POST /api/applicants/:id/apply — legacy convenience endpoint
 router.post('/:id/apply', async (req: any, res) => {
   try {
-    const store = await readStore();
-    const applicant = store.applicants.find(a => a.id === req.params.id);
-    if (!applicant) return res.status(404).json({ error: 'Applicant not found' });
-    if (!req.body.jobPostingId) return res.status(400).json({ error: 'jobPostingId is required' });
+    const outcome = await updateStore((store) => {
+      const applicant = store.applicants.find(a => a.id === req.params.id);
+      if (!applicant) return { kind: 'applicant-not-found' as const };
+      if (!req.body.jobPostingId) return { kind: 'missing-job' as const };
 
-    // Duplicate check
-    const existing = store.applications.find(
-      a => a.applicantId === applicant.id && a.jobPostingId === req.body.jobPostingId
-    );
-    if (existing) {
-      return res.status(409).json({ error: 'Already applied to this job', applicationId: existing.id });
-    }
+      // Duplicate check
+      const existing = store.applications.find(
+        a => a.applicantId === applicant.id && a.jobPostingId === req.body.jobPostingId
+      );
+      if (existing) return { kind: 'duplicate' as const, applicationId: existing.id };
 
-    const application = {
-      id: generateId(),
-      applicantId: applicant.id,
-      jobPostingId: req.body.jobPostingId,
-      status: 'pending' as const,
-      matchScore: 0,
-      keywordMatches: [],
-      educationMatchScore: 0,
-      experienceMatchScore: 0,
-      appliedAt: now(),
-      updatedAt: now(),
-      emailConfirmed: false,
-    };
-
-    store.applications.push(application);
-    await writeStore(store);
+      const application = {
+        id: generateId(),
+        applicantId: applicant.id,
+        jobPostingId: req.body.jobPostingId,
+        status: 'pending' as const,
+        matchScore: 0,
+        keywordMatches: [],
+        educationMatchScore: 0,
+        experienceMatchScore: 0,
+        appliedAt: now(),
+        updatedAt: now(),
+        emailConfirmed: false,
+      };
+      store.applications.push(application);
+      return { kind: 'created' as const, application };
+    });
+    if (outcome.kind === 'applicant-not-found') return res.status(404).json({ error: 'Applicant not found' });
+    if (outcome.kind === 'missing-job') return res.status(400).json({ error: 'jobPostingId is required' });
+    if (outcome.kind === 'duplicate') return res.status(409).json({ error: 'Already applied to this job', applicationId: outcome.applicationId });
+    const application = outcome.application;
 
     res.status(201).json(application);
   } catch (error) {
@@ -490,34 +503,29 @@ router.post('/reset-password', async (req: any, res) => {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
 
-    const validation = await validateAndConsumeResetToken(token);
-    if (!validation.valid) {
-      return res.status(401).json({ error: validation.reason });
+    // bcrypt first; the helper consumes the token and writes the hash in one transaction.
+    const reset = await resetPasswordWithToken(token, await hashPassword(newPassword));
+    if (!reset.ok) {
+      const messages = {
+        invalid: 'Invalid reset token',
+        used: 'Reset token has already been used',
+        expired: 'Reset token has expired',
+        no_applicant: 'Invalid reset token',
+      } as const;
+      return res.status(401).json({ error: messages[reset.reason] });
     }
+    const resetApplicantId = reset.applicantId;
 
-    const store = await readStore();
-    const index = store.applicants.findIndex(a => a.id === validation.applicantId);
-    if (index === -1) {
-      return res.status(401).json({ error: 'Invalid reset token' });
-    }
-
-    // Also revoke all existing JWTs for this applicant
-    await revokeAllForUser(validation.applicantId, 'Applicant');
-
-    store.applicants[index] = {
-      ...store.applicants[index],
-      passwordHash: await hashPassword(newPassword),
-      updatedAt: now(),
-    };
-    await writeStore(store);
+    // Revoke all existing JWTs only after the password change has committed
+    await revokeAllForUser(resetApplicantId, 'Applicant');
 
     await addObservabilityEntry({
       id: generateId(),
       timestamp: now(),
       action: 'password_reset_completed',
       entityType: 'Applicant',
-      entityId: validation.applicantId,
-      userId: validation.applicantId,
+      entityId: resetApplicantId,
+      userId: resetApplicantId,
       details: {},
       outcome: 'success',
     });

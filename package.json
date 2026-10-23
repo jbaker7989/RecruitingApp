@@ -15,6 +15,7 @@
     "pi": "pi",
     "test": "tsx --test \"tests/**/*.test.ts\"",
     "smoke": "node scripts/ci-smoke.mjs",
+    "db:migrate-json": "node --import tsx scripts/migrate-json-to-db.mjs",
     "lint": "eslint \"src/**/*.ts\" \"tests/**/*.test.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" \"tests/**/*.test.ts\" --fix",
     "telemetry:stack:up": "docker compose -f observability/local/docker-compose.yml up -d",
@@ -23,7 +24,8 @@
     "test:observability:p2": "tsx --test \"tests/observability-p2*.test.ts\"",
     "telemetry:p2:fixtures": "node --import tsx scripts/observability-p2-fixtures.mjs",
     "telemetry:p2:verify": "node --import tsx scripts/observability-p2-verify.mjs",
-    "telemetry:p2:cost-report": "node --import tsx scripts/observability-p2-cost-report.mjs"
+    "telemetry:p2:cost-report": "node --import tsx scripts/observability-p2-cost-report.mjs",
+    "test:db": "tsx --test --test-concurrency=1 \"tests/integration/database*.test.ts\""
   },
   "keywords": [],
   "author": "",
@@ -59,6 +61,7 @@
     "mammoth": "^1.12.3",
     "papaparse": "^5.7.0",
     "pdf-parse": "^2.4.5",
+    "pg": "^8.23.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -73,6 +76,7 @@
     "@types/express-fileupload": "^1.5.1",
     "@types/node": "^22.20.2",
     "@types/papaparse": "^5.5.2",
+    "@types/pg": "^8.23.1",
     "eslint": "^10.10.0",
     "globals": "^17.12.0",
     "tsx": "^4.23.13",
