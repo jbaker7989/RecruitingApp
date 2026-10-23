@@ -41,6 +41,13 @@ This skill governs all operations related to application tracking, status manage
   6. Update company's new hire list
 - HireRecord contains: applicantId, companyId, jobPostingId, hireDate, positionTitle, status, notifiedEmployer
 
+## Scheduling completion checks
+When changing interview scheduling:
+- Trace accepted options from the request into workflow state and downstream scheduling inputs. Validate supplied values; apply defaults only when omitted.
+- For duration, verify a non-default value (for example 30 or 90 minutes), the omitted 60-minute default, and rejection of invalid values before invoking the workflow. Preserve duration across rescheduling unless explicitly changed through a supported operation.
+- Test the route-to-workflow contract with remote calendar/LLM services mocked. An HTTP success alone does not prove that the requested option was used.
+- NFR-080 tracks the existing ignored-duration defect; these instructions do not mark it resolved.
+
 ## Files
 - `data/applications.json` — All application records
 - `data/hires.json` — All hire records

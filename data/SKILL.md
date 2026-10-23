@@ -34,6 +34,13 @@ This skill governs all data layer operations for the New Fronteir Recruiting app
 - Supports role-based action logging
 - Entity types now include: `Company`, `Job`, `Applicant`, `Application`, `User`, `Hire`
 
+### Failure data handling
+- Persist only bounded, approved diagnostic metadata in failure audit details: category/code, operation, correlation ID, and identifiers already permitted by the audit contract.
+- Do not put raw resumes, model responses, credential material, provider bodies, or schema input values into audit errors. Truncating raw content does not make it safe.
+- Do not serialize arbitrary `Error.message`, `Error.cause`, or error objects into audit records or public responses. Map errors to safe categories and messages at the boundary; retain internal causes only where they cannot be exported or logged unsanitized.
+- For affected failure paths, use synthetic sensitive markers and assert their absence in persisted audit data, public errors, logs, and exported telemetry. Keep useful failure classification intact.
+- These rules address NFR-079 prospectively. Any investigation or remediation of previously retained data is separate work; do not delete historical audit records as part of routine error-handling changes.
+
 ### Hire Tracking Data
 - `data/hires.json` stores all hire records
 - Each hire record: `id`, `applicantId`, `companyId`, `jobPostingId`, `hireDate`, `positionTitle`, `status`, `notifiedEmployer`

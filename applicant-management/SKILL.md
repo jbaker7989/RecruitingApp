@@ -46,6 +46,13 @@ This skill governs all operations related to applicant management in the New Fro
 - Work experience years comparison
 - Final score: 1-10 (10 = perfect fit)
 
+## Resume parsing completion checks
+When changing resume upload or parsing paths:
+- Verify PDF/DOCX extraction with valid synthetic documents using the installed parser implementation; mock the remote LLM boundary. Check malformed/empty documents and parser resource cleanup.
+- Trace extracted text into structured parsing and verify successful results, JSON failures, and schema failures. Do not rely solely on mocked extraction or successful compilation.
+- Keep raw resume content, model output, and schema input values out of error messages and failure audit details. Apply the [data logging rules](../data/SKILL.md#failure-data-handling) to both file and text endpoints.
+- Use NFR-078 and NFR-079 as regression references; these checks are requirements for future changes, not claims that the open bugs are fixed.
+
 ## Files
 - `data/applicants.json` — All applicant records (includes hireRecords)
 - `data/applications.json` — All application records
