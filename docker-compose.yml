@@ -1,7 +1,6 @@
 # RecruitingApp — local Docker deployment
-# Requires: .env file with JWT_SECRET and APPLICANT_JWT_SECRET
-#
-#   cp .env.example .env     # fill in required secrets
+# Override secrets with a .env file if needed (defaults work out of the box):
+#   cp .env.example .env     # fill in secrets
 #   docker compose up -d     # start app + observability stack
 #   docker compose logs -f   # watch output
 #   docker compose down      # stop and remove
@@ -17,7 +16,7 @@ services:
       - "${APP_PORT:-3000}:3000"
     env_file:
       - path: .env
-        required: true
+        required: false
     environment:
       PORT: 3000
       NODE_ENV: production
@@ -26,8 +25,8 @@ services:
       OTEL_SERVICE_NAME: recruiting-app
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
       # Secrets (override in .env — these are dev defaults only)
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required in .env}
-      APPLICANT_JWT_SECRET: ${APPLICANT_JWT_SECRET:?APPLICANT_JWT_SECRET is required in .env}
+      JWT_SECRET: ${JWT_SECRET:-dev-jwt-secret-must-be-at-least-32-chars-long}
+      APPLICANT_JWT_SECRET: ${APPLICANT_JWT_SECRET:-dev-applicant-jwt-secret-32-chars-min}
     volumes:
       - app-data:/app/data
     healthcheck:
@@ -38,7 +37,7 @@ services:
       start_period: 15s
     depends_on:
       otel-collector:
-        condition: service_healthy
+        condition: service_started
 
   # ---- Observability stack (OBS-P1-S01) ----
   otel-collector:
@@ -50,11 +49,9 @@ services:
     ports:
       - "127.0.0.1:4318:4318"   # OTLP/HTTP
       - "127.0.0.1:4317:4317"   # OTLP/GRPC
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:13133"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
+      - "127.0.0.1:13133:13133" # health
+      - "127.0.0.1:8888:8888"   # metrics
+
 
   jaeger:
     image: jaegertracing/all-in-one:1.64.0
