@@ -17,9 +17,9 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-002 | 2 | 🔴 | ✅ Server never starts — `start()` never invoked — **RESOLVED** (fix/NFR-002) |
 | NFR-003 | 3 | 🔴 | Auth chicken-and-egg — register/login unreachable |
 | NFR-004 | 4 | 🔴 | ✅ `store.json` missing `hires` array — hire-flow crashes — **RESOLVED** (fix/NFR-004) |
-| NFR-005 | 5 | 🔴 | CSV job import completely broken |
-| NFR-006 | 6 | 🔴 | Job import silently drops all `requirements` |
-| NFR-007 | 7 | 🔴 | Hires routes unreachable — route ordering |
+| NFR-005 | 5 | 🔴 | ✅ CSV job import completely broken — **RESOLVED** (fix/NFR-005-NFR-006-job-import) |
+| NFR-006 | 6 | 🔴 | ✅ Job import silently drops all `requirements` — **RESOLVED** (fix/NFR-005-NFR-006-job-import) |
+| NFR-007 | 7 | 🔴 | ✅ Hires routes unreachable — route ordering — **RESOLVED** (fix/NFR-007-hires-routes-unreachable) |
 | NFR-033 | 33 | 🔴 | ✅ Vercel deployment fails — Node type definitions unavailable during build — **RESOLVED** (PR #1) |
 | NFR-034 | 34 | 🔴 | PostgreSQL durability implemented and locally DB-verified; hosted verification pending — [feature](./docs/features/platform/feature-durable-postgresql-storage.md) · [story](./docs/stories/story-durable-postgresql-storage.md) · [QA](./docs/qa/nfr-034-durable-postgresql-local-qa.md) |
 | NFR-035 | 35 | 🔴 | Git/Vercel release pipeline is disconnected and deployments are not reproducible |
@@ -131,23 +131,39 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 > - **Tests:** unit (`readStore` defaults all collections) + 2 integration (GET applicant 200; accept application creates hire + links to applicant). All 3 observed failing pre-fix with the exact bug evidence (`reading 'filter'` / `reading 'push'` 500s), all 3 passing post-fix — iteration 1 of 3.
 > - **Gates:** `tsc --noEmit` ✅ · `tsc` build ✅ · tests 3/3 ✅ · CI smoke gate pending `NFR-030` bootstrap
 
-### 5. [NFR-005] CSV job import is completely broken
+### 5. [NFR-005] ✅ CSV job import completely broken
 - **Where:** `src/routes/jobs.ts:80-81` — `const Papa = await import('papaparse'); Papa.parse(...)`
 - **Symptom:** `500 "Papa.parse is not a function"` on every CSV import.
 - **Evidence:** Confirmed live. Dynamic `import()` of the CommonJS `papaparse` package returns a module namespace where the API lives on `.default`, so `Papa.parse` is undefined.
 - **Impact:** The entire `/api/jobs/import` CSV path (a headline feature per the skill docs) is dead.
+> **✅ RESOLUTION — 2026-10-23, branch `fix/NFR-005-NFR-006-job-import`**
+> - **Fix:** changed `Papa.parse(...)` to `Papa.default.parse(...)` on line 81; `papaparse` is CommonJS, so `await import('papaparse')` returns `{ default: { parse: ... } }` and the API lives on `.default`.
+> - **Tests:** `tests/regression/NFR-005-NFR-006-job-import.test.ts` — 4 tests: CSV import doesn't 500, JSON import works, imported CSV job preserves requirements, imported JSON job preserves requirements. All 4 were Red before fix, all 4 Green after.
+> - **Gates:** `tsc --noEmit` ✅ · `tsc` build ✅ · 584/584 tests ✅ · lint 0 errors ✅ · smoke ✅
 
-### 6. [NFR-006] Job import silently drops ALL `requirements`
+### 6. [NFR-006] ✅ Job import silently drops ALL `requirements`
 - **Where:** `src/routes/jobs.ts:95` — `const reqStr = String(row.requirements || row.requirements === undefined ? '' : '');`
 - **Symptom:** Operator precedence makes this `(row.requirements || row.requirements === undefined) ? '' : ''` → always `''`. Every imported job gets `requirements: []`.
 - **Evidence:** Confirmed live — JSON import of `{"requirements":"req1;req2"}` produced `"requirements": []`.
 - **Impact:** Match scores (`calculateMatchScore` matches against `job.requirements`) are degraded for every imported job.
+> **✅ RESOLUTION — 2026-10-23, branch `fix/NFR-005-NFR-006-job-import`**
+> - **Fix:** replaced the broken expression with `const reqStr = String(row.requirements ?? '');` — nullish coalescing correctly defaults to `''` only when `requirements` is `null` or `undefined`, preserving non-empty strings.
+> - **Tests:** `tests/regression/NFR-005-NFR-006-job-import.test.ts` — 4 tests covering both CSV and JSON import paths for both NFR-005 and NFR-006.
+> - **Gates:** `tsc --noEmit` ✅ · `tsc` build ✅ · 584/584 tests ✅ · lint 0 errors ✅ · smoke ✅
 
 ### 7. [NFR-007] Hires routes are unreachable — route ordering bug
 - **Where:** `src/routes/applications.ts` — `router.get('/:id')` (line 92) is registered **before** `router.get('/hires')` (line 164) and `router.get('/companies/:id/hires')` (line 181). Express matches in registration order.
 - **Symptom:** `GET /api/applications/hires` → `404 {"error":"Application not found"}` (`'hires'` is captured as `:id`). Same for the company-hires route.
 - **Evidence:** Confirmed live.
 - **Impact:** Recruiters/hiring-managers can never list hires via the API (and with bug 4, the handlers would crash anyway).
+> **✅ RESOLUTION — 2026-10-23, branch `fix/NFR-007-hires-routes-unreachable`**
+> - **Fix 1 (route ordering — NFR-007):** Reordered route registration in `src/routes/applications.ts` so `router.get('/:id')` is registered **last**, after `/hires`, `/:id/status`, and `/companies/:id/hires`. Express matches in registration order, so the wildcard must not shadow the more-specific routes.
+> - **Fix 2 (pre-existing auth bug found during NFR-007 development):** `src/middleware/auth.ts` was constructing `req.user` from the JWT payload but discarding `companyId`. Fixed: both the User-JWT branch and Applicant-JWT branch now pass the full `companyId` from the token into `req.user`.
+> - **Fix 3 (pre-existing data-link bug found during NFR-007 development):** `src/routes/companies.ts` POST handler now links the creating `hiring-manager` to the new company by writing `store.users[userIndex].companyId = company.id` after the company is created. Previously, `hiring-manager` users had `companyId: undefined` and the `/hires` filter (`h.companyId === req.user.companyId`) always returned empty.
+> - **Fix 4 (test helpers):** `tests/regression/NFR-007-hires-routes-unreachable.test.ts` — `getHiringManagerToken()` now returns `username`/`password` in addition to `token`/`userId` so callers can re-login after company creation; `createCompanyAndJob()` re-logs in after company creation to obtain a fresh JWT that carries the newly-linked `companyId`; `getApplicantToken()` was reading `body.applicant.id` but the endpoint returns `{ token, expiresIn, profile: { id, ... } }` (fixed to `body.profile.id`).
+> - **Bugs found during development:** NFR-007 exposed two pre-existing bugs (Fix 2 & 3 above). These are fixed in the same branch.
+> - **Tests:** 6 regression tests covering all four routes and the data-flow end-to-end; 590/590 in CI.
+> - **Gates:** typecheck ✅ · lint 0 errors ✅ · build ✅ · 590/590 tests ✅ · smoke ✅
 
 ### 33. [NFR-033] Vercel deployment fails — Node type definitions unavailable during build
 - **Priority:** P0 release blocker (newly discovered during NFR-FEAT-001 preview deployment)
@@ -436,11 +452,11 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 4. **P0 security:** NFR-008 — replace forgeable bearer identities before enabling applicant-photo read or mutation traffic.
 5. **P1 applicant media:** NFR-038, NFR-039, NFR-040, then NFR-041 — protected retrieval, reliable cleanup, full decode validation, and correct size errors.
 6. **P1:** NFR-003 — unblock registration/login/onboarding.
-7. **P1:** NFR-007, NFR-005, NFR-006 — restore hires listing and import features.
+7. **P1:** NFR-007 — restore hires listing feature (route ordering fix in applications.ts).
 8. **P1 security:** NFR-009 – NFR-013 and NFR-046 before real employer/applicant data (NFR-011 has partial safeguards only on the unmerged NFR-FEAT-001 branch).
 9. **P2 governance/logic:** NFR-047, then NFR-014 – NFR-019, NFR-045, and remaining specification gaps.
 
-Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, NFR-033, NFR-036, NFR-037, NFR-042, NFR-043, NFR-044.
+Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-005, NFR-006, NFR-030, NFR-033, NFR-036, NFR-037, NFR-042, NFR-043, NFR-044.
 ## Bugs introduced during story-commercial-auth-hardening development
 
 **Date:** 2026-10-01

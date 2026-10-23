@@ -1,0 +1,99 @@
+# RecruitingApp — local Docker deployment
+# Requires: .env file with JWT_SECRET and APPLICANT_JWT_SECRET
+#
+#   cp .env.example .env     # fill in required secrets
+#   docker compose up -d     # start app + observability stack
+#   docker compose logs -f   # watch output
+#   docker compose down      # stop and remove
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: recruiting-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    env_file:
+      - path: .env
+        required: true
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      DATA_DIR: /app/data
+      # Observability — point app at local otel-collector
+      OTEL_SERVICE_NAME: recruiting-app
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      # Secrets (override in .env — these are dev defaults only)
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required in .env}
+      APPLICANT_JWT_SECRET: ${APPLICANT_JWT_SECRET:?APPLICANT_JWT_SECRET is required in .env}
+    volumes:
+      - app-data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      otel-collector:
+        condition: service_healthy
+
+  # ---- Observability stack (OBS-P1-S01) ----
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.116.1
+    container_name: otel-collector
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./observability/local/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "127.0.0.1:4318:4318"   # OTLP/HTTP
+      - "127.0.0.1:4317:4317"   # OTLP/GRPC
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:13133"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.64.0
+    container_name: jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "127.0.0.1:16686:16686" # Jaeger UI
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.enable-remote-write-receiver"
+      - "--enable-feature=otlp-write-receiver"
+    volumes:
+      - ./observability/local/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "127.0.0.1:9090:9090"
+
+  loki:
+    image: grafana/loki:3.3.2
+    container_name: loki
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    ports:
+      - "127.0.0.1:3100:3100"
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: grafana
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./observability/local/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "127.0.0.1:3001:3000"
+
+volumes:
+  app-data:
+    driver: local

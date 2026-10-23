@@ -3,7 +3,7 @@ import { verifyUserToken, verifyApplicantToken, UserTokenPayload, ApplicantToken
 import { checkRevocation } from '../services/revocationService.js';
 
 export interface AuthRequest extends Request {
-  user?: { id: string; username: string; role: string };
+  user?: { id: string; username: string; role: string; companyId?: string };
 }
 
 // Simple role-based access control
@@ -71,6 +71,7 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
       jti = payload.jti;
       iat = payload.iat!;
       userType = 'User';
+      req.user = { id, username: id, role, companyId: payload.companyId };
     } catch {
       // Not a User JWT — try Applicant
       const payload = await verifyApplicantToken(token);
@@ -79,6 +80,7 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
       jti = payload.jti;
       iat = payload.iat!;
       userType = 'Applicant';
+      req.user = { id, username: id, role };
     }
 
     // Check password-change bulk revocation
@@ -86,8 +88,6 @@ export async function authenticate(req: AuthRequest, res: Response, next: NextFu
     if (revokedReason) {
       return res.status(401).json({ error: revokedReason });
     }
-
-    req.user = { id, username: id, role };
     next();
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

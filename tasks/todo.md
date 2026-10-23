@@ -50,8 +50,12 @@ All entries are Proposed. Use linked stories as the canonical AC and evidence so
 
 - [ ] Checkpoint: all [P3 feature criteria](../docs/features/observability/feature-observability-p3-operational-readiness.md) have accepted evidence and required decisions are closed.
 
-## P2 local synthetic implementation checkpoint (2026-10-19)
+## Docker CI/CD follow-up — proposed
 
-- [x] Execute [P2 plan](observability-p2-plan.md), retaining every story/feature AC and open decision gate.
-- [x] Independent Codex tests and full baseline quality gates; real Docker query integration passed (P1 4/4, P2 27/27).
-- [x] Review privacy/behavior/cardinality and evidence; commit, push and open linked [PR #18](https://github.com/jbaker7989/RecruitingApp/pull/18) without merging. Acceptance decisions remain open.
+- [ ] **P0** [OBS-CICD-S01: Define Docker CI and delivery boundaries](../docs/stories/observability/story-obs-cicd-s01-docker-delivery-decision.md)
+- [ ] **P0** [OBS-CICD-S02: Start an isolated Docker stack in GitHub Actions](../docs/stories/observability/story-obs-cicd-s02-docker-stack-ci.md)
+- [ ] **P0** [OBS-CICD-S03: Verify persisted telemetry through Docker backends](../docs/stories/observability/story-obs-cicd-s03-docker-telemetry-ci.md)
+- [ ] **P1** [OBS-CICD-S04: Exercise collector failure and recovery in CI](../docs/stories/observability/story-obs-cicd-s04-docker-faults-ci.md)
+- [ ] **P0** [OBS-CICD-S05: Verify Docker image provenance and secret isolation](../docs/stories/observability/story-obs-cicd-s05-docker-image-security.md)
+- [ ] **P0** [OBS-CICD-S06: Gate delivery on Docker evidence and retain diagnostics](../docs/stories/observability/story-obs-cicd-s06-docker-release-gates.md)
+- [ ] **P2** [OBS-CICD-S07: Build and publish an application image if approved](../docs/stories/observability/story-obs-cicd-s07-docker-app-image.md)

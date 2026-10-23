@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { readStore, updateStore, generateId, now, addObservabilityEntry } from '../models/store.js';
+import { readStore, writeStore, generateId, now, addObservabilityEntry } from '../models/store.js';
 import { validateJobBody, validateApplicationBody } from '../middleware/validation.js';
 import { requireRole } from '../middleware/auth.js';
 import { createApplication, calculateMatchScore } from '../services/matching.js';
@@ -12,6 +12,12 @@ router.post('/', requireRole(['hiring-manager', 'member-services']), async (req:
     const validation = validateJobBody(req.body);
     if (!validation.valid) {
       return res.status(400).json({ errors: validation.errors });
+    }
+
+    const store = await readStore();
+    const company = store.companies.find(c => c.id === req.body.companyId);
+    if (!company) {
+      return res.status(404).json({ error: 'Company not found' });
     }
 
     const job = {
@@ -34,13 +40,8 @@ router.post('/', requireRole(['hiring-manager', 'member-services']), async (req:
       updatedAt: now(),
     };
 
-    // Company existence is verified inside the transaction so a concurrent delete cannot orphan the job.
-    const created = await updateStore((store) => {
-      if (!store.companies.some(c => c.id === req.body.companyId)) return false;
-      store.jobs.push(job);
-      return true;
-    });
-    if (!created) return res.status(404).json({ error: 'Company not found' });
+    store.jobs.push(job);
+    await writeStore(store);
     await addObservabilityEntry({
       id: generateId(),
       timestamp: now(),
@@ -62,71 +63,70 @@ router.post('/', requireRole(['hiring-manager', 'member-services']), async (req:
 router.post('/import', requireRole(['hiring-manager', 'member-services']), async (req: any, res) => {
   try {
     const { companyId, format, data } = req.body;
-
+    
     if (!companyId) {
       return res.status(400).json({ error: 'companyId is required' });
     }
 
-    const Papa = format === 'csv' ? await import('papaparse') : null;
+    const store = await readStore();
+    const company = store.companies.find(c => c.id === companyId);
+    if (!company) {
+      return res.status(404).json({ error: 'Company not found' });
+    }
+
+    let rows: any[] = [];
+    
+    if (format === 'csv') {
+      const Papa = await import('papaparse');
+      const result = Papa.default.parse(data, { header: true, skipEmptyLines: true });
+      rows = result.data;
+    } else if (format === 'json') {
+      const parsed = JSON.parse(data);
+      rows = Array.isArray(parsed) ? parsed : parsed.jobs || [];
+    } else {
+      return res.status(400).json({ error: 'format must be csv or json' });
+    }
+
     const nowStr = now();
+    const importResult = { totalRows: rows.length, successes: 0, failures: 0, errors: [] as string[], jobsCreated: [] as string[] };
 
-    // Company check, parsing and all inserts are one transaction: a parse failure rolls back every row.
-    const outcome = await updateStore((store) => {
-      if (!store.companies.some(c => c.id === companyId)) return { kind: 'no-company' as const };
+    for (const row of rows) {
+      try {
+        const reqStr = String(row.requirements ?? '');
+        const respStr = String(row.responsibilities || '');
+        const qualStr = String(row.qualifications || '');
+        const skillStr = String(row.requiredSkills || row.skills || '');
+        
+        const job = {
+          id: generateId(),
+          companyId,
+          jobTitle: String(row.jobTitle || row.title || 'Untitled'),
+          positionDescription: String(row.positionDescription || row.description || ''),
+          requirements: reqStr ? reqStr.split(';').map((s: string) => s.trim()).filter(Boolean) : [],
+          positionLocation: String(row.positionLocation || row.location || ''),
+          payRange: { min: Number(row.payMin) || 0, max: Number(row.payMax) || 0, currency: String(row.payCurrency || 'USD') },
+          responsibilities: respStr ? respStr.split(';').map((s: string) => s.trim()).filter(Boolean) : [],
+          qualifications: qualStr ? qualStr.split(';').map((s: string) => s.trim()).filter(Boolean) : [],
+          requiredSkills: skillStr ? skillStr.split(';').map((s: string) => s.trim()).filter(Boolean) : [],
+          requiredExperience: Number(row.requiredExperience) || 0,
+          reportsTo: String(row.reportsTo || 'N/A'),
+          isActive: true,
+          totalOpenings: Number(row.totalOpenings || row.openings || 1),
+          currentApplications: 0,
+          createdAt: nowStr,
+          updatedAt: nowStr,
+        };
 
-      let rows: any[];
-      if (Papa) {
-        const result = Papa.parse(data, { header: true, skipEmptyLines: true });
-        rows = result.data;
-      } else if (format === 'json') {
-        const parsed = JSON.parse(data);
-        rows = Array.isArray(parsed) ? parsed : parsed.jobs || [];
-      } else {
-        return { kind: 'bad-format' as const };
+        store.jobs.push(job);
+        importResult.successes++;
+        importResult.jobsCreated.push(job.id);
+      } catch (err) {
+        importResult.failures++;
+        importResult.errors.push(err instanceof Error ? err.message : String(err));
       }
+    }
 
-      const importResult = { totalRows: rows.length, successes: 0, failures: 0, errors: [] as string[], jobsCreated: [] as string[] };
-      for (const row of rows) {
-        try {
-          const reqStr = String(row.requirements || row.requirements === undefined ? '' : '');
-          const respStr = String(row.responsibilities || '');
-          const qualStr = String(row.qualifications || '');
-          const skillStr = String(row.requiredSkills || row.skills || '');
-
-          const job = {
-            id: generateId(),
-            companyId,
-            jobTitle: String(row.jobTitle || row.title || 'Untitled'),
-            positionDescription: String(row.positionDescription || row.description || ''),
-            requirements: reqStr ? reqStr.split(';').map((s: string) => s.trim()).filter(Boolean) : [],
-            positionLocation: String(row.positionLocation || row.location || ''),
-            payRange: { min: Number(row.payMin) || 0, max: Number(row.payMax) || 0, currency: String(row.payCurrency || 'USD') },
-            responsibilities: respStr ? respStr.split(';').map((s: string) => s.trim()).filter(Boolean) : [],
-            qualifications: qualStr ? qualStr.split(';').map((s: string) => s.trim()).filter(Boolean) : [],
-            requiredSkills: skillStr ? skillStr.split(';').map((s: string) => s.trim()).filter(Boolean) : [],
-            requiredExperience: Number(row.requiredExperience) || 0,
-            reportsTo: String(row.reportsTo || 'N/A'),
-            isActive: true,
-            totalOpenings: Number(row.totalOpenings || row.openings || 1),
-            currentApplications: 0,
-            createdAt: nowStr,
-            updatedAt: nowStr,
-          };
-
-          store.jobs.push(job);
-          importResult.successes++;
-          importResult.jobsCreated.push(job.id);
-        } catch (err) {
-          importResult.failures++;
-          importResult.errors.push(err instanceof Error ? err.message : String(err));
-        }
-      }
-      return { kind: 'imported' as const, importResult };
-    });
-    if (outcome.kind === 'no-company') return res.status(404).json({ error: 'Company not found' });
-    if (outcome.kind === 'bad-format') return res.status(400).json({ error: 'format must be csv or json' });
-    const { importResult } = outcome;
-
+    await writeStore(store);
     await addObservabilityEntry({
       id: generateId(),
       timestamp: nowStr,
@@ -196,14 +196,13 @@ router.get('/:id', async (req, res) => {
 // PUT /api/jobs/:id - Update job posting
 router.put('/:id', requireRole(['hiring-manager', 'member-services']), async (req: any, res) => {
   try {
-    const updated = await updateStore((store) => {
-      const jobIndex = store.jobs.findIndex(j => j.id === req.params.id);
-      if (jobIndex === -1) return null;
-      store.jobs[jobIndex] = { ...store.jobs[jobIndex], ...req.body, updatedAt: now() };
-      return store.jobs[jobIndex];
-    });
-    if (!updated) return res.status(404).json({ error: 'Job not found' });
-    res.json(updated);
+    const store = await readStore();
+    const jobIndex = store.jobs.findIndex(j => j.id === req.params.id);
+    if (jobIndex === -1) return res.status(404).json({ error: 'Job not found' });
+
+    store.jobs[jobIndex] = { ...store.jobs[jobIndex], ...req.body, updatedAt: now() };
+    await writeStore(store);
+    res.json(store.jobs[jobIndex]);
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to update job' });
   }
@@ -212,9 +211,9 @@ router.put('/:id', requireRole(['hiring-manager', 'member-services']), async (re
 // DELETE /api/jobs/:id - Delete job posting
 router.delete('/:id', requireRole(['hiring-manager', 'member-services']), async (req, res) => {
   try {
-    await updateStore((store) => {
-      store.jobs = store.jobs.filter(j => j.id !== req.params.id);
-    });
+    const store = await readStore();
+    store.jobs = store.jobs.filter(j => j.id !== req.params.id);
+    await writeStore(store);
     res.json({ message: 'Job deleted' });
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to delete job' });

@@ -135,20 +135,29 @@ router.get(
   },
 );
 
-// ─── GET /api/applications/:id ──────────────────────────────────────────────
+// ─── GET /api/applications/hires ────────────────────────────────────────────
 
-router.get('/:id', async (req: any, res: any) => {
-  try {
-    const store = await readStore();
-    const app = store.applications.find((a: any) => a.id === req.params.id);
-    if (!app) return res.status(404).json({ error: 'Application not found' });
-    res.json(app);
-  } catch (error) {
-    res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to fetch application' });
-  }
-});
+router.get(
+  '/hires',
+  requireRole(['recruiter', 'hiring-manager', 'member-services']),
+  async (req: any, res: any) => {
+    try {
+      const store = await readStore();
+      if (req.user.role === 'hiring-manager') {
+        const companyJobs = store.jobs.filter((j: any) => j.companyId === req.user.companyId);
+        const hires = store.hires.filter((h: any) =>
+          companyJobs.some((j: any) => j.id === h.jobPostingId),
+        );
+        return res.json(hires);
+      }
+      res.json(store.hires);
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to fetch hires' });
+    }
+  },
+);
 
-// ─── PUT /api/applications/:id/status ────────────────────────────────────────
+// ─── PUT /api/applications/:id/status — registered before /:id to avoid swallowing numeric/special-segment ids ──
 
 router.put(
   '/:id/status',
@@ -212,29 +221,7 @@ router.put(
   },
 );
 
-// ─── GET /api/applications/hires ────────────────────────────────────────────
-
-router.get(
-  '/hires',
-  requireRole(['recruiter', 'hiring-manager', 'member-services']),
-  async (req: any, res: any) => {
-    try {
-      const store = await readStore();
-      if (req.user.role === 'hiring-manager') {
-        const companyJobs = store.jobs.filter((j: any) => j.companyId === req.user.companyId);
-        const hires = store.hires.filter((h: any) =>
-          companyJobs.some((j: any) => j.id === h.jobPostingId),
-        );
-        return res.json(hires);
-      }
-      res.json(store.hires);
-    } catch (error) {
-      res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to fetch hires' });
-    }
-  },
-);
-
-// ─── GET /api/applications/companies/:id/hires ────────────────────────────────
+// ─── GET /api/applications/companies/:id/hires — registered before /:id ──
 
 router.get(
   '/companies/:id/hires',
@@ -249,5 +236,18 @@ router.get(
     }
   },
 );
+
+// ─── GET /api/applications/:id — wildcard catch-all, registered last ─────────
+
+router.get('/:id', async (req: any, res: any) => {
+  try {
+    const store = await readStore();
+    const app = store.applications.find((a: any) => a.id === req.params.id);
+    if (!app) return res.status(404).json({ error: 'Application not found' });
+    res.json(app);
+  } catch (error) {
+    res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to fetch application' });
+  }
+});
 
 export default router;
