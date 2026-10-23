@@ -16,6 +16,8 @@ The user confirmed login/OAuth, application submission, resume parsing/matching 
 | [OBS-001-P2: AI and custom telemetry](feature-observability-p2-ai-custom-telemetry.md) | Duration attribution, business outcomes, tokens and estimated cost | Accepted P1 signal foundation |
 | [OBS-001-P3: Operational readiness](feature-observability-p3-operational-readiness.md) | Audit correlation, SLOs, governance, external checks and customer status | P2 evidence plus operational decisions |
 
+[Docker CI/CD follow-up](feature-docker-cicd-integration.md): seven prioritized stories for isolated backend tests, fault/security checks, delivery gates and conditional application-image publication. Proposed; existing hosted acceptance gates remain open.
+
 ## Priority policy
 
 - **P0 — blocking:** safe collection, reliable delivery or accountable production operation cannot ship without it. P0 does not imply immediate customer outage.

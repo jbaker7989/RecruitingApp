@@ -16,7 +16,6 @@
 | [OBS-P1-S08: Create structured operational logs with context](story-obs-p1-s08-operational-logs.md) | P1 | Implementation |
 | [OBS-P1-S09: Observe health and runtime resource pressure](story-obs-p1-s09-health-runtime.md) | P1 | Implementation |
 | [OBS-P1-S10: Accept the baseline with reproducible evidence](story-obs-p1-s10-baseline-acceptance.md) | P1 | Verification |
-
 | [OBS-P1-S11: Configure and verify the Vercel Preview runtime](story-obs-p1-s11-vercel-preview-configuration.md) | P0 — Critical | Configuration / verification |
 
 ## Phase 2
@@ -51,3 +50,17 @@
 | [OBS-P3-S11: Compare releases and guide rollback decisions](story-obs-p3-s11-release-regressions.md) | P1 | Implementation |
 | [OBS-P3-S12: Track future observability capabilities and adoption triggers](story-obs-p3-s12-future-capabilities-decision.md) | P2 | Decision / backlog governance |
 | [OBS-P3-S13: Prove incident response and close acceptance](story-obs-p3-s13-operational-game-day.md) | P1 | Verification |
+
+## Docker CI/CD follow-up
+
+[Feature, release gates and delivery order](../../features/observability/feature-docker-cicd-integration.md). Proposed; Vercel remains the application target pending an explicit hosting decision.
+
+| Story | Priority | Type |
+|---|---|---|
+| [OBS-CICD-S01: Define Docker CI and delivery boundaries](story-obs-cicd-s01-docker-delivery-decision.md) | P0 | Decision |
+| [OBS-CICD-S02: Start an isolated Docker stack in GitHub Actions](story-obs-cicd-s02-docker-stack-ci.md) | P0 | Implementation |
+| [OBS-CICD-S03: Verify persisted telemetry through Docker backends](story-obs-cicd-s03-docker-telemetry-ci.md) | P0 | Implementation / verification |
+| [OBS-CICD-S04: Exercise collector failure and recovery in CI](story-obs-cicd-s04-docker-faults-ci.md) | P1 | Implementation / verification |
+| [OBS-CICD-S05: Verify Docker image provenance and secret isolation](story-obs-cicd-s05-docker-image-security.md) | P0 | Security / automation |
+| [OBS-CICD-S06: Gate delivery on Docker evidence and retain diagnostics](story-obs-cicd-s06-docker-release-gates.md) | P0 | Implementation / verification |
+| [OBS-CICD-S07: Build and publish an application image if approved](story-obs-cicd-s07-docker-app-image.md) | P2 | Conditional implementation |

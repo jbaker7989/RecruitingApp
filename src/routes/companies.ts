@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { readStore, updateStore, generateId, now, addObservabilityEntry } from '../models/store.js';
+import { readStore, writeStore, generateId, now, addObservabilityEntry } from '../models/store.js';
 import { validateJobBody } from '../middleware/validation.js';
 import { requireRole } from '../middleware/auth.js';
 
@@ -19,9 +19,15 @@ router.post('/', requireRole(['hiring-manager', 'member-services']), async (req:
       updatedAt: now(),
     };
 
-    await updateStore((store) => {
-      store.companies.push(company);
-    });
+    const store = await readStore();
+    store.companies.push(company);
+
+    // Link the creating hiring-manager to this company so their /hires filter works
+    if (req.user?.role === 'hiring-manager') {
+      const userIndex = store.users.findIndex((u: any) => u.id === req.user.id);
+      if (userIndex !== -1) store.users[userIndex].companyId = company.id;
+    }
+    await writeStore(store);
 
     await addObservabilityEntry({
       id: generateId(),
@@ -72,14 +78,13 @@ router.get('/:id', async (req, res) => {
 // PUT /api/companies/:id - Update company
 router.put('/:id', requireRole(['hiring-manager', 'member-services']), async (req: any, res) => {
   try {
-    const updated = await updateStore((store) => {
-      const index = store.companies.findIndex(c => c.id === req.params.id);
-      if (index === -1) return null;
-      store.companies[index] = { ...store.companies[index], ...req.body, updatedAt: now() };
-      return store.companies[index];
-    });
-    if (!updated) return res.status(404).json({ error: 'Company not found' });
-    res.json(updated);
+    const store = await readStore();
+    const index = store.companies.findIndex(c => c.id === req.params.id);
+    if (index === -1) return res.status(404).json({ error: 'Company not found' });
+
+    store.companies[index] = { ...store.companies[index], ...req.body, updatedAt: now() };
+    await writeStore(store);
+    res.json(store.companies[index]);
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to update company' });
   }
@@ -88,9 +93,9 @@ router.put('/:id', requireRole(['hiring-manager', 'member-services']), async (re
 // DELETE /api/companies/:id - Delete company
 router.delete('/:id', requireRole(['member-services']), async (req, res) => {
   try {
-    await updateStore((store) => {
-      store.companies = store.companies.filter(c => c.id !== req.params.id);
-    });
+    const store = await readStore();
+    store.companies = store.companies.filter(c => c.id !== req.params.id);
+    await writeStore(store);
     res.json({ message: 'Company deleted' });
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to delete company' });

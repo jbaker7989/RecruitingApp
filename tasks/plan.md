@@ -20,6 +20,6 @@ See the [detailed review](../docs/features/observability/review-opentelemetry-pr
 
 [D01–D15](../docs/features/observability/README.md#decision-register-and-release-gates) are tracked by explicit prioritized stories. An unresolved decision blocks only its named gate. Future capabilities receive a disposition and adoption trigger before dependent implementation begins.
 
-## P2 local synthetic delivery (2026-10-19)
+## Docker CI/CD follow-up
 
-Authorized implementation is tracked in [P2 execution plan](observability-p2-plan.md). Existing backlog and Docker followups remain intact. Decision approvals, live-provider validation, approved cost policy and hosted Vercel gates stay pending.
+Extend this observability plan with [OBS-CICD](../docs/features/observability/feature-docker-cicd-integration.md). Resolve S01 contract, then S02 stack/S05 security, S03 signals, S04 failures and S06 delivery enforcement. S07 application images are conditional. The feature defines three evidence checkpoints and unresolved policy/hosting decisions. This addition specifies work only; it does not close P1 or S11 gates.
