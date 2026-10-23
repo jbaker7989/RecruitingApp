@@ -77,6 +77,9 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-075 | 75 | 🟡 | In-memory OAuth state TTL enforcement — **Complete; QA passed; local only** (2026-10-16) — [story](./docs/stories/story-bug-oauth-in-memory-state-ttl.md) · [SEC-OAUTH-001 P2](./docs/features/security/feature-oauth-security-hardening.md) |
 | NFR-076 | 76 | 🟠 | OAuth `id_token` claims trusted without signature/`iss`/`aud`/`exp` verification — [story](./docs/stories/story-sec-oauth-idtoken-verification.md) · [SEC-OAUTH-001 P1](./docs/features/security/feature-oauth-security-hardening.md) |
 | NFR-077 | 77 | 🔵 | Regression guardrails for reflected-error XSS and open-redirect `next` (safe today, untested) — [story](./docs/stories/story-sec-xss-open-redirect-regression-guardrails.md) · [SEC-OAUTH-001 P3](./docs/features/security/feature-oauth-security-hardening.md) |
+| NFR-078 | 78 | 🟠 | Restore PDF resume parsing with the installed parser API — **S** — [story](./docs/stories/story-bug-pdf-resume-parser-api.md) |
+| NFR-079 | 79 | 🟠 | Keep resume content out of parse errors and audit records — **M** — [story](./docs/stories/story-bug-resume-error-content-disclosure.md) |
+| NFR-080 | 80 | 🟡 | Honor requested interview duration — **S** — [story](./docs/stories/story-bug-interview-duration-ignored.md) |
 
 ---
 
@@ -542,3 +545,26 @@ Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-030, 
 2. Restore clean repository-wide JSON and lint gates, then run the locked-install command sequence recorded in the QA document.
 3. Run the PostgreSQL service job in hosted CI.
 4. Capture hosted deployment migration, readiness, fresh-instance durability, rollback, and concurrency evidence before marking NFR-034 production complete.
+
+
+## Lint review findings — 2026-10-22
+
+Review of the 178 warnings identified three actionable defects. They are open; creating these stories does not mark implementation or QA complete. Work order: NFR-079 (data disclosure), NFR-078 (broken PDF path), then NFR-080 (ignored duration). Each estimate includes regression and CI coverage.
+
+### NFR-078 — Restore PDF resume parsing with the installed parser API
+
+- **Priority:** High (P1); **Size:** S (1–3h); **Status:** Open.
+- **Impact:** PDF resume uploads fail before text extraction, blocking a supported application input.
+- **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-pdf-resume-parser-api.md).
+
+### NFR-079 — Keep resume content out of parse errors and audit records
+
+- **Priority:** High (P1); **Size:** M (3–6h); **Status:** Open.
+- **Impact:** Malformed model output can cause applicant content to be retained in diagnostic audit records and returned in error responses.
+- **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-resume-error-content-disclosure.md).
+
+### NFR-080 — Honor requested interview duration
+
+- **Priority:** Medium (P2); **Size:** S (1–3h); **Status:** Open.
+- **Impact:** A caller requesting a non-default interview duration receives a scheduling workflow initialized to 60 minutes.
+- **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-interview-duration-ignored.md).
