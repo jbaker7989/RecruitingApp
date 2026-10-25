@@ -1,0 +1,42 @@
+name: Applicant Security CI
+
+on:
+  push:
+    branches: [feature/applicant-pii-exposure]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: applicant-security-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  applicant-pii-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      # Synthetic temp-dir store only; no hosted credentials or provider calls.
+      - name: Applicant PII regression
+        run: npx tsx --test tests/regression/story-bug-applicant-passwordhash-pii-leak.test.ts
