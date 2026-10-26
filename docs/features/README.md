@@ -28,6 +28,8 @@ AI-powered automation using LangChain and LangGraph.
 
 [Durable PostgreSQL Application Storage](platform/feature-durable-postgresql-storage.md) defines the transactional store, migration, fail-closed startup, and local/hosted verification requirements for NFR-034 and NFR-061–NFR-070.
 
+[PostgreSQL Company and Job Write Path Repair](platform/feature-postgresql-write-path-repair.md) specifies the selected `updateStore` migration for seven legacy company/job route writes and links the implementation and verification stories.
+
 ## Feature Templates
 
 When adding new features, follow this structure:
