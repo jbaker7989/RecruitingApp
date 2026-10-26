@@ -115,9 +115,11 @@ before(async () => {
   baseUrl = `http://localhost:${typeof addr === 'object' && addr ? addr.port : 0}`;
 });
 
-beforeEach(() => {
+beforeEach(async () => {
   // Each test starts from the same seed so assertions are order-independent.
   seedStore();
+  const { resetRevocationState } = await import('../../src/services/revocationService.js');
+  resetRevocationState();
 });
 
 after(() => {
@@ -269,6 +271,34 @@ test('PUT /api/applicants/:id by another applicant returns 403 and changes nothi
   assert.equal(readPersisted(ALICE_ID).firstName, 'Alice');
 });
 
+test('PUT /api/applicants/:id without a token returns 401 and changes nothing', async () => {
+  const res = await send('PUT', `/api/applicants/${ALICE_ID}`, { body: { firstName: 'Mallory' } });
+  assert.equal(res.status, 401);
+  assert.equal(readPersisted(ALICE_ID).firstName, 'Alice');
+});
+
+test('PUT /api/applicants/:id by member-services updates a profile without exposing credentials', async () => {
+  const res = await send('PUT', `/api/applicants/${ALICE_ID}`, {
+    token: tokens.memberServices,
+    body: { firstName: 'Alicia' },
+  });
+  assert.equal(res.status, 200);
+  assert.equal(res.json?.firstName, 'Alicia');
+  assertNoCredentials(res, 'member-services PUT');
+  assert.equal(readPersisted(ALICE_ID).firstName, 'Alicia');
+  assert.equal(readPersisted(ALICE_ID).passwordHash, STORED_HASH);
+});
+
+test('PUT /api/applicants/:id rejects an invalid profile field without partial persistence', async () => {
+  const res = await send('PUT', `/api/applicants/${ALICE_ID}`, {
+    token: tokens.alice,
+    body: { firstName: 'Alicia', address: { state: 'NY', zip: 10001 } },
+  });
+  assert.equal(res.status, 400);
+  assert.equal(readPersisted(ALICE_ID).firstName, 'Alice');
+  assert.deepEqual(readPersisted(ALICE_ID).address, { state: 'CA', zip: '94102' });
+});
+
 // ─── AC3: POST ignores attacker-supplied passwordHash ─────────────────────────
 
 test('AC3: POST /api/applicants ignores client-supplied passwordHash and does not echo credentials', async () => {
@@ -293,6 +323,21 @@ test('AC3: POST /api/applicants ignores client-supplied passwordHash and does no
   const persisted = readPersisted(createdId);
   assert.equal(persisted.passwordHash, null, 'stored hash must be server-side only (null for legacy create)');
   assert.equal(persisted.oauthProviderId, null, 'oauthProviderId must not be client-settable');
+});
+
+test('POST /api/applicants drops nested credential fields from stored profile data', async () => {
+  const res = await send('POST', '/api/applicants', {
+    body: {
+      firstName: 'Carol', lastName: 'Creator', email: 'carol@test.com', phone: '555-0002',
+      address: { state: 'CA', zip: '94102', passwordHash: NESTED_ATTACK },
+      educationHistory: [{ institution: 'X', degree: 'B', fieldOfStudy: 'CS', startDate: '2020', endDate: '2024', oauthProviderId: NESTED_ATTACK }],
+      employmentHistory: [{ company: 'Y', position: 'Dev', startDate: '2024', endDate: '2025', passwordHash: NESTED_ATTACK }],
+      rightToWork: true,
+    },
+  });
+  assert.equal(res.status, 201);
+  assert.equal(res.text.includes(NESTED_ATTACK), false);
+  assert.equal(JSON.stringify(readPersisted(res.json?.id as string)).includes(NESTED_ATTACK), false);
 });
 
 // ─── /me: GET sanitized, PATCH cannot inject credential or identity fields ────
@@ -400,6 +445,19 @@ test('PATCH /api/applicants/me rejects null email without locking the owner out'
   const profile = await send('GET', '/api/applicants/me', { token: tokens.alice });
   assert.equal(profile.status, 200);
   assert.equal(profile.json?.email, 'alice@test.com');
+});
+
+test('a revoked applicant token cannot read or update either profile route', async () => {
+  const logout = await send('POST', '/api/applicants/logout', { token: tokens.alice });
+  assert.equal(logout.status, 200);
+
+  const requests = await Promise.all([
+    send('GET', `/api/applicants/${ALICE_ID}`, { token: tokens.alice }),
+    send('PUT', `/api/applicants/${ALICE_ID}`, { token: tokens.alice, body: { firstName: 'Alicia' } }),
+    send('PATCH', '/api/applicants/me', { token: tokens.alice, body: { firstName: 'Alicia' } }),
+  ]);
+  for (const res of requests) assert.equal(res.status, 401);
+  assert.equal(readPersisted(ALICE_ID).firstName, 'Alice');
 });
 
 test('PATCH /api/applicants/me accepts a current job without an end date', async () => {
