@@ -1,6 +1,6 @@
 # NFR-DATA-002-S03: Verify PostgreSQL Write Paths and Isolate Acceptance Tests
 
-**Status:** Implemented; local verification passed (2026-10-26)  
+**Status:** Implemented; local and hosted CI verification passed (2026-10-26); AC6 awaiting reviewer sign-off  
 **Priority:** Critical (P3 — tests authored first, closed last)  
 **Size:** M (3–6h) — fixture isolation, trigger-based rollback test, full gate run and CI evidence capture; excludes time to fix newly revealed defects  
 **Parent feature:** [Repair PostgreSQL Company and Job Write Paths](../../features/platform/feature-postgresql-write-path-repair.md)  
@@ -20,7 +20,7 @@ The database suite presently reports five failures, beginning with company creat
 - [x] **S03-AC1:** The real PostgreSQL suite tests each of the seven affected route paths, including status, fresh persisted state, not-found behavior, relevant audit effects, and rollback. At least one concurrency case proves independent writes are preserved.
 - [x] **S03-AC2:** Tests for duplicate/capacity submissions, status/hire creation, password reset, and reset rollback have explicit prerequisites in their own fixture or a named enclosing flow. A failed company route cannot silently leave empty IDs for a later independent assertion.
 - [x] **S03-AC3:** The reset rollback test seeds a real applicant and token, installs a trigger on that applicant row, observes the intended database rejection, confirms the token remains unused, then retries successfully after removing the trigger.
-- [ ] **S03-AC4:** With a disposable PostgreSQL 16 service, `npm run test:db` passes with `DB_TEST_REQUIRED=true`, and the existing built-artifact PostgreSQL smoke step runs and passes on the same revision. A missing or unreachable database still fails rather than skipping.
+- [x] **S03-AC4:** With a disposable PostgreSQL 16 service, `npm run test:db` passes with `DB_TEST_REQUIRED=true`, and the existing built-artifact PostgreSQL smoke step runs and passes on the same revision. A missing or unreachable database still fails rather than skipping.
 - [x] **S03-AC5:** `npm run typecheck`, `npm run lint`, `npm run build`, and `npm test` pass. The direct store-contract test continues to prove `writeStore` rejects PostgreSQL mode. No assertion is weakened or removed merely to make CI green.
 - [ ] **S03-AC6:** Record the CI run URL, commit SHA, test counts, any new failures discovered after the first blocker is removed, and the reviewer. Mark the parent feature complete only with the required hosted production evidence, which this story does not supply.
 
@@ -57,6 +57,8 @@ Passing named tests and scope:
 - AC3: `database failure during applicant password update rolls back token consumption` reaches the seeded applicant's rejecting trigger, asserts unused token and unchanged hash, drops the trigger, retries successfully and checks committed token/hash.
 - AC5: `writeStore rejects PostgreSQL snapshots and leaves committed rows unchanged` in `database-store-contract.test.ts`, plus the full passing quality/JSON gate. Independent diff inspection found no weakened assertions, new skip/only/todo markers, workflow, schema or dependency changes.
 
-AC4 remains unchecked by the orchestration brief's hosted-CI evidence rule: its local PostgreSQL 16, strict database, smoke and fail-closed portions passed as recorded above, but no hosted Actions run on this implementation exists. AC6 remains unchecked: no implementation commit SHA, Actions run URL or hosted reviewer signoff is supplied. Local validator identity and the base SHA above do not substitute for that evidence.
+AC4 is checked: the local portions above plus the hosted run below. AC6 remains unchecked only because no named human reviewer sign-off is recorded; run URL, SHA, counts and absence of new failures are recorded here.
+
+Hosted evidence: [Actions run 40279372008](https://github.com/jbaker7989/RecruitingApp/actions/runs/40279372008) `database` job on PR #24 head `c564aef` (squash-merged as `8ecbef1`): strict `test:db` 51 tests / 48 pass / 0 fail / 3 prerequisite-guard skips, then built-artifact smoke `smoke-health=ok`; quality, verify, local-backend and applicant-pii-regression also passed. No new failures revealed.
 
 Baseline unchanged acceptance suite: 13 pass / 5 fail / 2 skips. New tests against original HEAD routes in a temporary copy: 18 pass / 1 end-to-end company-create failure / 3 guard skips; independent fixture tests no longer cascaded. Developer logs: `/tmp/nfr-data-002-s03/`. The durability suite now generates its own unique schema instead of honoring an externally supplied schema name.

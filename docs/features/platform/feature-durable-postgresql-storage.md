@@ -2,7 +2,7 @@
 
 **Feature ID:** NFR-DATA-001
 **Primary bugs:** NFR-034, NFR-061–NFR-070
-**Status:** Company/job write-path implementation complete; local verification passed (2026-10-26); hosted CI and hosted production evidence pending
+**Status:** Company/job write-path implementation complete; local and hosted PostgreSQL CI passed (2026-10-26, PR #24); hosted production durability evidence pending
 **Production status:** Not complete until a hosted environment proves durability and readiness
 
 ## Problem
