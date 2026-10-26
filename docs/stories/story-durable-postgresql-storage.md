@@ -1,6 +1,6 @@
 # Story: Replace Production JSON Persistence with Durable PostgreSQL
 
-**Status:** Company/job write-path implementation complete; local verification passed (2026-10-26); hosted CI and hosted production evidence pending
+**Status:** Company/job write-path implementation complete; local and hosted PostgreSQL CI passed (2026-10-26, PR #24); hosted production durability evidence pending
 **Priority:** Critical
 **Tracks:** NFR-034, NFR-020, NFR-061–NFR-070
 **Feature:** [Durable PostgreSQL Application Storage](../features/platform/feature-durable-postgresql-storage.md)
