@@ -2,7 +2,7 @@
 
 **Feature ID:** NFR-DATA-001
 **Primary bugs:** NFR-034, NFR-061–NFR-070
-**Status:** Implementation complete; local verification passed
+**Status:** Company/job write-path implementation complete; local verification passed (2026-10-26); hosted CI and hosted production evidence pending
 **Production status:** Not complete until a hosted environment proves durability and readiness
 
 ## Problem
@@ -27,6 +27,8 @@ Production code uses the contract documented in [db-storage-contract.md](../../i
 - Mutators do not call `readStore`, `writeStore`, or external services.
 - `writeStore` is a JSON compatibility operation and rejects database mode so snapshot replacement cannot silently lose concurrent writes.
 - Audit entries use the same durable backend as application data.
+
+The [write-path repair feature](feature-postgresql-write-path-repair.md) tracks the seven company/job route callers that still use the rejected `writeStore` API. Its selected approach is to migrate them to `updateStore` and restore the real PostgreSQL CI gate.
 
 ## Included data
 
@@ -58,3 +60,7 @@ Production completion additionally requires evidence from a hosted PostgreSQL-ba
 - Automatic deployment or production publication
 - Reusing real applicant, employer, or credential data in tests
 - Treating a successful schema-only test as proof that HTTP writers are durable
+
+## Company/job repair verification (2026-10-26)
+
+[NFR-DATA-002](feature-postgresql-write-path-repair.md) has independent local evidence on HEAD `6bbdeda7808f2b5ccb1dffd027d94b3a9fa13155` plus uncommitted changes: PostgreSQL 16.15 `test:db` 48 pass / 0 fail / 3 inverse prerequisite-guard skips (51 total), JSON suite 378 pass / 0 fail, and passing typecheck, lint (0 errors / 178 warnings), build and PostgreSQL built-artifact health smoke. Missing/unreachable database checks exit nonzero. Validator: CICD-tester (Claude Opus 5.5); logs `/tmp/nfr-data-002-tester-20261026021557/`. See the repair stories for named-test evidence and the unresolved missing-ID DELETE/404 wording gaps. No hosted Actions run on the implementation revision or hosted production durability evidence is supplied; neither release gate is closed.

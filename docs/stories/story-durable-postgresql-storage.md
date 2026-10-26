@@ -1,6 +1,6 @@
 # Story: Replace Production JSON Persistence with Durable PostgreSQL
 
-**Status:** Implementation complete; local verification passed
+**Status:** Company/job write-path implementation complete; local verification passed (2026-10-26); hosted CI and hosted production evidence pending
 **Priority:** Critical
 **Tracks:** NFR-034, NFR-020, NFR-061–NFR-070
 **Feature:** [Durable PostgreSQL Application Storage](../features/platform/feature-durable-postgresql-storage.md)
@@ -12,6 +12,8 @@ As an applicant or recruiting operator, I need every successful change to remain
 ## Background
 
 The production serverless filesystem is not a database. The prior database attempt loaded PostgreSQL rows into a `DataStore` snapshot, allowed routes to mutate the snapshot, and made `writeStore` a no-op. This story replaces that unsafe behavior with a single atomic storage contract used by every writer.
+
+The storage backend now rejects database-mode `writeStore`, but seven company/job route handlers still call it. The focused remediation and its three stories are specified in [PostgreSQL Company and Job Write Path Repair](../features/platform/feature-postgresql-write-path-repair.md).
 
 ## Implementation tasks
 
@@ -74,3 +76,7 @@ The production serverless filesystem is not a database. The prior database attem
 ## Definition of done
 
 All local gates pass with synthetic data and a disposable PostgreSQL instance. BUGS.md records local verification without claiming production resolution. Production completion remains blocked until the hosted evidence listed in the feature is captured.
+
+## Company/job repair verification (2026-10-26)
+
+[NFR-DATA-002](../features/platform/feature-postgresql-write-path-repair.md) has independent local evidence on HEAD `6bbdeda7808f2b5ccb1dffd027d94b3a9fa13155` plus uncommitted changes: PostgreSQL 16.15 `test:db` 48 pass / 0 fail / 3 inverse prerequisite-guard skips (51 total), JSON suite 378 pass / 0 fail, and passing typecheck, lint (0 errors / 178 warnings), build and PostgreSQL built-artifact health smoke. Missing/unreachable database checks exit nonzero. Validator: CICD-tester (Claude Opus 5.5); logs `/tmp/nfr-data-002-tester-20261026021557/`. See the repair stories for named-test evidence and the unresolved missing-ID DELETE/404 wording gaps. No hosted Actions run on the implementation revision or hosted production durability evidence is supplied; neither release gate is closed.

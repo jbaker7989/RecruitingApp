@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { readStore, writeStore, generateId, now, addObservabilityEntry } from '../models/store.js';
+import { readStore, updateStore, generateId, now, addObservabilityEntry } from '../models/store.js';
+import type { JobPosting } from '../models/store.js';
 import { validateJobBody, validateApplicationBody } from '../middleware/validation.js';
 import { requireRole } from '../middleware/auth.js';
 import { createApplication, calculateMatchScore } from '../services/matching.js';
@@ -12,12 +13,6 @@ router.post('/', requireRole(['hiring-manager', 'member-services']), async (req:
     const validation = validateJobBody(req.body);
     if (!validation.valid) {
       return res.status(400).json({ errors: validation.errors });
-    }
-
-    const store = await readStore();
-    const company = store.companies.find(c => c.id === req.body.companyId);
-    if (!company) {
-      return res.status(404).json({ error: 'Company not found' });
     }
 
     const job = {
@@ -40,8 +35,15 @@ router.post('/', requireRole(['hiring-manager', 'member-services']), async (req:
       updatedAt: now(),
     };
 
-    store.jobs.push(job);
-    await writeStore(store);
+    const created = await updateStore(store => {
+      if (!store.companies.some(c => c.id === job.companyId)) return false;
+      store.jobs.push(job);
+      return true;
+    });
+    if (!created) {
+      return res.status(404).json({ error: 'Company not found' });
+    }
+
     await addObservabilityEntry({
       id: generateId(),
       timestamp: now(),
@@ -68,9 +70,9 @@ router.post('/import', requireRole(['hiring-manager', 'member-services']), async
       return res.status(400).json({ error: 'companyId is required' });
     }
 
-    const store = await readStore();
-    const company = store.companies.find(c => c.id === companyId);
-    if (!company) {
+    // Early check keeps the existing 404-before-format ordering; the mutator rechecks before commit.
+    const snapshot = await readStore();
+    if (!snapshot.companies.some(c => c.id === companyId)) {
       return res.status(404).json({ error: 'Company not found' });
     }
 
@@ -89,6 +91,7 @@ router.post('/import', requireRole(['hiring-manager', 'member-services']), async
 
     const nowStr = now();
     const importResult = { totalRows: rows.length, successes: 0, failures: 0, errors: [] as string[], jobsCreated: [] as string[] };
+    const candidates: JobPosting[] = [];
 
     for (const row of rows) {
       try {
@@ -117,7 +120,7 @@ router.post('/import', requireRole(['hiring-manager', 'member-services']), async
           updatedAt: nowStr,
         };
 
-        store.jobs.push(job);
+        candidates.push(job);
         importResult.successes++;
         importResult.jobsCreated.push(job.id);
       } catch (err) {
@@ -126,7 +129,16 @@ router.post('/import', requireRole(['hiring-manager', 'member-services']), async
       }
     }
 
-    await writeStore(store);
+    // All successfully parsed rows commit together; counts are only reported after commit.
+    const committed = await updateStore(store => {
+      if (!store.companies.some(c => c.id === companyId)) return false;
+      store.jobs.push(...candidates);
+      return true;
+    });
+    if (!committed) {
+      return res.status(404).json({ error: 'Company not found' });
+    }
+
     await addObservabilityEntry({
       id: generateId(),
       timestamp: nowStr,
@@ -196,13 +208,16 @@ router.get('/:id', async (req, res) => {
 // PUT /api/jobs/:id - Update job posting
 router.put('/:id', requireRole(['hiring-manager', 'member-services']), async (req: any, res) => {
   try {
-    const store = await readStore();
-    const jobIndex = store.jobs.findIndex(j => j.id === req.params.id);
-    if (jobIndex === -1) return res.status(404).json({ error: 'Job not found' });
+    const updatedAt = now();
+    const updated = await updateStore(store => {
+      const jobIndex = store.jobs.findIndex(j => j.id === req.params.id);
+      if (jobIndex === -1) return null;
+      store.jobs[jobIndex] = { ...store.jobs[jobIndex], ...req.body, updatedAt };
+      return store.jobs[jobIndex];
+    });
+    if (!updated) return res.status(404).json({ error: 'Job not found' });
 
-    store.jobs[jobIndex] = { ...store.jobs[jobIndex], ...req.body, updatedAt: now() };
-    await writeStore(store);
-    res.json(store.jobs[jobIndex]);
+    res.json(updated);
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to update job' });
   }
@@ -211,9 +226,9 @@ router.put('/:id', requireRole(['hiring-manager', 'member-services']), async (re
 // DELETE /api/jobs/:id - Delete job posting
 router.delete('/:id', requireRole(['hiring-manager', 'member-services']), async (req, res) => {
   try {
-    const store = await readStore();
-    store.jobs = store.jobs.filter(j => j.id !== req.params.id);
-    await writeStore(store);
+    await updateStore(store => {
+      store.jobs = store.jobs.filter(j => j.id !== req.params.id);
+    });
     res.json({ message: 'Job deleted' });
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to delete job' });
