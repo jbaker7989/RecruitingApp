@@ -80,6 +80,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-078 | 78 | 🟠 | Restore PDF resume parsing with the installed parser API — **S** — [story](./docs/stories/story-bug-pdf-resume-parser-api.md) |
 | NFR-079 | 79 | 🟠 | Keep resume content out of parse errors and audit records — **M** — [story](./docs/stories/story-bug-resume-error-content-disclosure.md) |
 | NFR-080 | 80 | 🟡 | Honor requested interview duration — **S** — [story](./docs/stories/story-bug-interview-duration-ignored.md) |
+| NFR-093 | 93 | 🟠 | `PUT /api/companies/:id` spread the raw request body into the stored company (mass assignment) — fixed with a field allow-list |
 
 ---
 
@@ -584,3 +585,15 @@ Review of the 178 warnings identified three actionable defects. They are open; c
 - **Priority:** Medium (P2); **Size:** S (1–3h); **Status:** Open.
 - **Impact:** A caller requesting a non-default interview duration receives a scheduling workflow initialized to 60 minutes.
 - **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-interview-duration-ignored.md).
+
+## Lint review finding — NFR-093 (2026-10-26)
+
+Found while reviewing why `no-explicit-any` warnings appeared (375 `any` uses, 133 in `src/routes`); `any` hid the missing validation from the compiler.
+
+### NFR-093 — Company update spread the raw request body into the stored record
+
+- **Priority:** High (P2); **Status:** Fixed (2026-10-26).
+- **Evidence:** `PUT /api/companies/:id` stored `{ ...store.companies[index], ...req.body, updatedAt }`. An authorised hiring-manager or member-services caller could overwrite any field, including `id`, or add arbitrary keys.
+- **Fix:** `validateCompanyUpdate` in `src/routes/companies.ts` allow-lists `companyName`, `description`, `location`, `companySize`, `industry` (strings; `companyName` non-blank; length caps). Unknown or server-owned keys (`id`, `createdAt`, `updatedAt`, `__proto__`, ...), non-object and empty bodies return 400 and change nothing. Covered by `tests/regression/NFR-093-company-update-allow-list.test.ts`.
+- **Side finding (open):** a top-level `null`/primitive JSON body is rejected by `express.json()`, but the global error handler answers 500 instead of 400.
+- **Not changed:** `POST /api/companies`, `src/routes/auth.ts` and `src/routes/mcp.ts` still lack schema validation; recheck NFR-010 and NFR-011.
