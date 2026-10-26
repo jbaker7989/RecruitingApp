@@ -2,8 +2,9 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { createHash } from 'crypto'; // ponytail: bcrypt when prod
 import { readStore, updateStore, generateId, now, addObservabilityEntry, JobPosting, Applicant } from '../models/store.js';
-import { validateApplicantProfile, validateApplicationBody } from '../middleware/validation.js';
+import { validateApplicantProfile, validateApplicationBody, validateEmail } from '../middleware/validation.js';
 import { authenticateApplicant, AuthRequest } from '../middleware/applicantAuth.js';
+import { authenticate, type AuthRequest as UserAuthRequest } from '../middleware/auth.js';
 import { signApplicantToken, verifyApplicantToken } from '../services/tokenService.js';
 import { revokeToken, revokeAllForUser } from '../services/revocationService.js';
 import { createResetToken, resetPasswordWithToken } from '../services/passwordResetService.js';
@@ -17,11 +18,115 @@ const verifyPassword = (password: string, hash: string): Promise<boolean> => bcr
 
 const router = Router();
 
-// Strip credential/identity fields that must never reach a client response.
-// passwordHash and oauthProviderId are secrets/internal-ids — never serialize them.
+function safeString(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+// Build a response from approved fields, not a spread of stored data. Legacy
+// records may contain extra credential fields from older write paths.
 function sanitizeApplicant(applicant: Applicant) {
-  const { passwordHash: _passwordHash, oauthProviderId: _oauthProviderId, ...rest } = applicant;
-  return rest;
+  return {
+    id: safeString(applicant.id),
+    firstName: safeString(applicant.firstName),
+    lastName: safeString(applicant.lastName),
+    email: typeof applicant.email === 'string' ? applicant.email : null,
+    phone: safeString(applicant.phone),
+    preferredContactMethod: applicant.preferredContactMethod === 'sms' ? 'sms' : 'email',
+    address: {
+      state: isRecord(applicant.address) ? safeString(applicant.address.state) : '',
+      zip: isRecord(applicant.address) ? safeString(applicant.address.zip) : '',
+    },
+    educationHistory: Array.isArray(applicant.educationHistory)
+      ? applicant.educationHistory.filter(isRecord).map(entry => ({
+        institution: safeString(entry.institution), degree: safeString(entry.degree),
+        fieldOfStudy: safeString(entry.fieldOfStudy), startDate: safeString(entry.startDate),
+        endDate: safeString(entry.endDate),
+        ...(typeof entry.gpa === 'string' ? { gpa: entry.gpa } : {}),
+      })) : [],
+    employmentHistory: Array.isArray(applicant.employmentHistory)
+      ? applicant.employmentHistory.filter(isRecord).map(entry => ({
+        company: safeString(entry.company), position: safeString(entry.position),
+        startDate: safeString(entry.startDate), endDate: safeString(entry.endDate),
+        ...(Array.isArray(entry.responsibilities) ? {
+          responsibilities: entry.responsibilities.filter(item => typeof item === 'string'),
+        } : {}),
+      })) : [],
+    rightToWork: applicant.rightToWork === true,
+    requiresSponsorship: applicant.requiresSponsorship === true,
+    expectedPay: typeof applicant.expectedPay === 'number' && Number.isFinite(applicant.expectedPay) ? applicant.expectedPay : 0,
+    notificationToManager: applicant.notificationToManager === true,
+    hireRecords: Array.isArray(applicant.hireRecords)
+      ? applicant.hireRecords.filter(item => typeof item === 'string') : [],
+    createdAt: safeString(applicant.createdAt),
+    updatedAt: safeString(applicant.updatedAt),
+  };
+}
+
+// Profile fields accepted on both applicant update routes. Credential,
+// immutable ID, OAuth identity, ownership, and audit fields are absent.
+// Email remains a profile field for compatibility with existing update flows.
+const PROFILE_WRITE_FIELDS = [
+  'firstName', 'lastName', 'email', 'phone', 'preferredContactMethod',
+  'address', 'educationHistory', 'employmentHistory', 'rightToWork',
+  'requiresSponsorship', 'expectedPay', 'notificationToManager',
+] as const satisfies readonly (keyof Applicant)[];
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function profileUpdates(body: unknown): Partial<Applicant> | null {
+  if (!isRecord(body)) return null;
+  const input = body;
+  const updates: Record<string, unknown> = {};
+  for (const field of PROFILE_WRITE_FIELDS) {
+    if (!Object.hasOwn(input, field)) continue;
+    const value = input[field];
+    if (field === 'address') {
+      if (!isRecord(value) || typeof value.state !== 'string' || typeof value.zip !== 'string') return null;
+      updates.address = { state: value.state, zip: value.zip };
+    } else if (field === 'educationHistory') {
+      if (!Array.isArray(value)) return null;
+      const entries: Applicant['educationHistory'] = [];
+      for (const entry of value) {
+        if (!isRecord(entry) || typeof entry.institution !== 'string' || typeof entry.degree !== 'string' ||
+            typeof entry.fieldOfStudy !== 'string' || typeof entry.startDate !== 'string' ||
+            typeof entry.endDate !== 'string' || (entry.gpa !== undefined && typeof entry.gpa !== 'string')) return null;
+        entries.push({ institution: entry.institution, degree: entry.degree, fieldOfStudy: entry.fieldOfStudy,
+          startDate: entry.startDate, endDate: entry.endDate,
+          ...(entry.gpa !== undefined ? { gpa: entry.gpa as string } : {}) });
+      }
+      updates.educationHistory = entries;
+    } else if (field === 'employmentHistory') {
+      if (!Array.isArray(value)) return null;
+      const entries: Applicant['employmentHistory'] = [];
+      for (const entry of value) {
+        if (!isRecord(entry) || typeof entry.company !== 'string' || typeof entry.position !== 'string' ||
+            typeof entry.startDate !== 'string' ||
+            (entry.endDate !== undefined && typeof entry.endDate !== 'string') ||
+            (entry.responsibilities !== undefined &&
+             (!Array.isArray(entry.responsibilities) ||
+              !entry.responsibilities.every(item => typeof item === 'string')))) return null;
+        entries.push({ company: entry.company, position: entry.position, startDate: entry.startDate,
+          endDate: typeof entry.endDate === 'string' ? entry.endDate : '',
+          ...(entry.responsibilities !== undefined ? { responsibilities: entry.responsibilities as string[] } : {}) });
+      }
+      updates.employmentHistory = entries;
+    } else {
+      if (['firstName', 'lastName', 'phone'].includes(field) && typeof value !== 'string') return null;
+      if (field === 'email' && (typeof value !== 'string' || !validateEmail(value))) return null;
+      if (field === 'preferredContactMethod' && value !== 'email' && value !== 'sms') return null;
+      if (['rightToWork', 'requiresSponsorship', 'notificationToManager'].includes(field) && typeof value !== 'boolean') return null;
+      if (field === 'expectedPay' && (typeof value !== 'number' || !Number.isFinite(value))) return null;
+      updates[field] = value;
+    }
+  }
+  return updates as Partial<Applicant>;
+}
+
+function canAccessApplicant(req: UserAuthRequest): boolean {
+  return req.user?.role === 'member-services' ||
+    (req.user?.role === 'applicant' && req.user.id === req.params.id);
 }
 
 // ─── Completeness score ────────────────────────────────────────────────────────
@@ -218,7 +323,7 @@ router.get('/me', authenticateApplicant, async (req: AuthRequest, res) => {
 });
 
 // PATCH /api/applicants/me — update applicant profile; password change triggers token revocation
-router.patch('/me', async (req: AuthRequest, res) => {
+router.patch('/me', authenticateApplicant, async (req: AuthRequest, res) => {
   // Read the raw auth token from the Authorization header since authenticateApplicant
   // consumes it and attaches req.applicant. We need the token's jti for revocation.
   const rawToken = req.headers['authorization']?.split(' ')[1];
@@ -226,7 +331,9 @@ router.patch('/me', async (req: AuthRequest, res) => {
 
   try {
     const payload = await verifyApplicantToken(rawToken);
-    const { password, hireRecords, createdAt, ...safeUpdates } = req.body;
+    const password = req.body?.password;
+    const safeUpdates = profileUpdates(req.body);
+    if (!safeUpdates) return res.status(400).json({ error: 'Invalid applicant update' });
     let newPasswordHash: string | undefined;
     if (password) {
       const store = await readStore();
@@ -250,7 +357,7 @@ router.patch('/me', async (req: AuthRequest, res) => {
     if (!updated) return res.status(404).json({ error: 'Applicant not found' });
 
     res.json({
-      ...updated,
+      ...sanitizeApplicant(updated),
       completeness: calculateCompleteness(updated),
     });
   } catch (err: unknown) {
@@ -316,6 +423,8 @@ router.post('/', async (req: any, res) => {
     if (!validation.valid) {
       return res.status(400).json({ errors: validation.errors });
     }
+    const safeUpdates = profileUpdates(req.body);
+    if (!safeUpdates) return res.status(400).json({ error: 'Invalid applicant profile' });
 
     const applicant = {
       id: generateId(),
@@ -325,9 +434,9 @@ router.post('/', async (req: any, res) => {
       passwordHash: null,
       phone: req.body.phone,
       preferredContactMethod: req.body.preferredContactMethod || 'email',
-      address: req.body.address || { state: '', zip: '' },
-      educationHistory: req.body.educationHistory || [],
-      employmentHistory: req.body.employmentHistory || [],
+      address: safeUpdates.address || { state: '', zip: '' },
+      educationHistory: safeUpdates.educationHistory || [],
+      employmentHistory: safeUpdates.employmentHistory || [],
       rightToWork: req.body.rightToWork || false,
       requiresSponsorship: req.body.requiresSponsorship || false,
       expectedPay: req.body.expectedPay || 0,
@@ -354,14 +463,15 @@ router.post('/', async (req: any, res) => {
       outcome: 'success',
     });
 
-    res.status(201).json(applicant);
+    res.status(201).json(sanitizeApplicant(applicant));
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to create applicant' });
   }
 });
 
-// GET /api/applicants/:id — public lookup (see story: story-applicant-lookup-auth)
-router.get('/:id', async (req, res) => {
+// GET /api/applicants/:id — owner or member-services only.
+router.get('/:id', authenticate, async (req: UserAuthRequest, res) => {
+  if (!canAccessApplicant(req)) return res.status(403).json({ error: 'Insufficient permissions' });
   try {
     const store = await readStore();
     const applicant = store.applicants.find(a => a.id === req.params.id);
@@ -374,23 +484,27 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// PUT /api/applicants/:id — update (non-auth, kept for legacy)
-router.put('/:id', async (req: any, res) => {
+// PUT /api/applicants/:id — authenticated, allow-listed profile update.
+router.put('/:id', authenticate, async (req: UserAuthRequest, res) => {
+  if (!canAccessApplicant(req)) return res.status(403).json({ error: 'Insufficient permissions' });
+  if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
+    return res.status(400).json({ error: 'Invalid applicant update' });
+  }
+  if (Object.hasOwn(req.body, 'passwordHash')) {
+    return res.status(400).json({ error: 'passwordHash cannot be set via this endpoint' });
+  }
+  const safeUpdates = profileUpdates(req.body);
+  if (!safeUpdates) return res.status(400).json({ error: 'Invalid applicant update' });
   try {
     const updated = await updateStore((store) => {
       const index = store.applicants.findIndex(a => a.id === req.params.id);
       if (index === -1) return { kind: 'not-found' as const };
 
-      // Reject credential fields from client input — passwordHash must never be
-      // set through the legacy update path (use the password-reset / register flow).
-      if ('passwordHash' in req.body) return { kind: 'forbidden-field' as const };
-
-      store.applicants[index] = { ...store.applicants[index], ...req.body, updatedAt: now() };
+      store.applicants[index] = { ...store.applicants[index], ...safeUpdates, updatedAt: now() };
       return { kind: 'updated' as const, applicant: store.applicants[index] };
     });
     if (updated.kind === 'not-found') return res.status(404).json({ error: 'Applicant not found' });
-    if (updated.kind === 'forbidden-field') return res.status(400).json({ error: 'passwordHash cannot be set via this endpoint' });
-    res.json(updated.applicant);
+    res.json(sanitizeApplicant(updated.applicant));
   } catch (error) {
     res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to update applicant' });
   }
