@@ -78,9 +78,10 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-076 | 76 | 🟠 | OAuth `id_token` claims trusted without signature/`iss`/`aud`/`exp` verification — [story](./docs/stories/story-sec-oauth-idtoken-verification.md) · [SEC-OAUTH-001 P1](./docs/features/security/feature-oauth-security-hardening.md) |
 | NFR-077 | 77 | 🔵 | Regression guardrails for reflected-error XSS and open-redirect `next` (safe today, untested) — [story](./docs/stories/story-sec-xss-open-redirect-regression-guardrails.md) · [SEC-OAUTH-001 P3](./docs/features/security/feature-oauth-security-hardening.md) |
 | NFR-078 | 78 | 🟠 | ✅ Restore PDF resume parsing with the installed parser API — **RESOLVED** (2026-10-27) — [story](./docs/stories/story-bug-pdf-resume-parser-api.md) |
-| NFR-079 | 79 | 🟠 | Keep resume content out of parse errors and audit records — **M** — [story](./docs/stories/story-bug-resume-error-content-disclosure.md) |
+| NFR-079 | 79 | 🟠 | ✅ Keep resume content out of parse errors and audit records — **RESOLVED** (2026-10-27) — [story](./docs/stories/story-bug-resume-error-content-disclosure.md) |
 | NFR-080 | 80 | 🟡 | Honor requested interview duration — **S** — [story](./docs/stories/story-bug-interview-duration-ignored.md) |
 | NFR-081 | 81 | 🟡 | JD draft authorization source inconsistent between /generate and /publish — **S** — [story](./docs/stories/story-bug-nfr-081-jd-draft-auth-source-inconsistent.md) |
+| NFR-082 | 82 | 🟠 | ✅ File resume upload never reaches the parser with its bytes — **RESOLVED** (2026-10-27) — [story](./docs/stories/story-bug-nfr-082-resume-file-upload-bytes.md) |
 | NFR-093 | 93 | 🟠 | `PUT /api/companies/:id` spread the raw request body into the stored company (mass assignment) — fixed with a field allow-list |
 
 ---
@@ -589,9 +590,15 @@ Review of the 178 warnings identified three actionable defects. They are open; c
 
 ### NFR-079 — Keep resume content out of parse errors and audit records
 
-- **Priority:** High (P1); **Size:** M (3–6h); **Status:** Open.
+- **Priority:** High (P1); **Size:** M (3–6h); **Status:** ✅ Resolved 2026-10-27.
 - **Impact:** Malformed model output can cause applicant content to be retained in diagnostic audit records and returned in error responses.
 - **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-resume-error-content-disclosure.md).
+
+> **✅ RESOLUTION — 2026-10-27**
+> - **Fix:** new `ResumeParseError` with a stable `failure` code (`json_failure` | `schema_failure`) and a content-free `message`. The raw provider output and the raw Zod error are dropped at the throw site, so they cannot reach HTTP responses, audit records, or stack traces. Schema failures keep the failing field paths (schema structure, not content), so the failure stays diagnosable.
+> - **Routes:** the file endpoint's failure audit record now stores `{ failure, fields }` instead of `{ error: error.message }`. Both endpoints return `{ error, failure }`.
+> - **Tests:** new `tests/regression/NFR-079-resume-error-content-disclosure.test.ts` — 5/5 green. `tests/observability-p2-ai.test.ts` updated to assert the new safe messages.
+> - **Gates:** `npm run typecheck` ✅ · `npm run lint` 0 errors ✅ · `npm run build` ✅ · `npm test` 406/406 ✅ · `npm run smoke` ✅.
 
 ### NFR-080 — Honor requested interview duration
 
@@ -621,3 +628,15 @@ Raised while implementing the NFR-046 company-authorization fix. These are open;
 - **Priority:** Medium (P2); **Size:** S (1–3h); **Status:** Open.
 - **Impact:** A hiring manager who creates a company and does not re-login gets different authorization outcomes from `/generate` (JWT-sourced `companyId`) and `/publish` (store-sourced `companyId`). Not exploitable, but inconsistent.
 - **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-nfr-081-jd-draft-auth-source-inconsistent.md).
+
+### NFR-082 — File resume upload never reaches the parser with its bytes
+
+- **Priority:** High (P1); **Size:** S (1–3h); **Status:** ✅ Resolved 2026-10-27.
+- **Impact:** `POST /api/agents/resume/parse` has never parsed an uploaded resume. `express-fileupload` runs with `useTempFiles: true`, so `file.data` is an empty buffer and the bytes live in `file.tempFilePath`; the route read `file.data`, so every upload reached the parser as zero bytes and was rejected as empty.
+- **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-nfr-082-resume-file-upload-bytes.md).
+
+> **✅ RESOLUTION — 2026-10-27**
+> - **Fix:** `src/routes/agents/index.ts` resolves the upload bytes as `file.data?.length ? file.data : await readFile(file.tempFilePath)` and returns `400 Uploaded file could not be read` when neither yields bytes. `useTempFiles: true` is unchanged, so uploads are still streamed to disk rather than buffered in memory.
+> - **Tests:** new `tests/regression/NFR-082-resume-file-upload-bytes.test.ts` — 2/2 green: successful PDF upload parses; malformed upload returns a graceful JSON error.
+> - **Gates:** `npm run typecheck` ✅ · `npm run lint` 0 errors ✅ · `npm run build` ✅ · `npm test` 406/406 ✅ · `npm run smoke` ✅.
+> - **Out of scope:** temp-file cleanup in `/tmp` is not addressed; tracked as a follow-up.
