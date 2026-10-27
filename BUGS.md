@@ -34,7 +34,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-039 | 39 | 🟠 | Blob/store failure ordering can orphan or break photo metadata |
 | NFR-040 | 40 | 🟠 | Signature-only image validation accepts corrupt files |
 | NFR-044 | 44 | 🟠 | ✅ JD-001 tests require Vitest but the project test runner is `node:test` via `tsx` — **RESOLVED** (fix/NFR-044-jd-tests-node-test) |
-| NFR-046 | 46 | 🟠 | JD draft publishing lacks company authorization checks |
+| NFR-046 | 46 | 🟠 | ✅ JD draft publishing lacks company authorization checks — **RESOLVED** (2026-10-23) — [story](./docs/stories/story-bug-nfr-046-jd-draft-publish-auth.md) |
 | NFR-014 | 14 | 🟡 | Job auto-close triggers on applications, not hires |
 | NFR-015 | 15 | 🟡 | `POST /api/applications` validates wrong payload |
 | NFR-016 | 16 | 🟡 | Email-confirmation mismatch never blocks |
@@ -77,9 +77,10 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-075 | 75 | 🟡 | In-memory OAuth state TTL enforcement — **Complete; QA passed; local only** (2026-10-16) — [story](./docs/stories/story-bug-oauth-in-memory-state-ttl.md) · [SEC-OAUTH-001 P2](./docs/features/security/feature-oauth-security-hardening.md) |
 | NFR-076 | 76 | 🟠 | OAuth `id_token` claims trusted without signature/`iss`/`aud`/`exp` verification — [story](./docs/stories/story-sec-oauth-idtoken-verification.md) · [SEC-OAUTH-001 P1](./docs/features/security/feature-oauth-security-hardening.md) |
 | NFR-077 | 77 | 🔵 | Regression guardrails for reflected-error XSS and open-redirect `next` (safe today, untested) — [story](./docs/stories/story-sec-xss-open-redirect-regression-guardrails.md) · [SEC-OAUTH-001 P3](./docs/features/security/feature-oauth-security-hardening.md) |
-| NFR-078 | 78 | 🟠 | Restore PDF resume parsing with the installed parser API — **S** — [story](./docs/stories/story-bug-pdf-resume-parser-api.md) |
+| NFR-078 | 78 | 🟠 | ✅ Restore PDF resume parsing with the installed parser API — **RESOLVED** (2026-10-27) — [story](./docs/stories/story-bug-pdf-resume-parser-api.md) |
 | NFR-079 | 79 | 🟠 | Keep resume content out of parse errors and audit records — **M** — [story](./docs/stories/story-bug-resume-error-content-disclosure.md) |
 | NFR-080 | 80 | 🟡 | Honor requested interview duration — **S** — [story](./docs/stories/story-bug-interview-duration-ignored.md) |
+| NFR-081 | 81 | 🟡 | JD draft authorization source inconsistent between /generate and /publish — **S** — [story](./docs/stories/story-bug-nfr-081-jd-draft-auth-source-inconsistent.md) |
 | NFR-093 | 93 | 🟠 | `PUT /api/companies/:id` spread the raw request body into the stored company (mass assignment) — fixed with a field allow-list |
 
 ---
@@ -303,7 +304,14 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Evidence:** Static route and model review, 2026-09-15. Generate and publish paths require the `hiring-manager` role but perform no company relationship check before `store.jobs.push(jobPosting)`.
 - **Impact:** Cross-tenant job posting injection and company data integrity risk, especially once real employers use the system.
 - **Required fix/tests:** Define/implement company membership or recruiter-company authorization, reject unauthorized company IDs in generate/publish, and add route tests for authorized publish, unauthorized cross-company publish, and member-services/admin behavior.
-- **Status:** OPEN — new JD-001 authorization gap.
+- **Status:** ✅ RESOLVED 2026-10-23 — [story](./docs/stories/story-bug-nfr-046-jd-draft-publish-auth.md). Local QA passed; hosted acceptance still pending (no new blocker introduced). Variants, draft update, and draft delete still rely on user-level ownership only — follow-up bugs are filed separately.
+
+> **✅ RESOLUTION — 2026-10-23**
+> - **Fix 1 (`/generate`):** new `assertCompanyAuthorization(res, user, companyId, action)` helper gates `POST /api/agents/jd/generate` before any LLM call or store write; hiring-managers must supply their own `companyId` or omit it; `member-services` are always allowed.
+> - **Fix 2 (`/publish`):** mutator now resolves the publisher once and applies both checks: ownership bypass for admins (`isAdmin = role === 'member-services'`), then `companyId` match for everyone else. The publish path returns 403 before any `JobPosting` is pushed to `store.jobs`.
+> - **Tests:** new `tests/regression/NFR-046-jd-draft-publish-auth.test.ts` — 4/4 green: authorized publish, cross-tenant publish rejected, admin override, cross-tenant generate rejected.
+> - **Gates:** `npm run typecheck` ✅ · `npm run lint` 0 errors ✅ · `npm run build` ✅ · `npm test` 394/394 ✅ · `npm run smoke` ✅.
+> - **Out of scope:** variants, draft update, and draft delete still rely on user-level ownership only — follow-up bugs are filed separately. Hosted acceptance is pending the same hosted-CI blocker as the other durable-store stories.
 
 ---
 
@@ -570,9 +578,14 @@ Review of the 178 warnings identified three actionable defects. They are open; c
 
 ### NFR-078 — Restore PDF resume parsing with the installed parser API
 
-- **Priority:** High (P1); **Size:** S (1–3h); **Status:** Open.
+- **Priority:** High (P1); **Size:** S (1–3h); **Status:** ✅ Resolved 2026-10-27.
 - **Impact:** PDF resume uploads fail before text extraction, blocking a supported application input.
 - **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-pdf-resume-parser-api.md).
+
+> **✅ RESOLUTION — 2026-10-27**
+> - **Fix:** `extractTextFromPDF` now uses the supported `PDFParse` API. A `parser` is constructed with `new PDFParse({ data: new Uint8Array(buffer) })`, `getText({ pageJoiner: '' })` is awaited, and `parser.destroy()` runs in a `finally` so worker resources are released on both success and failure. `pageJoiner: ''` suppresses the default `-- page_number of total_number --` boundary marker so the existing empty-text guard can fire and the marker is not injected into the LLM prompt.
+> - **Tests:** new `tests/regression/NFR-078-pdf-resume-parser-api.test.ts` — 5/5 green: valid PDF, corrupt PDF, empty PDF, unsupported type, DOCX regression. Hand-built PDF and DOCX fixtures, no library dependency added.
+> - **Gates:** `npm run typecheck` ✅ · `npm run lint` 0 errors ✅ · `npm run build` ✅ · `npm test` 399/399 ✅ · `npm run smoke` ✅.
 
 ### NFR-079 — Keep resume content out of parse errors and audit records
 
@@ -597,3 +610,14 @@ Found while reviewing why `no-explicit-any` warnings appeared (375 `any` uses, 1
 - **Fix:** `validateCompanyUpdate` in `src/routes/companies.ts` allow-lists `companyName`, `description`, `location`, `companySize`, `industry` (strings; `companyName` non-blank; length caps). Unknown or server-owned keys (`id`, `createdAt`, `updatedAt`, `__proto__`, ...), non-object and empty bodies return 400 and change nothing. Covered by `tests/regression/NFR-093-company-update-allow-list.test.ts`.
 - **Side finding (open):** a top-level `null`/primitive JSON body is rejected by `express.json()`, but the global error handler answers 500 instead of 400.
 - **Not changed:** `POST /api/companies`, `src/routes/auth.ts` and `src/routes/mcp.ts` still lack schema validation; recheck NFR-010 and NFR-011.
+
+
+## NFR-046 follow-up findings — 2026-10-23
+
+Raised while implementing the NFR-046 company-authorization fix. These are open; filing them does not mark implementation or QA complete.
+
+### NFR-081 — JD draft authorization source is inconsistent between /generate and /publish
+
+- **Priority:** Medium (P2); **Size:** S (1–3h); **Status:** Open.
+- **Impact:** A hiring manager who creates a company and does not re-login gets different authorization outcomes from `/generate` (JWT-sourced `companyId`) and `/publish` (store-sourced `companyId`). Not exploitable, but inconsistent.
+- **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-nfr-081-jd-draft-auth-source-inconsistent.md).
