@@ -77,7 +77,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-075 | 75 | 🟡 | In-memory OAuth state TTL enforcement — **Complete; QA passed; local only** (2026-10-16) — [story](./docs/stories/story-bug-oauth-in-memory-state-ttl.md) · [SEC-OAUTH-001 P2](./docs/features/security/feature-oauth-security-hardening.md) |
 | NFR-076 | 76 | 🟠 | OAuth `id_token` claims trusted without signature/`iss`/`aud`/`exp` verification — [story](./docs/stories/story-sec-oauth-idtoken-verification.md) · [SEC-OAUTH-001 P1](./docs/features/security/feature-oauth-security-hardening.md) |
 | NFR-077 | 77 | 🔵 | Regression guardrails for reflected-error XSS and open-redirect `next` (safe today, untested) — [story](./docs/stories/story-sec-xss-open-redirect-regression-guardrails.md) · [SEC-OAUTH-001 P3](./docs/features/security/feature-oauth-security-hardening.md) |
-| NFR-078 | 78 | 🟠 | Restore PDF resume parsing with the installed parser API — **S** — [story](./docs/stories/story-bug-pdf-resume-parser-api.md) |
+| NFR-078 | 78 | 🟠 | ✅ Restore PDF resume parsing with the installed parser API — **RESOLVED** (2026-10-27) — [story](./docs/stories/story-bug-pdf-resume-parser-api.md) |
 | NFR-079 | 79 | 🟠 | Keep resume content out of parse errors and audit records — **M** — [story](./docs/stories/story-bug-resume-error-content-disclosure.md) |
 | NFR-080 | 80 | 🟡 | Honor requested interview duration — **S** — [story](./docs/stories/story-bug-interview-duration-ignored.md) |
 | NFR-081 | 81 | 🟡 | JD draft authorization source inconsistent between /generate and /publish — **S** — [story](./docs/stories/story-bug-nfr-081-jd-draft-auth-source-inconsistent.md) |
@@ -578,9 +578,14 @@ Review of the 178 warnings identified three actionable defects. They are open; c
 
 ### NFR-078 — Restore PDF resume parsing with the installed parser API
 
-- **Priority:** High (P1); **Size:** S (1–3h); **Status:** Open.
+- **Priority:** High (P1); **Size:** S (1–3h); **Status:** ✅ Resolved 2026-10-27.
 - **Impact:** PDF resume uploads fail before text extraction, blocking a supported application input.
 - **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-pdf-resume-parser-api.md).
+
+> **✅ RESOLUTION — 2026-10-27**
+> - **Fix:** `extractTextFromPDF` now uses the supported `PDFParse` API. A `parser` is constructed with `new PDFParse({ data: new Uint8Array(buffer) })`, `getText({ pageJoiner: '' })` is awaited, and `parser.destroy()` runs in a `finally` so worker resources are released on both success and failure. `pageJoiner: ''` suppresses the default `-- page_number of total_number --` boundary marker so the existing empty-text guard can fire and the marker is not injected into the LLM prompt.
+> - **Tests:** new `tests/regression/NFR-078-pdf-resume-parser-api.test.ts` — 5/5 green: valid PDF, corrupt PDF, empty PDF, unsupported type, DOCX regression. Hand-built PDF and DOCX fixtures, no library dependency added.
+> - **Gates:** `npm run typecheck` ✅ · `npm run lint` 0 errors ✅ · `npm run build` ✅ · `npm test` 399/399 ✅ · `npm run smoke` ✅.
 
 ### NFR-079 — Keep resume content out of parse errors and audit records
 

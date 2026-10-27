@@ -152,15 +152,21 @@ export async function parseResumeFromBuffer(
 }
 
 // PDF text extraction using pdf-parse
+// The installed pdf-parse v2 exports a PDFParse class, not a callable default.
+// The parser holds worker resources, so it must be destroyed on both paths.
+// `pageJoiner: ''` suppresses the default `-- page_number of total_number --`
+// boundary marker, which would otherwise be the only "text" in an empty PDF
+// and would otherwise pad the text sent to the LLM.
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
+  const { PDFParse } = await import('pdf-parse');
+  const parser = new PDFParse({ data: new Uint8Array(buffer) });
   try {
-    // Dynamic import with CJS fallback
-    const pdfModule = await import('pdf-parse');
-    const pdfParse = (pdfModule as any).default || pdfModule;
-    const data = await pdfParse(buffer);
-    return data.text;
+    const result = await parser.getText({ pageJoiner: '' });
+    return result.text;
   } catch (error) {
     throw new Error(`Failed to extract text from PDF: ${error}`);
+  } finally {
+    await parser.destroy();
   }
 }
 
