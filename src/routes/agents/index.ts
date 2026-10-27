@@ -283,6 +283,12 @@ router.post('/scheduling/interview', requireRole(['recruiter', 'hiring-manager',
     if (!applicationId || !interviewerIds?.length) {
       return res.status(400).json({ error: 'applicationId and interviewerIds are required' });
     }
+
+    // NFR-080: honor a requested interview duration. The contract is a positive
+    // integer number of minutes; an omitted duration keeps the 60-minute default.
+    if (durationMinutes !== undefined && (typeof durationMinutes !== 'number' || !Number.isInteger(durationMinutes) || durationMinutes <= 0)) {
+      return res.status(400).json({ error: 'durationMinutes must be a positive integer number of minutes' });
+    }
     
     const store = await readStore();
     const application = store.applications.find(a => a.id === applicationId);
@@ -306,7 +312,9 @@ router.post('/scheduling/interview', requireRole(['recruiter', 'hiring-manager',
       job.id,
       job.companyId,
       interviewerIds,
-      proposedTimes
+      proposedTimes,
+      'api',
+      durationMinutes,
     );
     
     await addObservabilityEntry({

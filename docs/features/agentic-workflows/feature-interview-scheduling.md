@@ -136,6 +136,8 @@ Start the interview scheduling workflow.
 }
 ```
 
+**`durationMinutes` contract:** an optional positive integer number of minutes. Omit it to keep the 60-minute default. A non-number, a non-integer, zero, or a negative value is rejected with HTTP 400 and `durationMinutes must be a positive integer number of minutes`.
+
 **Response:**
 ```json
 {

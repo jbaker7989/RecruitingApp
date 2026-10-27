@@ -79,7 +79,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-077 | 77 | 🔵 | Regression guardrails for reflected-error XSS and open-redirect `next` (safe today, untested) — [story](./docs/stories/story-sec-xss-open-redirect-regression-guardrails.md) · [SEC-OAUTH-001 P3](./docs/features/security/feature-oauth-security-hardening.md) |
 | NFR-078 | 78 | 🟠 | ✅ Restore PDF resume parsing with the installed parser API — **RESOLVED** (2026-10-27) — [story](./docs/stories/story-bug-pdf-resume-parser-api.md) |
 | NFR-079 | 79 | 🟠 | ✅ Keep resume content out of parse errors and audit records — **RESOLVED** (2026-10-27) — [story](./docs/stories/story-bug-resume-error-content-disclosure.md) |
-| NFR-080 | 80 | 🟡 | Honor requested interview duration — **S** — [story](./docs/stories/story-bug-interview-duration-ignored.md) |
+| NFR-080 | 80 | 🟡 | ✅ Honor requested interview duration — **RESOLVED** (2026-10-27) — [story](./docs/stories/story-bug-interview-duration-ignored.md) |
 | NFR-081 | 81 | 🟡 | JD draft authorization source inconsistent between /generate and /publish — **S** — [story](./docs/stories/story-bug-nfr-081-jd-draft-auth-source-inconsistent.md) |
 | NFR-082 | 82 | 🟠 | ✅ File resume upload never reaches the parser with its bytes — **RESOLVED** (2026-10-27) — [story](./docs/stories/story-bug-nfr-082-resume-file-upload-bytes.md) |
 | NFR-093 | 93 | 🟠 | `PUT /api/companies/:id` spread the raw request body into the stored company (mass assignment) — fixed with a field allow-list |
@@ -602,9 +602,16 @@ Review of the 178 warnings identified three actionable defects. They are open; c
 
 ### NFR-080 — Honor requested interview duration
 
-- **Priority:** Medium (P2); **Size:** S (1–3h); **Status:** Open.
+- **Priority:** Medium (P2); **Size:** S (1–3h); **Status:** ✅ Resolved 2026-10-27.
 - **Impact:** A caller requesting a non-default interview duration receives a scheduling workflow initialized to 60 minutes.
 - **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-interview-duration-ignored.md).
+
+> **✅ RESOLUTION — 2026-10-27**
+> - **Fix:** `createInitialState` takes an optional `durationMinutes` (default 60). `startInterviewScheduling` takes an optional trailing `durationMinutes` after `entryPoint`, so the positional signature, the telemetry `entryPoint` argument and all existing callers are unchanged. The route validates and passes the value through.
+> - **Contract:** `durationMinutes` is a positive integer number of minutes. Non-number, non-integer (covers `NaN`, `Infinity`, fractions), zero and negative values return HTTP 400 with `durationMinutes must be a positive integer number of minutes`. Omitted keeps the 60-minute default.
+> - **Reschedule:** the `reschedule_requested` node returns a partial that omits `durationMinutes` and the machine merges over the previous state, so the duration is preserved.
+> - **Tests:** new `tests/regression/NFR-080-interview-duration-honored.test.ts` — 9/9 green (5 workflow, 4 route validation).
+> - **Gates:** `npm run typecheck` ✅ · `npm run lint` 0 errors ✅ · `npm run build` ✅ · `npm test` 415/415 ✅ · `npm run smoke` ✅.
 
 ## Lint review finding — NFR-093 (2026-10-26)
 
