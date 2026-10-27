@@ -4,6 +4,7 @@
  */
 
 import { Router } from 'express';
+import type { Response } from 'express';
 import { z } from 'zod';
 import { readStore, updateStore, generateId, now } from '../../models/store.js';
 import type { JobDraft } from '../../models/store.js';
@@ -70,6 +71,26 @@ const updateDraftRequestSchema = z.object({
   status: z.enum(['draft', 'published', 'archived']).optional(),
 });
 
+// Authorization helper for company-scoped routes (NFR-046).
+// `member-services` admins are allowed for any company; other roles must
+// carry a `user.companyId` matching the company they are acting for.
+// Returns true when authorized, or sends a 403 response and returns false.
+type CompanyAuthUser = { id?: string; role?: string; companyId?: string };
+function assertCompanyAuthorization(
+  res: Response,
+  user: CompanyAuthUser,
+  companyId: string | undefined | null,
+  action: string,
+): boolean {
+  if (!companyId) return true; // no company context required
+  if (user.role === 'member-services') return true;
+  if (user.companyId && user.companyId === companyId) return true;
+  res.status(403).json({
+    error: `Not authorized to ${action} for this company`,
+  });
+  return false;
+}
+
 // ============================================================================
 // POST /api/agents/jd/generate - Generate a job description draft
 // ============================================================================
@@ -88,6 +109,11 @@ router.post('/generate', requireRole(['hiring-manager', 'member-services']), asy
     const input: JDGInput = validation.data;
     const userId = req.user?.id || 'unknown';
     const companyId = input.companyId || '';
+
+    // NFR-046: reject cross-tenant companyId before any LLM call or store write.
+    if (!assertCompanyAuthorization(res, req.user || {}, companyId, 'generate a draft')) {
+      return;
+    }
 
     // Fetch company context if companyId provided
     const store = await readStore();
@@ -496,8 +522,12 @@ router.post('/drafts/:id/publish', requireRole(['hiring-manager', 'member-servic
 
       const draft = store.drafts[draftIndex];
 
-      // Check ownership
-      if (draft.userId !== userId) {
+      // Resolve the publisher once; the same fields gate ownership and company auth.
+      const publisher = store.users.find((u: { id: string }) => u.id === userId);
+      const isAdmin = publisher?.role === 'member-services';
+
+      // Check ownership. Admins bypass so they can publish any draft on behalf of a tenant.
+      if (!isAdmin && draft.userId !== userId) {
         return { error: 'Not authorized to publish this draft', status: 403 };
       }
 
@@ -509,6 +539,12 @@ router.post('/drafts/:id/publish', requireRole(['hiring-manager', 'member-servic
       // Require companyId for publishing
       if (!draft.companyId) {
         return { error: 'Cannot publish draft without company. Please recreate with a companyId.', status: 400 };
+      }
+
+      // NFR-046: cross-tenant publish rejection.
+      // Member-services may publish for any company; everyone else must belong.
+      if (!isAdmin && publisher?.companyId !== draft.companyId) {
+        return { error: 'Not authorized to publish for this company', status: 403 };
       }
 
       // Create job posting from draft
