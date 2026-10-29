@@ -65,7 +65,8 @@ export function createInitialState(
   candidateId: string,
   jobId: string,
   companyId: string,
-  interviewerIds: string[]
+  interviewerIds: string[],
+  durationMinutes: number = 60,
 ): InterviewSchedulingState {
   const nowStr = now();
   return {
@@ -76,7 +77,7 @@ export function createInitialState(
     interviewerIds,
     proposedTimes: [],
     selectedTime: null,
-    durationMinutes: 60,
+    durationMinutes,
     location: '',
     currentState: 'init',
     retryCount: 0,
@@ -503,13 +504,15 @@ export async function startInterviewScheduling(
   interviewerIds: string[],
   proposedTimes?: string[],
   entryPoint: string = 'api',
+  durationMinutes?: number,
 ): Promise<InterviewSchedulingState> {
   const initialState = createInitialState(
     applicationId,
     candidateId,
     jobId,
     companyId,
-    interviewerIds
+    interviewerIds,
+    durationMinutes,
   );
 
   if (proposedTimes?.length) {

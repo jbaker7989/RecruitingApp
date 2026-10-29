@@ -7,7 +7,7 @@
 
 Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 
-**Tracking IDs:** Every bug carries a unique alphanumeric ID in the format `NFR-0XX` (**N**ew **F**ronteir **R**ecruiting), assigned sequentially 001–047 in report/discovery order. Use these IDs in commits, branches, and status discussions.
+**Tracking IDs:** Every bug carries a unique alphanumeric ID in the format `NFR-0XX` (**N**ew **F**ronteir **R**ecruiting), assigned sequentially in report/discovery order. IDs NFR-083–NFR-092 are not defined in this file (several are referenced by commits/branches as SLOP-series cleanup items); do not reuse them. Use these IDs in commits, branches, and status discussions.
 
 ## Tracking Index
 
@@ -15,7 +15,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 |---|---|---|---|
 | NFR-001 | 1 | 🔴 | ✅ `npm start` crashes — ESM/CJS module mismatch — **RESOLVED** (PR #1) |
 | NFR-002 | 2 | 🔴 | ✅ Server never starts — `start()` never invoked — **RESOLVED** (fix/NFR-002) |
-| NFR-003 | 3 | 🔴 | Auth chicken-and-egg — register/login unreachable |
+| NFR-003 | 3 | 🔴 | ✅ Auth chicken-and-egg — register/login unreachable — **RESOLVED** (public routes mounted before `authenticate`; verified 2026-10-29) |
 | NFR-004 | 4 | 🔴 | ✅ `store.json` missing `hires` array — hire-flow crashes — **RESOLVED** (fix/NFR-004) |
 | NFR-005 | 5 | 🔴 | ✅ CSV job import completely broken — **RESOLVED** (fix/NFR-005-NFR-006-job-import) |
 | NFR-006 | 6 | 🔴 | ✅ Job import silently drops all `requirements` — **RESOLVED** (fix/NFR-005-NFR-006-job-import) |
@@ -34,7 +34,8 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-039 | 39 | 🟠 | Blob/store failure ordering can orphan or break photo metadata |
 | NFR-040 | 40 | 🟠 | Signature-only image validation accepts corrupt files |
 | NFR-044 | 44 | 🟠 | ✅ JD-001 tests require Vitest but the project test runner is `node:test` via `tsx` — **RESOLVED** (fix/NFR-044-jd-tests-node-test) |
-| NFR-046 | 46 | 🟠 | JD draft publishing lacks company authorization checks |
+| NFR-046 | 46 | 🟠 | ✅ JD draft publishing lacks company authorization checks — **RESOLVED** (2026-10-23) — [story](./docs/stories/story-bug-nfr-046-jd-draft-publish-auth.md) |
+| NFR-047 | 47 | 🟡 | ✅ No linting gate in package scripts or CI — **RESOLVED** (`npm run lint` + CI step on `main`; verified 2026-10-29) |
 | NFR-014 | 14 | 🟡 | Job auto-close triggers on applications, not hires |
 | NFR-015 | 15 | 🟡 | `POST /api/applications` validates wrong payload |
 | NFR-016 | 16 | 🟡 | Email-confirmation mismatch never blocks |
@@ -47,7 +48,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-023 | 23 | 🟡 | MCP route inconsistencies |
 | NFR-041 | 41 | 🟡 | Uploads above the raw-parser limit return 500 instead of 413 |
 | NFR-045 | 45 | 🟡 | JD draft update can mark drafts published without creating a job posting |
-| NFR-048 | 48 | 🔴 | Missing static file serving — images not displayed on any route |
+| NFR-048 | 48 | 🔴 | ✅ Missing static file serving — images not displayed on any route — **RESOLVED** (2026-09-24, PR #8) |
 | NFR-061 | 61 | 🟠 | Dashboard registration persistence — implemented; local PostgreSQL QA passed |
 | NFR-062 | 62 | 🟠 | Applicant persistence — implemented and locally exercised; reset route atomicity follow-up open |
 | NFR-063 | 63 | 🟠 | Application persistence/concurrency — implemented; local PostgreSQL QA passed |
@@ -58,6 +59,12 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-068 | 68 | 🟠 | Matching/scheduling PostgreSQL paths — implemented; local PostgreSQL QA passed |
 | NFR-069 | 69 | 🟡 | Staff auth persistence — implemented; local PostgreSQL QA passed |
 | NFR-070 | 70 | 🟡 | Dashboard bcrypt/legacy migration — implemented; local PostgreSQL QA passed |
+| NFR-055 | 55 | 🟠 | ✅ bcrypt native binding unavailable — **RESOLVED** (`bcryptjs`, guarded by regression test) |
+| NFR-056 | 56 | 🟡 | ✅ Startup secret validation throws in production — **RESOLVED** (deploy-time preflight added) |
+| NFR-057 | 57 | 🔵 | Legacy `encrypted_` stub users migrate only on first login — bulk migration script missing |
+| NFR-058 | 58 | 🔵 | Legacy sha256 applicant hashes migrate only on first login — bulk migration missing |
+| NFR-059 | 59 | 🔵 | Production secret validation is process-global (no per-tenant isolation) — deferred |
+| NFR-060 | 60 | 🔵 | In-memory token revocation store is not durable |
 | NFR-024 | 24 | 🔵 | Spec mismatch — data files |
 | NFR-025 | 25 | 🔵 | Dead `observability` array in store |
 | NFR-026 | 26 | 🔵 | Empty/duplicate directories |
@@ -77,10 +84,12 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-075 | 75 | 🟡 | In-memory OAuth state TTL enforcement — **Complete; QA passed; local only** (2026-10-16) — [story](./docs/stories/story-bug-oauth-in-memory-state-ttl.md) · [SEC-OAUTH-001 P2](./docs/features/security/feature-oauth-security-hardening.md) |
 | NFR-076 | 76 | 🟠 | OAuth `id_token` claims trusted without signature/`iss`/`aud`/`exp` verification — [story](./docs/stories/story-sec-oauth-idtoken-verification.md) · [SEC-OAUTH-001 P1](./docs/features/security/feature-oauth-security-hardening.md) |
 | NFR-077 | 77 | 🔵 | Regression guardrails for reflected-error XSS and open-redirect `next` (safe today, untested) — [story](./docs/stories/story-sec-xss-open-redirect-regression-guardrails.md) · [SEC-OAUTH-001 P3](./docs/features/security/feature-oauth-security-hardening.md) |
-| NFR-078 | 78 | 🟠 | Restore PDF resume parsing with the installed parser API — **S** — [story](./docs/stories/story-bug-pdf-resume-parser-api.md) |
-| NFR-079 | 79 | 🟠 | Keep resume content out of parse errors and audit records — **M** — [story](./docs/stories/story-bug-resume-error-content-disclosure.md) |
-| NFR-080 | 80 | 🟡 | Honor requested interview duration — **S** — [story](./docs/stories/story-bug-interview-duration-ignored.md) |
-| NFR-093 | 93 | 🟠 | `PUT /api/companies/:id` spread the raw request body into the stored company (mass assignment) — fixed with a field allow-list |
+| NFR-078 | 78 | 🟠 | ✅ Restore PDF resume parsing with the installed parser API — **RESOLVED** (2026-10-27) — [story](./docs/stories/story-bug-pdf-resume-parser-api.md) |
+| NFR-079 | 79 | 🟠 | ✅ Keep resume content out of parse errors and audit records — **RESOLVED** (2026-10-27) — [story](./docs/stories/story-bug-resume-error-content-disclosure.md) |
+| NFR-080 | 80 | 🟡 | ✅ Honor requested interview duration — **RESOLVED** (2026-10-27) — [story](./docs/stories/story-bug-interview-duration-ignored.md) |
+| NFR-081 | 81 | 🟡 | JD draft authorization source inconsistent between /generate and /publish — **S** — [story](./docs/stories/story-bug-nfr-081-jd-draft-auth-source-inconsistent.md) |
+| NFR-082 | 82 | 🟠 | ✅ File resume upload never reaches the parser with its bytes — **RESOLVED** (2026-10-27) — [story](./docs/stories/story-bug-nfr-082-resume-file-upload-bytes.md) |
+| NFR-093 | 93 | 🟠 | ✅ `PUT /api/companies/:id` spread the raw request body into the stored company (mass assignment) — **RESOLVED** (2026-10-26, field allow-list) |
 
 ---
 
@@ -111,11 +120,15 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 > - **Gates:** `tsc --noEmit` ✅ · `tsc` build ✅ · tests 6/6 ✅ · CI smoke gate pending `NFR-030` bootstrap
 > - **Note:** `npm start` still fails until NFR-001 (ESM/CJS mismatch) is fixed; if NFR-001 chooses CommonJS output, this guard must switch to the `require.main === module` form (import.meta will not compile under CommonJS).
 
-### 3. [NFR-003] Authentication chicken-and-egg — register/login are unreachable
+### 3. [NFR-003] ✅ Authentication chicken-and-egg — register/login are unreachable
 - **Where:** `src/index.ts:27` — `app.use('/', authenticate)` is mounted before all routers, including `/api/auth`.
 - **Symptom:** `POST /api/auth/register` and `POST /api/auth/login` return `401 {"error":"No authentication token provided"}` without a token. The middleware's anonymous bypass only covers `/health` and `/`.
 - **Evidence:** Confirmed live.
 - **Impact:** No first user can ever be created through the API; the only way in is hand-editing `data/store.json`. Also blocks `POST /api/applicants` (public applicant self-registration) and `/api/mcp/health`.
+
+> **✅ RESOLUTION — verified 2026-10-29**
+> - **Fix:** `src/index.ts` mounts `/api/applicants`, `/api/auth` and `/api/mcp` before `app.use('/', authenticate)`, and `src/middleware/auth.ts` allow-lists `/api/auth/login` and `/api/auth/register`.
+> - **Tests:** `tests/regression/NFR-003-auth-chicken-egg.test.ts`.
 
 ### 4. [NFR-004] ✅ `data/store.json` is missing the `hires` array — runtime crashes on hire flows
 - **Where:** committed `data/store.json` (has `companies, jobs, applicants, applications, users, observability` — no `hires`), vs `DataStore` interface and `initializeStore()` in `src/models/store.ts` which expect/create `hires`.
@@ -212,7 +225,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Evidence:** Confirmed 2026-09-15. `npm run typecheck` and `npm run build` pass, then `npm test` fails NFR-001 and NFR-030 smoke checks; direct `node --input-type=module -e "import('./dist/services/vectorStore/index.js')"` fails with `ERR_MODULE_NOT_FOUND`.
 - **Impact:** Built production artifact cannot start when `src/index.ts` imports `/api/agents`; all production routes are unavailable despite a clean TypeScript build.
 - **Required fix/tests:** Convert runtime relative imports in agent workflow files to Node-resolvable `.js` specifiers (and use `import type` where appropriate), add at least two failing tests first that import the compiled agent routes/vector store and boot the built server, then verify `npm test` and `npm run smoke` green.
-- **Status:** OPEN — blocks runtime startup and CI smoke until fixed.
+- **Status:** ✅ RESOLVED 2026-09-15 (see resolution below).
 
 > **✅ RESOLUTION — 2026-09-15, branch `chore/NFR-043-esm-imports-fix`, commit `28d91ad`**
 > - **Fix:** added `.js` to all runtime-relative imports in `src/routes/agents/index.ts` (6 imports), `src/services/vectorStore/index.ts` (2 imports), `src/agents/scheduling/agent.ts` (2 imports), and `src/chains/matching.ts` (1 type-only import). No logic changes — pure import-path corrections.
@@ -220,7 +233,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 > - **Red → Green:** 4 tests failed (3 NFR-001 regressions + 1 NFR-030 smoke); after fix: all 3 NFR-001 regressions pass ✅, NFR-030 smoke passes ✅, remaining full-suite failures drop from 4 to 1 (NFR-044 Vitest only) ✅.
 > - **Verification:** `npm run build` ✅ · `npm run typecheck` ✅ · `npm test` 22/23 ✅ · `node dist/index.js` boots without `ERR_MODULE_NOT_FOUND` ✅.
 
-### 9. [NFR-048] Missing static file serving — images not displayed on any route
+### 8a. [NFR-048] ✅ Missing static file serving — images not displayed on any route
 - **Where:** `src/index.ts` — missing `express.static()` middleware for the `public/` directory.
 - **Symptom:** All dashboard routes (`/dashboard/login`, `/dashboard/applications`, `/dashboard/jobs`, `/dashboard/profile`) render with broken image placeholders. The brand illustration (`/images/frontier-illustration.svg`) and hero SVG (`/images/illustrated-hero.svg`) return 404.
 - **Evidence:** Confirmed live — browser network tab shows 404 for `/images/frontier-illustration.svg` and `/images/favicon.svg`; `curl -I http://localhost:3000/images/frontier-illustration.svg` returns 404 before fix.
@@ -288,7 +301,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Evidence:** Confirmed 2026-09-15 by running the full gate sequence: `npm run typecheck` ✅, `npm run build` ✅, `npm test` 🔴 with the missing-package error.
 - **Impact:** The committed test suite is red on a clean install, CI cannot validate regressions, and the project violates `dev-testing-management/SKILL.md` test-runner standards.
 - **Required fix/tests:** Rewrite JD-001 tests to use `node:test` + `node:assert/strict` and Node-compatible mocking/injection, or formally add and justify Vitest as a project dependency/story. Add two failing tests first that prove the project-level `npm test` command can execute JD coverage under the chosen runner.
-- **Status:** OPEN — blocks CI/test gate until fixed.
+- **Status:** ✅ RESOLVED 2026-09-15 (see resolution below).
 
 > **✅ RESOLUTION — 2026-09-15, branch `fix/NFR-044-jd-tests-node-test`**
 > - **Fix:** rewrote `tests/chains/jdGenerator.test.ts` from Vitest to `node:test` + `node:assert/strict`. Tests that required LLM mocking (`generateJobDescription`, `generateJobDescriptionVariants`) were kept as function-existence assertions; pure-unit tests for `calculateInputConfidence` and all Zod schema/type tests were rewritten directly without any external mocking. Added one additional test (`score increases with each additional field`) to reach 6 unit tests on `calculateInputConfidence` plus 10 type/schema tests — 16 total, up from 11.
@@ -303,7 +316,14 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Evidence:** Static route and model review, 2026-09-15. Generate and publish paths require the `hiring-manager` role but perform no company relationship check before `store.jobs.push(jobPosting)`.
 - **Impact:** Cross-tenant job posting injection and company data integrity risk, especially once real employers use the system.
 - **Required fix/tests:** Define/implement company membership or recruiter-company authorization, reject unauthorized company IDs in generate/publish, and add route tests for authorized publish, unauthorized cross-company publish, and member-services/admin behavior.
-- **Status:** OPEN — new JD-001 authorization gap.
+- **Status:** ✅ RESOLVED 2026-10-23 — [story](./docs/stories/story-bug-nfr-046-jd-draft-publish-auth.md). Local QA passed; hosted acceptance still pending (no new blocker introduced). Variants, draft update, and draft delete still rely on user-level ownership only — follow-up bugs are filed separately.
+
+> **✅ RESOLUTION — 2026-10-23**
+> - **Fix 1 (`/generate`):** new `assertCompanyAuthorization(res, user, companyId, action)` helper gates `POST /api/agents/jd/generate` before any LLM call or store write; hiring-managers must supply their own `companyId` or omit it; `member-services` are always allowed.
+> - **Fix 2 (`/publish`):** mutator now resolves the publisher once and applies both checks: ownership bypass for admins (`isAdmin = role === 'member-services'`), then `companyId` match for everyone else. The publish path returns 403 before any `JobPosting` is pushed to `store.jobs`.
+> - **Tests:** new `tests/regression/NFR-046-jd-draft-publish-auth.test.ts` — 4/4 green: authorized publish, cross-tenant publish rejected, admin override, cross-tenant generate rejected.
+> - **Gates:** `npm run typecheck` ✅ · `npm run lint` 0 errors ✅ · `npm run build` ✅ · `npm test` 394/394 ✅ · `npm run smoke` ✅.
+> - **Out of scope:** variants, draft update, and draft delete still rely on user-level ownership only — follow-up bugs are filed separately. Hosted acceptance is pending the same hosted-CI blocker as the other durable-store stories.
 
 ---
 
@@ -368,7 +388,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Required fix/tests:** Remove `published` from generic update status changes or route it through publish semantics. Add tests for update-to-archived/draft behavior, attempted update-to-published rejection, and successful publish creating exactly one job with `publishedAt` set.
 - **Status:** OPEN — JD-001 workflow integrity issue.
 
-### 47. [NFR-047] No linting gate is enforced in package scripts or CI
+### 47. [NFR-047] ✅ No linting gate is enforced in package scripts or CI
 - **Priority:** P2 development-governance and code-quality gap.
 - **Linked story:** Linear `INFRA-003` / `REC-60`.
 - **Where:** `package.json` has no `lint` or `lint:fix` script, there is no ESLint configuration, and `.github/workflows/ci.yml` runs install → typecheck → build → test → smoke without a lint step.
@@ -377,7 +397,7 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 - **Impact:** Development practice depends on manual review instead of a repeatable gate; quality regressions can reach `main` before build/test/runtime failures reveal them.
 - **Required fix/tests:** Add ESLint tooling/configuration, `npm run lint` and optionally `npm run lint:fix`, document the lint gate in README and `dev-testing-management/SKILL.md`, and wire CI to run lint after typecheck and before build/test. Per TDD policy, keep at least two failing governance tests from INFRA-003 before implementation.
 - **Branch evidence:** `chore/INFRA-003-NFR-047-lint-governance-red` implements the lint gate. Targeted INFRA-003 tests pass 2/2, NFR-030 CI-order assertion passes 1/1, `npm ci --ignore-scripts`, `npm run lint` (0 errors, 72 warnings from existing NFR-027 cleanup debt), `npm run typecheck`, and `npm run build` pass. Full `npm test` remains blocked by pre-existing NFR-043/NFR-044 failures.
-- **Status:** OPEN — INFRA-003 implementation exists on branch but remains unmerged; close only after reviewed merge and post-merge regression review.
+- **Status:** ✅ RESOLVED — verified 2026-10-29: `package.json` has `lint`/`lint:fix`, `eslint.config.js` is on `main`, and `.github/workflows/ci.yml` runs `npm run lint`.
 
 ---
 
@@ -452,12 +472,12 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 3. **P0 data integrity:** NFR-034 + NFR-020 — replace JSON persistence with a durable transactional store before production applicant data entry.
 4. **P0 security:** NFR-008 — replace forgeable bearer identities before enabling applicant-photo read or mutation traffic.
 5. **P1 applicant media:** NFR-038, NFR-039, NFR-040, then NFR-041 — protected retrieval, reliable cleanup, full decode validation, and correct size errors.
-6. **P1:** NFR-003 — unblock registration/login/onboarding.
-7. **P1:** NFR-007 — restore hires listing feature (route ordering fix in applications.ts).
-8. **P1 security:** NFR-009 – NFR-013 and NFR-046 before real employer/applicant data (NFR-011 has partial safeguards only on the unmerged NFR-FEAT-001 branch).
-9. **P2 governance/logic:** NFR-047, then NFR-014 – NFR-019, NFR-045, and remaining specification gaps.
+6. ~~NFR-003~~ ✅ — registration/login unblocked.
+7. ~~NFR-007~~ ✅ — hires listing restored.
+8. **P1 security:** NFR-009 – NFR-013 before real employer/applicant data (NFR-011 has partial safeguards only on the unmerged NFR-FEAT-001 branch).
+9. **P2 logic:** ~~NFR-047~~ ✅, then NFR-014 – NFR-019, NFR-045, and remaining specification gaps.
 
-Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-005, NFR-006, NFR-030, NFR-033, NFR-036, NFR-037, NFR-042, NFR-043, NFR-044.
+Resolved and removed from the active queue: NFR-001, NFR-002, NFR-003, NFR-004, NFR-005, NFR-006, NFR-007, NFR-030, NFR-033, NFR-036, NFR-037, NFR-042, NFR-043, NFR-044, NFR-046, NFR-047, NFR-048, NFR-078, NFR-079, NFR-080, NFR-082.
 ## Bugs introduced during story-commercial-auth-hardening development
 
 **Date:** 2026-10-01
@@ -468,13 +488,13 @@ Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-005, 
 **Severity:** P1 (build/install)
 **Description:** `bcrypt@5.1.1` requires native compilation via `node-gyp rebuild` (or prebuilt binary via `node-pre-gyp`). On developer machines and in Vercel serverless without `--ignore-scripts`, the native binding is missing and the app crashes on first password hash/verify call with `Cannot find module .../bcrypt_lib.node`.
 **Fix:** Replaced with `bcryptjs` (pure JS). `bcryptjs` is slower (~3x) but has no native dependency. For production, set up a build step that compiles bcrypt native or use an external auth service (Auth0/Clerk). The 10-round bcryptjs hash is adequate for the current load; benchmark before scale.
-**Status:** Fixed (workaround).
+**Status:** ✅ Resolved 2026-10-29 — `bcryptjs` is the only bcrypt dependency; `tests/regression/NFR-055-NFR-056-auth-secrets-preflight.test.ts` fails if native `bcrypt` is reintroduced in `package.json` or `src/`.
 
 ### NFR-056 (P2): Startup secret validation throws in production — must be paired with Vercel env config
 **Severity:** P2 (deployment)
 **Description:** `src/services/tokenService.ts` now throws synchronously at module load if `NODE_ENV=production` and `JWT_SECRET`/`APPLICANT_JWT_SECRET` are unset/dev-default/<32 chars. In Vercel, this fails the function cold start with a 500 before the request can be served. **Both env vars MUST be set in Vercel project settings** or the app will not start. There is no graceful fallback for production.
 **Fix:** Document the env var requirement prominently. Add a Vercel deployment precheck (e.g., a Vercel "preflight" function or a CI gate that POSTs to a `/health` endpoint and fails if startup secret validation didn't run). Consider emitting a single startup log line confirming secrets validated, so deployment can be verified.
-**Status:** Documented in `.env.example`; preflight not yet built.
+**Status:** ✅ Resolved 2026-10-29 — `src/config/authSecrets.ts` is the single policy (also rejects identical `JWT_SECRET`/`APPLICANT_JWT_SECRET`); `scripts/preflight.mjs` (`npm run preflight`, run by `vercel-build`) fails the build in production when secrets are missing/weak; `.env.example` now actually lists both variables.
 
 ### NFR-057 (P3): Legacy `encrypted_<password>` stub users migrate only on first login
 **Severity:** P3 (data migration)
@@ -566,25 +586,43 @@ Resolved and removed from the active queue: NFR-001, NFR-002, NFR-004, NFR-005, 
 
 ## Lint review findings — 2026-10-22
 
-Review of the 178 warnings identified three actionable defects. They are open; creating these stories does not mark implementation or QA complete. Work order: NFR-079 (data disclosure), NFR-078 (broken PDF path), then NFR-080 (ignored duration). Each estimate includes regression and CI coverage.
+Review of the 178 warnings identified three actionable defects. NFR-078, NFR-079 and NFR-080 are now resolved (see below). Work order: NFR-079 (data disclosure), NFR-078 (broken PDF path), then NFR-080 (ignored duration). Each estimate includes regression and CI coverage.
 
 ### NFR-078 — Restore PDF resume parsing with the installed parser API
 
-- **Priority:** High (P1); **Size:** S (1–3h); **Status:** Open.
+- **Priority:** High (P1); **Size:** S (1–3h); **Status:** ✅ Resolved 2026-10-27.
 - **Impact:** PDF resume uploads fail before text extraction, blocking a supported application input.
 - **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-pdf-resume-parser-api.md).
 
+> **✅ RESOLUTION — 2026-10-27**
+> - **Fix:** `extractTextFromPDF` now uses the supported `PDFParse` API. A `parser` is constructed with `new PDFParse({ data: new Uint8Array(buffer) })`, `getText({ pageJoiner: '' })` is awaited, and `parser.destroy()` runs in a `finally` so worker resources are released on both success and failure. `pageJoiner: ''` suppresses the default `-- page_number of total_number --` boundary marker so the existing empty-text guard can fire and the marker is not injected into the LLM prompt.
+> - **Tests:** new `tests/regression/NFR-078-pdf-resume-parser-api.test.ts` — 5/5 green: valid PDF, corrupt PDF, empty PDF, unsupported type, DOCX regression. Hand-built PDF and DOCX fixtures, no library dependency added.
+> - **Gates:** `npm run typecheck` ✅ · `npm run lint` 0 errors ✅ · `npm run build` ✅ · `npm test` 399/399 ✅ · `npm run smoke` ✅.
+
 ### NFR-079 — Keep resume content out of parse errors and audit records
 
-- **Priority:** High (P1); **Size:** M (3–6h); **Status:** Open.
+- **Priority:** High (P1); **Size:** M (3–6h); **Status:** ✅ Resolved 2026-10-27.
 - **Impact:** Malformed model output can cause applicant content to be retained in diagnostic audit records and returned in error responses.
 - **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-resume-error-content-disclosure.md).
 
+> **✅ RESOLUTION — 2026-10-27**
+> - **Fix:** new `ResumeParseError` with a stable `failure` code (`json_failure` | `schema_failure`) and a content-free `message`. The raw provider output and the raw Zod error are dropped at the throw site, so they cannot reach HTTP responses, audit records, or stack traces. Schema failures keep the failing field paths (schema structure, not content), so the failure stays diagnosable.
+> - **Routes:** the file endpoint's failure audit record now stores `{ failure, fields }` instead of `{ error: error.message }`. Both endpoints return `{ error, failure }`.
+> - **Tests:** new `tests/regression/NFR-079-resume-error-content-disclosure.test.ts` — 5/5 green. `tests/observability-p2-ai.test.ts` updated to assert the new safe messages.
+> - **Gates:** `npm run typecheck` ✅ · `npm run lint` 0 errors ✅ · `npm run build` ✅ · `npm test` 406/406 ✅ · `npm run smoke` ✅.
+
 ### NFR-080 — Honor requested interview duration
 
-- **Priority:** Medium (P2); **Size:** S (1–3h); **Status:** Open.
+- **Priority:** Medium (P2); **Size:** S (1–3h); **Status:** ✅ Resolved 2026-10-27.
 - **Impact:** A caller requesting a non-default interview duration receives a scheduling workflow initialized to 60 minutes.
 - **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-interview-duration-ignored.md).
+
+> **✅ RESOLUTION — 2026-10-27**
+> - **Fix:** `createInitialState` takes an optional `durationMinutes` (default 60). `startInterviewScheduling` takes an optional trailing `durationMinutes` after `entryPoint`, so the positional signature, the telemetry `entryPoint` argument and all existing callers are unchanged. The route validates and passes the value through.
+> - **Contract:** `durationMinutes` is a positive integer number of minutes. Non-number, non-integer (covers `NaN`, `Infinity`, fractions), zero and negative values return HTTP 400 with `durationMinutes must be a positive integer number of minutes`. Omitted keeps the 60-minute default.
+> - **Reschedule:** the `reschedule_requested` node returns a partial that omits `durationMinutes` and the machine merges over the previous state, so the duration is preserved.
+> - **Tests:** new `tests/regression/NFR-080-interview-duration-honored.test.ts` — 9/9 green (5 workflow, 4 route validation).
+> - **Gates:** `npm run typecheck` ✅ · `npm run lint` 0 errors ✅ · `npm run build` ✅ · `npm test` 415/415 ✅ · `npm run smoke` ✅.
 
 ## Lint review finding — NFR-093 (2026-10-26)
 
@@ -597,3 +635,26 @@ Found while reviewing why `no-explicit-any` warnings appeared (375 `any` uses, 1
 - **Fix:** `validateCompanyUpdate` in `src/routes/companies.ts` allow-lists `companyName`, `description`, `location`, `companySize`, `industry` (strings; `companyName` non-blank; length caps). Unknown or server-owned keys (`id`, `createdAt`, `updatedAt`, `__proto__`, ...), non-object and empty bodies return 400 and change nothing. Covered by `tests/regression/NFR-093-company-update-allow-list.test.ts`.
 - **Side finding (open):** a top-level `null`/primitive JSON body is rejected by `express.json()`, but the global error handler answers 500 instead of 400.
 - **Not changed:** `POST /api/companies`, `src/routes/auth.ts` and `src/routes/mcp.ts` still lack schema validation; recheck NFR-010 and NFR-011.
+
+
+## NFR-046 follow-up findings — 2026-10-23
+
+Raised while implementing the NFR-046 company-authorization fix. These are open; filing them does not mark implementation or QA complete.
+
+### NFR-081 — JD draft authorization source is inconsistent between /generate and /publish
+
+- **Priority:** Medium (P2); **Size:** S (1–3h); **Status:** Open.
+- **Impact:** A hiring manager who creates a company and does not re-login gets different authorization outcomes from `/generate` (JWT-sourced `companyId`) and `/publish` (store-sourced `companyId`). Not exploitable, but inconsistent.
+- **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-nfr-081-jd-draft-auth-source-inconsistent.md).
+
+### NFR-082 — File resume upload never reaches the parser with its bytes
+
+- **Priority:** High (P1); **Size:** S (1–3h); **Status:** ✅ Resolved 2026-10-27.
+- **Impact:** `POST /api/agents/resume/parse` has never parsed an uploaded resume. `express-fileupload` runs with `useTempFiles: true`, so `file.data` is an empty buffer and the bytes live in `file.tempFilePath`; the route read `file.data`, so every upload reached the parser as zero bytes and was rejected as empty.
+- **Implementation and test criteria:** [Bug story](./docs/stories/story-bug-nfr-082-resume-file-upload-bytes.md).
+
+> **✅ RESOLUTION — 2026-10-27**
+> - **Fix:** `src/routes/agents/index.ts` resolves the upload bytes as `file.data?.length ? file.data : await readFile(file.tempFilePath)` and returns `400 Uploaded file could not be read` when neither yields bytes. `useTempFiles: true` is unchanged, so uploads are still streamed to disk rather than buffered in memory.
+> - **Tests:** new `tests/regression/NFR-082-resume-file-upload-bytes.test.ts` — 2/2 green: successful PDF upload parses; malformed upload returns a graceful JSON error.
+> - **Gates:** `npm run typecheck` ✅ · `npm run lint` 0 errors ✅ · `npm run build` ✅ · `npm test` 406/406 ✅ · `npm run smoke` ✅.
+> - **Out of scope:** temp-file cleanup in `/tmp` is not addressed; tracked as a follow-up.

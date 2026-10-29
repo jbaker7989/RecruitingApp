@@ -153,8 +153,8 @@ test('S02/S04: real resume chain separates one provider attempt from each logica
   await telemetry.flush();
   const beforeTokens = telemetry.count('app.ai.tokens', { 'app.feature': 'resume_parsing' });
   assert.equal((await parseResume(canary)).email, valid.email);
-  await assert.rejects(parseResume(canary), /Failed to parse resume JSON/);
-  await assert.rejects(parseResume(canary), /Failed to parse resume JSON/);
+  await assert.rejects(parseResume(canary), /Resume parsing failed: model output was not valid JSON/);
+  await assert.rejects(parseResume(canary), /Resume parsing failed: model output did not match the expected schema/);
   assert.equal(calls, 3, 'prompt formatting and validation must reach exactly three fake provider calls');
   await telemetry.flush();
   const spans = telemetry.spans().slice(beforeSpans);
