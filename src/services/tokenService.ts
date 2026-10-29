@@ -8,28 +8,16 @@
 import { randomUUID } from 'crypto';
 import { SignJWT, jwtVerify, JWTPayload } from 'jose';
 import { isRevoked } from './revocationService.js';
-
-const DEV_USER_SECRET = 'dev-user-jwt-secret-change-in-production';
-const DEV_APPLICANT_SECRET = 'dev-applicant-jwt-secret-change-in-production';
+import { DEV_USER_SECRET, DEV_APPLICANT_SECRET, secretProblem } from '../config/authSecrets.js';
 
 // ─── Startup secret validation ────────────────────────────────────────────────
+// Policy lives in config/authSecrets.ts so scripts/preflight.mjs can enforce the
+// same rules at build/deploy time (NFR-056).
 
 function validateSecret(envVar: string, devDefault: string): Uint8Array {
-  const value = process.env[envVar];
-  if (!value) {
-    throw new Error(`${envVar} is required. Set it in production to a strong secret (>= 32 chars).`);
-  }
-  if (value === devDefault) {
-    throw new Error(
-      `${envVar} is set to the dev default secret. Set a strong, unique secret in production.`
-    );
-  }
-  if (value.length < 32) {
-    throw new Error(
-      `${envVar} is too short (${value.length} chars). Use at least 32 characters in production.`
-    );
-  }
-  return new TextEncoder().encode(value);
+  const problem = secretProblem(envVar, devDefault);
+  if (problem) throw new Error(problem);
+  return new TextEncoder().encode(process.env[envVar]);
 }
 
 // In production, require non-default strong secrets.

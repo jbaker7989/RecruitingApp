@@ -59,8 +59,8 @@ Legend: 🔴 Critical · 🟠 High · 🟡 Medium · 🔵 Low/Hygiene
 | NFR-068 | 68 | 🟠 | Matching/scheduling PostgreSQL paths — implemented; local PostgreSQL QA passed |
 | NFR-069 | 69 | 🟡 | Staff auth persistence — implemented; local PostgreSQL QA passed |
 | NFR-070 | 70 | 🟡 | Dashboard bcrypt/legacy migration — implemented; local PostgreSQL QA passed |
-| NFR-055 | 55 | 🟠 | ✅ bcrypt native binding unavailable — replaced with `bcryptjs` (workaround) |
-| NFR-056 | 56 | 🟡 | Startup secret validation throws in production — Vercel preflight not built |
+| NFR-055 | 55 | 🟠 | ✅ bcrypt native binding unavailable — **RESOLVED** (`bcryptjs`, guarded by regression test) |
+| NFR-056 | 56 | 🟡 | ✅ Startup secret validation throws in production — **RESOLVED** (deploy-time preflight added) |
 | NFR-057 | 57 | 🔵 | Legacy `encrypted_` stub users migrate only on first login — bulk migration script missing |
 | NFR-058 | 58 | 🔵 | Legacy sha256 applicant hashes migrate only on first login — bulk migration missing |
 | NFR-059 | 59 | 🔵 | Production secret validation is process-global (no per-tenant isolation) — deferred |
@@ -488,13 +488,13 @@ Resolved and removed from the active queue: NFR-001, NFR-002, NFR-003, NFR-004, 
 **Severity:** P1 (build/install)
 **Description:** `bcrypt@5.1.1` requires native compilation via `node-gyp rebuild` (or prebuilt binary via `node-pre-gyp`). On developer machines and in Vercel serverless without `--ignore-scripts`, the native binding is missing and the app crashes on first password hash/verify call with `Cannot find module .../bcrypt_lib.node`.
 **Fix:** Replaced with `bcryptjs` (pure JS). `bcryptjs` is slower (~3x) but has no native dependency. For production, set up a build step that compiles bcrypt native or use an external auth service (Auth0/Clerk). The 10-round bcryptjs hash is adequate for the current load; benchmark before scale.
-**Status:** Fixed (workaround).
+**Status:** ✅ Resolved 2026-10-29 — `bcryptjs` is the only bcrypt dependency; `tests/regression/NFR-055-NFR-056-auth-secrets-preflight.test.ts` fails if native `bcrypt` is reintroduced in `package.json` or `src/`.
 
 ### NFR-056 (P2): Startup secret validation throws in production — must be paired with Vercel env config
 **Severity:** P2 (deployment)
 **Description:** `src/services/tokenService.ts` now throws synchronously at module load if `NODE_ENV=production` and `JWT_SECRET`/`APPLICANT_JWT_SECRET` are unset/dev-default/<32 chars. In Vercel, this fails the function cold start with a 500 before the request can be served. **Both env vars MUST be set in Vercel project settings** or the app will not start. There is no graceful fallback for production.
 **Fix:** Document the env var requirement prominently. Add a Vercel deployment precheck (e.g., a Vercel "preflight" function or a CI gate that POSTs to a `/health` endpoint and fails if startup secret validation didn't run). Consider emitting a single startup log line confirming secrets validated, so deployment can be verified.
-**Status:** Documented in `.env.example`; preflight not yet built.
+**Status:** ✅ Resolved 2026-10-29 — `src/config/authSecrets.ts` is the single policy (also rejects identical `JWT_SECRET`/`APPLICANT_JWT_SECRET`); `scripts/preflight.mjs` (`npm run preflight`, run by `vercel-build`) fails the build in production when secrets are missing/weak; `.env.example` now actually lists both variables.
 
 ### NFR-057 (P3): Legacy `encrypted_<password>` stub users migrate only on first login
 **Severity:** P3 (data migration)
