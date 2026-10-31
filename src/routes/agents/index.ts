@@ -4,10 +4,11 @@
  */
 
 import { Router } from 'express';
+import { readFile } from 'node:fs/promises';
 import { requireRole } from '../../middleware/auth.js';
 import { readStore, updateStore, generateId, now, addObservabilityEntry } from '../../models/store.js';
 import type { ScreeningRequest, ScreeningJobResponse, ScreeningResult, CandidateInput } from '../../types/screening.js';
-import { parseResumeFromBuffer, parseResume } from '../../chains/resumeParsing.js';
+import { parseResumeFromBuffer, parseResume, ResumeParseError } from '../../chains/resumeParsing.js';
 import {
   calculateMatchScore,
   getJobSuggestionsForApplicant,
@@ -58,7 +59,15 @@ router.post('/resume/parse', requireRole(['applicant', 'recruiter', 'hiring-mana
     }
     
     // Parse the resume
-    const parsedResume = await parseResumeFromBuffer(file.data, file.mimetype);
+    // `useTempFiles: true` means express-fileupload writes the upload to disk
+    // and leaves `file.data` undefined; the bytes live in `file.tempFilePath`.
+    const fileBytes = file.data?.length
+      ? file.data
+      : (file.tempFilePath ? await readFile(file.tempFilePath) : undefined);
+    if (!fileBytes?.length) {
+      return res.status(400).json({ error: 'Uploaded file could not be read' });
+    }
+    const parsedResume = await parseResumeFromBuffer(fileBytes, file.mimetype);
     
     // Log the action
     await addObservabilityEntry({
@@ -81,6 +90,11 @@ router.post('/resume/parse', requireRole(['applicant', 'recruiter', 'hiring-mana
       data: parsedResume,
     });
   } catch (error) {
+    // NFR-079: the failure record carries only the stable classification and
+    // the failing field paths — never the raw error message, which can embed
+    // resume content from the model output.
+    const failure = error instanceof ResumeParseError ? error.failure : 'parse_failed';
+    const fields = error instanceof ResumeParseError ? error.detail.fields : [];
     await addObservabilityEntry({
       id: generateId(),
       timestamp: now(),
@@ -88,11 +102,14 @@ router.post('/resume/parse', requireRole(['applicant', 'recruiter', 'hiring-mana
       entityType: 'Applicant',
       entityId: req.user.id,
       userId: req.user.id,
-      details: { error: error instanceof Error ? error.message : String(error) },
+      details: { failure, fields },
       outcome: 'failure',
     });
     
-    res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to parse resume' });
+    res.status(500).json({
+      error: error instanceof ResumeParseError ? error.message : 'Failed to parse resume',
+      failure,
+    });
   }
 });
 
@@ -123,7 +140,11 @@ router.post('/resume/parse-text', requireRole(['applicant', 'recruiter', 'hiring
       data: parsedResume,
     });
   } catch (error) {
-    res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to parse resume' });
+    // NFR-079: only the stable classification reaches the client.
+    res.status(500).json({
+      error: error instanceof ResumeParseError ? error.message : 'Failed to parse resume',
+      failure: error instanceof ResumeParseError ? error.failure : 'parse_failed',
+    });
   }
 });
 
@@ -262,6 +283,12 @@ router.post('/scheduling/interview', requireRole(['recruiter', 'hiring-manager',
     if (!applicationId || !interviewerIds?.length) {
       return res.status(400).json({ error: 'applicationId and interviewerIds are required' });
     }
+
+    // NFR-080: honor a requested interview duration. The contract is a positive
+    // integer number of minutes; an omitted duration keeps the 60-minute default.
+    if (durationMinutes !== undefined && (typeof durationMinutes !== 'number' || !Number.isInteger(durationMinutes) || durationMinutes <= 0)) {
+      return res.status(400).json({ error: 'durationMinutes must be a positive integer number of minutes' });
+    }
     
     const store = await readStore();
     const application = store.applications.find(a => a.id === applicationId);
@@ -285,7 +312,9 @@ router.post('/scheduling/interview', requireRole(['recruiter', 'hiring-manager',
       job.id,
       job.companyId,
       interviewerIds,
-      proposedTimes
+      proposedTimes,
+      'api',
+      durationMinutes,
     );
     
     await addObservabilityEntry({

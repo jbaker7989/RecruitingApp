@@ -53,6 +53,28 @@ export type ParsedResume = z.infer<typeof ParsedResumeSchema>;
 export type EducationEntryParsed = z.infer<typeof EducationEntrySchema>;
 export type EmploymentEntryParsed = z.infer<typeof EmploymentEntrySchema>;
 
+/** Stable classification for a resume parsing failure. */
+export type ResumeParseFailure = 'json_failure' | 'schema_failure';
+
+/**
+ * Parse failure whose `message` never contains resume text, model output, or
+ * schema input values (NFR-079). The raw provider output and the Zod issue
+ * list are dropped at the throw site so they cannot reach HTTP responses,
+ * audit records, or stack traces. `detail.fields` keeps the failing field
+ * paths, which are schema structure and not applicant content.
+ */
+export class ResumeParseError extends Error {
+  readonly failure: ResumeParseFailure;
+  readonly detail: { fields: string[] };
+
+  constructor(failure: ResumeParseFailure, message: string, fields: string[] = []) {
+    super(message);
+    this.name = 'ResumeParseError';
+    this.failure = failure;
+    this.detail = { fields };
+  }
+}
+
 /**
  * Prompt template for resume parsing with structured output request
  */
@@ -108,20 +130,33 @@ export async function parseResume(resumeText: string): Promise<ParsedResume> {
         jsonStr = rawContent.split('```')[1].split('```')[0].trim();
       }
 
-      // Provider responded; distinguish JSON parse failure from schema failure (OBS-P2-S02-AC3)
+      // Provider responded; distinguish JSON parse failure from schema failure (OBS-P2-S02-AC3).
+      // The raw model output and the raw error are deliberately not embedded in the
+      // thrown error: they can contain resume content and would be echoed into HTTP
+      // responses, audit records, and stack traces (NFR-079).
       let parsed: unknown;
       try {
         parsed = JSON.parse(jsonStr);
-      } catch (error) {
+      } catch {
         ctx.markParseOutcome('json_failure');
-        throw new Error(`Failed to parse resume JSON: ${error}. Raw content: ${rawContent.substring(0, 500)}`);
+        throw new ResumeParseError(
+          'json_failure',
+          'Resume parsing failed: model output was not valid JSON',
+        );
       }
 
       try {
         return ParsedResumeSchema.parse(parsed);
       } catch (error) {
         ctx.markParseOutcome('schema_failure');
-        throw new Error(`Failed to parse resume JSON: ${error}. Raw content: ${rawContent.substring(0, 500)}`);
+        const fields = error instanceof z.ZodError
+          ? error.issues.map((issue) => issue.path.join('.')).filter(Boolean)
+          : [];
+        throw new ResumeParseError(
+          'schema_failure',
+          'Resume parsing failed: model output did not match the expected schema',
+          fields,
+        );
       }
     },
   );
@@ -152,15 +187,21 @@ export async function parseResumeFromBuffer(
 }
 
 // PDF text extraction using pdf-parse
+// The installed pdf-parse v2 exports a PDFParse class, not a callable default.
+// The parser holds worker resources, so it must be destroyed on both paths.
+// `pageJoiner: ''` suppresses the default `-- page_number of total_number --`
+// boundary marker, which would otherwise be the only "text" in an empty PDF
+// and would otherwise pad the text sent to the LLM.
 async function extractTextFromPDF(buffer: Buffer): Promise<string> {
+  const { PDFParse } = await import('pdf-parse');
+  const parser = new PDFParse({ data: new Uint8Array(buffer) });
   try {
-    // Dynamic import with CJS fallback
-    const pdfModule = await import('pdf-parse');
-    const pdfParse = (pdfModule as any).default || pdfModule;
-    const data = await pdfParse(buffer);
-    return data.text;
+    const result = await parser.getText({ pageJoiner: '' });
+    return result.text;
   } catch (error) {
     throw new Error(`Failed to extract text from PDF: ${error}`);
+  } finally {
+    await parser.destroy();
   }
 }
 
